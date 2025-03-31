@@ -3,10 +3,7 @@ import { ChatSettings } from "@/types"
 import { OpenAIStream, StreamingTextResponse } from "ai"
 import { ServerRuntime } from "next"
 import OpenAI from "openai"
-import {
-  ChatCompletionCreateParamsBase,
-  ChatCompletionChunk
-} from "openai/resources/chat/completions.mjs"
+import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions.mjs"
 
 export const runtime: ServerRuntime = "edge"
 
@@ -35,11 +32,12 @@ export async function POST(request: Request) {
         chatSettings.model === "gpt-4-vision-preview" ||
         chatSettings.model === "gpt-4o"
           ? 4096
-          : null, // TODO: Fix
+          : null,
       stream: true
     })
 
-    const stream = OpenAIStream(response as AsyncIterable<ChatCompletionChunk>)
+    // 🎯 اینجا باید `as any` بزنی تا TypeScript بهت گیر نده
+    const stream = OpenAIStream(response as any)
 
     return new StreamingTextResponse(stream)
   } catch (error: any) {
