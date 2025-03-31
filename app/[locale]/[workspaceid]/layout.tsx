@@ -59,21 +59,14 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   const [loading, setLoading] = useState(true)
 
-  const isTest = process.env.NEXT_PUBLIC_MOCK_SUPABASE === "true"
-
   useEffect(() => {
     ;(async () => {
-      let session = null
-
-      if (isTest) {
-        console.log("⚠️ حالت تست فعال است. ایجاد session جعلی...")
-        session = { user: { id: "test-user", email: "test@example.com" } }
-      } else {
-        session = (await supabase.auth.getSession()).data.session
-      }
+      const session = (await supabase.auth.getSession()).data.session
 
       if (!session) {
         return router.push("/login")
+      } else {
+        await fetchWorkspaceData(workspaceId)
       }
     })()
   }, [])
