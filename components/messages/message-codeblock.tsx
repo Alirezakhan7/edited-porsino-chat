@@ -57,12 +57,11 @@ export const MessageCodeBlock: FC<MessageCodeBlockProps> = memo(
       if (typeof window === "undefined") {
         return
       }
+
       const fileExtension = programmingLanguages[language] || ".file"
-      const suggestedFileName = `file-${generateRandomString(
-        3,
-        true
-      )}${fileExtension}`
-      const fileName = window.prompt("Enter file name" || "", suggestedFileName)
+      const suggestedFileName = `file-${generateRandomString(3, true)}${fileExtension}`
+
+      const fileName = window.prompt("Enter file name", suggestedFileName)
 
       if (!fileName) {
         return
