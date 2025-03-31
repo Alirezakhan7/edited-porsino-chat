@@ -3,7 +3,10 @@ import { ChatSettings } from "@/types"
 import { OpenAIStream, StreamingTextResponse } from "ai"
 import { ServerRuntime } from "next"
 import OpenAI from "openai"
-import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions.mjs"
+import {
+  ChatCompletionCreateParamsBase,
+  ChatCompletionChunk
+} from "openai/resources/chat/completions.mjs"
 
 export const runtime: ServerRuntime = "edge"
 
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
       stream: true
     })
 
-    const stream = OpenAIStream(response)
+    const stream = OpenAIStream(response as AsyncIterable<ChatCompletionChunk>)
 
     return new StreamingTextResponse(stream)
   } catch (error: any) {
