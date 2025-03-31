@@ -46,6 +46,10 @@ export const ProfileStep: FC<ProfileStepProps> = ({
       timeout = setTimeout(later, wait)
     }
   }
+  const isTest = process.env.NEXT_PUBLIC_MOCK_SUPABASE === "true"
+
+  // لیست نام‌های کاربری تستی که قبلاً ثبت شده‌اند
+  const mockUsernames = ["testuser", "john_doe", "mockuser"]
 
   const checkUsernameAvailability = useCallback(
     debounce(async (username: string) => {
@@ -72,6 +76,14 @@ export const ProfileStep: FC<ProfileStepProps> = ({
 
       setLoading(true)
 
+      if (isTest) {
+        console.log(`⚠️ بررسی نام کاربری در حالت تست: ${username}`)
+        const isAvailable = !mockUsernames.includes(username.toLowerCase())
+        setUsernameAvailable(isAvailable)
+        setLoading(false)
+        return
+      }
+
       const response = await fetch(`/api/username/available`, {
         method: "POST",
         body: JSON.stringify({ username })
@@ -81,7 +93,6 @@ export const ProfileStep: FC<ProfileStepProps> = ({
       const isAvailable = data.isAvailable
 
       onUsernameAvailableChange(isAvailable)
-
       setLoading(false)
     }, 500),
     []
@@ -126,7 +137,10 @@ export const ProfileStep: FC<ProfileStepProps> = ({
           </div>
         </div>
 
-        <LimitDisplay used={username.length} limit={PROFILE_USERNAME_MAX} />
+        <LimitDisplay
+          used={username ? username.length : 0}
+          limit={PROFILE_USERNAME_MAX}
+        />
       </div>
 
       <div className="space-y-1">

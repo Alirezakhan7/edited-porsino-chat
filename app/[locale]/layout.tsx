@@ -70,19 +70,28 @@ export default async function RootLayout({
   children,
   params: { locale }
 }: RootLayoutProps) {
+  const isTest = process.env.NEXT_PUBLIC_MOCK_SUPABASE === "true"
+
   const cookieStore = cookies()
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+  let session = null
+
+  if (!isTest) {
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          }
         }
       }
-    }
-  )
-  const session = (await supabase.auth.getSession()).data.session
+    )
+    session = (await supabase.auth.getSession()).data.session
+  } else {
+    console.log("⚠️ Mock Supabase فعال است!")
+    session = { user: { id: "test-user", email: "test@example.com" } }
+  }
 
   const { t, resources } = await initTranslations(locale, i18nNamespaces)
 

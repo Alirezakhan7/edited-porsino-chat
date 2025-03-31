@@ -1,3 +1,97 @@
+import { ChatSettings } from "@/types"
+
+export const runtime = "edge"
+
+export async function POST(request: Request) {
+  const json = await request.json()
+  const { messages } = json as {
+    chatSettings: ChatSettings
+    messages: any[]
+  }
+
+  try {
+    // استخراج آخرین پیام کاربر از تاریخچه چت
+    const userMessage = messages[messages.length - 1].content
+
+    // ارسال درخواست به سرور FastAPI شما که از StreamingResponse استفاده می‌کند
+    const response = await fetch("http://localhost:8000/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: userMessage })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Server returned error: ${response.status}`)
+    }
+
+    // انتقال مستقیم جریان (stream) پاسخ دریافتی از FastAPI به کلاینت
+    return new Response(response.body, {
+      status: 200,
+      headers: { "Content-Type": "text/plain" }
+    })
+  } catch (error: any) {
+    const errorMessage = error.message || "Unknown error occurred"
+    return new Response(JSON.stringify({ message: errorMessage }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    })
+  }
+}
+
+/*
+این کد جدیده ولی با باگ
+
+
+
+import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
+import { ChatSettings } from "@/types"
+
+export const runtime = "edge"
+
+export async function POST(request: Request) {
+  const json = await request.json()
+  const { messages } = json as {
+    chatSettings: ChatSettings
+    messages: any[]
+  }
+
+  try {
+    // دریافت آخرین پیام کاربر از تاریخچه چت
+    const userMessage = messages[messages.length - 1].content
+
+    // درخواست به API اختصاصی شما
+    const response = await fetch("http://localhost:8000/query", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ query: userMessage })
+    })
+    
+
+    if (!response.ok) {
+      throw new Error(`Server returned error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    const answer = data.answer || "پاسخی دریافت نشد."
+
+    return new Response(JSON.stringify({ answer: answer }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    })
+  } catch (error: any) {
+    let errorMessage = error.message || "خطای نامشخص رخ داد"
+    return new Response(JSON.stringify({ message: errorMessage }), {
+      status: error.status || 500
+    })
+  }
+}
+
+
+
+****
+
 import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
 import { ChatSettings } from "@/types"
 import { OpenAIStream, StreamingTextResponse } from "ai"
@@ -49,3 +143,4 @@ export async function POST(request: Request) {
     })
   }
 }
+*/
