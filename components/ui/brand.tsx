@@ -18,7 +18,7 @@ export const Brand: FC<BrandProps> = ({ theme = "dark" }) => {
       <div className="mb-2">
         {/* نمایش متن به جای لوگو */}
         <h1 className="text-center text-4xl font-bold tracking-wide">
-          !از نوتیک بپرس
+          !از پرسینو بپرس
         </h1>
       </div>
 
