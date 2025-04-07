@@ -136,26 +136,6 @@ export default async function Login({
       return redirect(`/login?message=${signUpError.message}`)
     }
 
-    // ساخت پروفایل بعد از ثبت‌نام
-    const { data: signUpData } = await supabase.auth.getUser()
-    const userId = signUpData.user?.id
-
-    if (userId) {
-      await supabase.from("profiles").insert({
-        id: userId,
-        user_id: userId,
-        created_at: new Date().toISOString(),
-        bio: "",
-        has_onboarded: false,
-        image_url: "",
-        image_path: "",
-        profile_context: "",
-        display_name: "کاربر جدید",
-        username: `user_${userId.slice(0, 8)}`,
-        use_azure_openai: false
-      })
-    }
-
     return redirect("/setup")
 
     // USE IF YOU WANT TO SEND EMAIL VERIFICATION, ALSO CHANGE TOML FILE
