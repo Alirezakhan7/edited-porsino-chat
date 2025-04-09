@@ -139,52 +139,52 @@ export const ModelSelect: FC<ModelSelectProps> = ({
         <DropdownMenuContent
           className="w-full max-w-xs rounded-md border border-gray-300 bg-white p-2 shadow-xl dark:border-gray-800 dark:bg-gray-900"
           align="start"
-          dir="rtl"
         >
-          <div className="border-b border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
-            دسته‌بندی
-          </div>
-          <div className="grid grid-cols-2 gap-2 p-2">
-            {["math", "chem", "phys", "bio"].map(subject => (
-              <div
-                key={subject}
-                onClick={() => toggleCategory(subject)}
-                className={`flex cursor-pointer items-center gap-2 rounded p-2 transition-colors
-                ${expandedCategory === subject ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
-              >
+          <div dir="rtl">
+            <div className="border-b border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
+              دسته‌بندی
+            </div>
+            <div className="grid grid-cols-2 gap-2 p-2">
+              {["math", "chem", "phys", "bio"].map(subject => (
                 <div
-                  className={`flex size-6 items-center justify-center rounded-full bg-gradient-to-r${subjectData[subject as keyof typeof subjectData].gradient}`}
+                  key={subject}
+                  onClick={() => toggleCategory(subject)}
+                  className={`flex cursor-pointer items-center gap-2 rounded p-2 transition-colors
+                ${expandedCategory === subject ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
                 >
-                  {subjectData[subject as keyof typeof subjectData].icon}
+                  <div
+                    className={`flex size-6 items-center justify-center rounded-full bg-gradient-to-r${subjectData[subject as keyof typeof subjectData].gradient}`}
+                  >
+                    {subjectData[subject as keyof typeof subjectData].icon}
+                  </div>
+                  <span className="text-sm font-medium text-gray-800 dark:text-white">
+                    {subject === "math"
+                      ? "ریاضی"
+                      : subject === "chem"
+                        ? "شیمی"
+                        : subject === "phys"
+                          ? "فیزیک"
+                          : "زیست"}
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-gray-800 dark:text-white">
-                  {subject === "math"
-                    ? "ریاضی"
-                    : subject === "chem"
-                      ? "شیمی"
-                      : subject === "phys"
-                        ? "فیزیک"
-                        : "زیست"}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {expandedCategory && (
-            <>
-              <div className="mt-1 border-b border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
-                سطح
-              </div>
-              <div className="grid grid-cols-2 gap-2 p-2">
-                {["simple", "advanced"].map(level => {
-                  const modelId = `${expandedCategory}-${level}` as LLMID
-                  const isSelected = selectedModelId === modelId
+            {expandedCategory && (
+              <>
+                <div className="mt-1 border-b border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                  سطح
+                </div>
+                <div className="grid grid-cols-2 gap-2 p-2">
+                  {["simple", "advanced"].map(level => {
+                    const modelId = `${expandedCategory}-${level}` as LLMID
+                    const isSelected = selectedModelId === modelId
 
-                  return (
-                    <div
-                      key={level}
-                      onClick={() => handleSelectModel(modelId)}
-                      className={`
+                    return (
+                      <div
+                        key={level}
+                        onClick={() => handleSelectModel(modelId)}
+                        className={`
                         cursor-pointer rounded-xl border p-3 text-center text-sm
                         font-semibold text-gray-800 transition-all dark:text-white
                         ${
@@ -192,14 +192,15 @@ export const ModelSelect: FC<ModelSelectProps> = ({
                             ? `bg-gradient-to-r ${subjectData[expandedCategory as keyof typeof subjectData].gradient} text-white`
                             : "border-gray-300 bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                         }`}
-                    >
-                      {level === "simple" ? "ساده" : "پیشرفته"}
-                    </div>
-                  )
-                })}
-              </div>
-            </>
-          )}
+                      >
+                        {level === "simple" ? "ساده" : "پیشرفته"}
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </div>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
