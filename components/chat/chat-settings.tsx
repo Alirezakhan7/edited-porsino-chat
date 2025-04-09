@@ -119,7 +119,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
             {modelStyle.icon && (
               // Increased container size: from w-6/h-6 to w-8/h-8, with padding increased.
               <div
-                className={`flex size-8 items-center justify-center rounded-full bg-gradient-to-r p-2${modelStyle.gradient} shadow-md`}
+                className={`flex size-8 items-center justify-center rounded-full bg-gradient-to-r p-2 ${modelStyle.gradient} shadow-md`}
               >
                 {modelStyle.icon}
               </div>
