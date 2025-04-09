@@ -121,7 +121,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
             {selectedSubject ? (
               <div className="text-md flex items-center gap-2">
                 <div
-                  className={`flex size-7 items-center justify-center rounded-full bg-gradient-to-r${subjectData[selectedSubject].gradient}`}
+                  className={`flex size-7 items-center justify-center rounded-full bg-gradient-to-r ${subjectData[selectedSubject].gradient}`}
                 >
                   {subjectData[selectedSubject].icon}
                 </div>
@@ -153,7 +153,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
                 ${expandedCategory === subject ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
                 >
                   <div
-                    className={`flex size-6 items-center justify-center rounded-full bg-gradient-to-r${subjectData[subject as keyof typeof subjectData].gradient}`}
+                    className={`flex size-6 items-center justify-center rounded-full bg-gradient-to-r ${subjectData[subject as keyof typeof subjectData].gradient}`}
                   >
                     {subjectData[subject as keyof typeof subjectData].icon}
                   </div>
