@@ -32,7 +32,7 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
           contentType="chats"
           onContentTypeChange={onContentTypeChange}
         />
-
+        {/*
         <SidebarSwitchItem
           icon={<IconAdjustmentsHorizontal size={SIDEBAR_ICON_SIZE} />}
           contentType="presets"
@@ -74,6 +74,7 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
           contentType="tools"
           onContentTypeChange={onContentTypeChange}
         />
+          */}
       </TabsList>
 
       <div className="flex flex-col items-center space-y-4">

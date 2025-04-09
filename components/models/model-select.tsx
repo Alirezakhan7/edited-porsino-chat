@@ -1,17 +1,20 @@
 import { ChatbotUIContext } from "@/context/context"
 import { LLM, LLMID, ModelProvider } from "@/types"
-import { IconCheck, IconChevronDown } from "@tabler/icons-react"
-import { FC, useContext, useEffect, useRef, useState } from "react"
+import {
+  IconChevronDown,
+  IconFlask,
+  IconMath,
+  IconAtom,
+  IconDna,
+  IconSettings
+} from "@tabler/icons-react"
+import { FC, useContext, useRef, useState } from "react"
 import { Button } from "../ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger
 } from "../ui/dropdown-menu"
-import { Input } from "../ui/input"
-import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
-import { ModelIcon } from "./model-icon"
-import { ModelOption } from "./model-option"
 
 interface ModelSelectProps {
   selectedModelId: string
@@ -30,20 +33,13 @@ export const ModelSelect: FC<ModelSelectProps> = ({
     availableOpenRouterModels
   } = useContext(ChatbotUIContext)
 
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-
   const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState("")
-  const [tab, setTab] = useState<"hosted" | "local">("hosted")
 
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        inputRef.current?.focus()
-      }, 100) // FIX: hacky
-    }
-  }, [isOpen])
+  const toggleCategory = (category: string) => {
+    setExpandedCategory(prev => (prev === category ? null : category))
+  }
 
   const handleSelectModel = (modelId: LLMID) => {
     onSelectModel(modelId)
@@ -64,18 +60,45 @@ export const ModelSelect: FC<ModelSelectProps> = ({
     ...availableOpenRouterModels
   ]
 
-  const groupedModels = allModels.reduce<Record<string, LLM[]>>(
-    (groups, model) => {
-      const key = model.provider
-      if (!groups[key]) {
-        groups[key] = []
-      }
-      groups[key].push(model)
-      return groups
-    },
-    {}
-  )
+  const customModelNames: Record<string, string> = {
+    "math-simple": "ریاضی - ساده",
+    "math-advanced": "ریاضی - پیشرفته",
+    "chem-simple": "شیمی - ساده",
+    "chem-advanced": "شیمی - پیشرفته",
+    "phys-simple": "فیزیک - ساده",
+    "phys-advanced": "فیزیک - پیشرفته",
+    "bio-simple": "زیست - ساده",
+    "bio-advanced": "زیست - پیشرفته"
+  }
 
+  const subjectData = {
+    math: {
+      icon: <IconMath size={20} className="text-white" />,
+      gradient: "from-emerald-500 to-teal-600"
+    },
+    chem: {
+      icon: <IconFlask size={20} className="text-white" />,
+      gradient: "from-blue-500 to-indigo-600"
+    },
+    phys: {
+      icon: <IconAtom size={20} className="text-white" />,
+      gradient: "from-purple-500 to-violet-600"
+    },
+    bio: {
+      icon: <IconDna size={20} className="text-white" />,
+      gradient: "from-green-500 to-emerald-600"
+    }
+  }
+
+  const getSubjectFromId = (modelId: string) => {
+    if (modelId.includes("math")) return "math"
+    if (modelId.includes("chem")) return "chem"
+    if (modelId.includes("phys")) return "phys"
+    if (modelId.includes("bio")) return "bio"
+    return null
+  }
+
+  const selectedSubject = getSubjectFromId(selectedModelId)
   const selectedModel = allModels.find(
     model => model.modelId === selectedModelId
   )
@@ -83,121 +106,102 @@ export const ModelSelect: FC<ModelSelectProps> = ({
   if (!profile) return null
 
   return (
-    <DropdownMenu
-      open={isOpen}
-      onOpenChange={isOpen => {
-        setIsOpen(isOpen)
-        setSearch("")
-      }}
-    >
-      <DropdownMenuTrigger
-        className="bg-background w-full justify-start border-2 px-3 py-5"
-        asChild
-        disabled={allModels.length === 0}
-      >
-        {allModels.length === 0 ? (
-          <div className="rounded text-sm font-bold">
-            Unlock models by entering API keys in your profile settings.
-          </div>
-        ) : (
+    <div className="flex w-full flex-col space-y-1.5">
+      {/*<label className="text-sm font-medium text-gray-800 dark:text-gray-200 mr-1" dir="rtl">مدل</label>*/}
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger
+          className="w-full rounded-md border border-gray-300 bg-white transition-colors hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800"
+          asChild
+        >
           <Button
             ref={triggerRef}
-            className="flex items-center justify-between"
+            className="h-12 w-full justify-between px-4 text-gray-800 dark:text-white"
             variant="ghost"
           >
-            <div className="flex items-center">
-              {selectedModel ? (
-                <>
-                  <ModelIcon
-                    provider={selectedModel?.provider}
-                    width={26}
-                    height={26}
-                  />
-                  <div className="ml-2 flex items-center">
-                    {selectedModel?.modelName}
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center">Select a model</div>
-              )}
-            </div>
-
-            <IconChevronDown />
-          </Button>
-        )}
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent
-        className="space-y-2 overflow-auto p-2"
-        style={{ width: triggerRef.current?.offsetWidth }}
-        align="start"
-      >
-        <Tabs value={tab} onValueChange={(value: any) => setTab(value)}>
-          {availableLocalModels.length > 0 && (
-            <TabsList defaultValue="hosted" className="grid grid-cols-2">
-              <TabsTrigger value="hosted">Hosted</TabsTrigger>
-
-              <TabsTrigger value="local">Local</TabsTrigger>
-            </TabsList>
-          )}
-        </Tabs>
-
-        <Input
-          ref={inputRef}
-          className="w-full"
-          placeholder="Search models..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-
-        <div className="max-h-[300px] overflow-auto">
-          {Object.entries(groupedModels).map(([provider, models]) => {
-            const filteredModels = models
-              .filter(model => {
-                if (tab === "hosted") return model.provider !== "ollama"
-                if (tab === "local") return model.provider === "ollama"
-                if (tab === "openrouter") return model.provider === "openrouter"
-              })
-              .filter(model =>
-                model.modelName.toLowerCase().includes(search.toLowerCase())
-              )
-              .sort((a, b) => a.provider.localeCompare(b.provider))
-
-            if (filteredModels.length === 0) return null
-
-            return (
-              <div key={provider}>
-                <div className="mb-1 ml-2 text-xs font-bold tracking-wide opacity-50">
-                  {provider === "openai" && profile.use_azure_openai
-                    ? "AZURE OPENAI"
-                    : provider.toLocaleUpperCase()}
+            {selectedSubject ? (
+              <div className="text-md flex items-center gap-2">
+                <div
+                  className={`flex size-7 items-center justify-center rounded-full bg-gradient-to-r${subjectData[selectedSubject].gradient}`}
+                >
+                  {subjectData[selectedSubject].icon}
                 </div>
-
-                <div className="mb-4">
-                  {filteredModels.map(model => {
-                    return (
-                      <div
-                        key={model.modelId}
-                        className="flex items-center space-x-1"
-                      >
-                        {selectedModelId === model.modelId && (
-                          <IconCheck className="ml-2" size={32} />
-                        )}
-
-                        <ModelOption
-                          key={model.modelId}
-                          model={model}
-                          onSelect={() => handleSelectModel(model.modelId)}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
+                <span dir="rtl" className="text-md font-semibold">
+                  {customModelNames[selectedModelId]}
+                </span>
               </div>
-            )
-          })}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            ) : (
+              <span className="text-sm text-gray-400">انتخاب مدل...</span>
+            )}
+            <IconChevronDown size={16} className="text-gray-500" />
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          className="w-full max-w-xs rounded-md border border-gray-300 bg-white p-2 shadow-xl dark:border-gray-800 dark:bg-gray-900"
+          align="start"
+          dir="rtl"
+        >
+          <div className="border-b border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            دسته‌بندی
+          </div>
+          <div className="grid grid-cols-2 gap-2 p-2">
+            {["math", "chem", "phys", "bio"].map(subject => (
+              <div
+                key={subject}
+                onClick={() => toggleCategory(subject)}
+                className={`flex cursor-pointer items-center gap-2 rounded p-2 transition-colors
+                ${expandedCategory === subject ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              >
+                <div
+                  className={`flex size-6 items-center justify-center rounded-full bg-gradient-to-r${subjectData[subject as keyof typeof subjectData].gradient}`}
+                >
+                  {subjectData[subject as keyof typeof subjectData].icon}
+                </div>
+                <span className="text-sm font-medium text-gray-800 dark:text-white">
+                  {subject === "math"
+                    ? "ریاضی"
+                    : subject === "chem"
+                      ? "شیمی"
+                      : subject === "phys"
+                        ? "فیزیک"
+                        : "زیست"}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {expandedCategory && (
+            <>
+              <div className="mt-1 border-b border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                سطح
+              </div>
+              <div className="grid grid-cols-2 gap-2 p-2">
+                {["simple", "advanced"].map(level => {
+                  const modelId = `${expandedCategory}-${level}` as LLMID
+                  const isSelected = selectedModelId === modelId
+
+                  return (
+                    <div
+                      key={level}
+                      onClick={() => handleSelectModel(modelId)}
+                      className={`
+                        cursor-pointer rounded-xl border p-3 text-center text-sm
+                        font-semibold text-gray-800 transition-all dark:text-white
+                        ${
+                          isSelected
+                            ? `bg-gradient-to-r ${subjectData[expandedCategory as keyof typeof subjectData].gradient} text-white`
+                            : "border-gray-300 bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+                        }`}
+                    >
+                      {level === "simple" ? "ساده" : "پیشرفته"}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }

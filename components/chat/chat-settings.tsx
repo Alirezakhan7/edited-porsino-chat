@@ -2,7 +2,13 @@ import { ChatbotUIContext } from "@/context/context"
 import { CHAT_SETTING_LIMITS } from "@/lib/chat-setting-limits"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLMID, ModelProvider } from "@/types"
-import { IconAdjustmentsHorizontal } from "@tabler/icons-react"
+import {
+  IconFlask,
+  IconMath,
+  IconAtom,
+  IconDna,
+  IconSettings
+} from "@tabler/icons-react"
 import { FC, useContext, useEffect, useRef } from "react"
 import { Button } from "../ui/button"
 import { ChatSettingsForm } from "../ui/chat-settings-form"
@@ -32,7 +38,6 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
 
   useEffect(() => {
     if (!chatSettings) return
-
     setChatSettings({
       ...chatSettings,
       temperature: Math.min(
@@ -64,24 +69,90 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
 
   const fullModel = allModels.find(llm => llm.modelId === chatSettings.model)
 
+  // Increase icon sizes from 18 to 24
+  const getModelStyle = (modelId: string) => {
+    if (modelId.includes("math")) {
+      return {
+        icon: <IconMath size={24} className="text-white" />,
+        gradient: "from-emerald-500 to-teal-600"
+      }
+    } else if (modelId.includes("chem")) {
+      return {
+        icon: <IconFlask size={24} className="text-white" />,
+        gradient: "from-blue-500 to-indigo-600"
+      }
+    } else if (modelId.includes("phys")) {
+      return {
+        icon: <IconAtom size={24} className="text-white" />,
+        gradient: "from-purple-500 to-violet-600"
+      }
+    } else if (modelId.includes("bio")) {
+      return {
+        icon: <IconDna size={24} className="text-white" />,
+        gradient: "from-green-500 to-emerald-600"
+      }
+    }
+    // Default style
+    return {
+      icon: null,
+      gradient: "from-gray-500 to-gray-600"
+    }
+  }
+
+  const modelStyle = getModelStyle(chatSettings.model)
+
   return (
     <Popover>
       <PopoverTrigger>
+        {/* 
+            Updated Trigger: 
+            - Responsive width: w-[300px] on mobile,
+              sm:w-[350px], md:w-[400px], lg:w-[500px]
+            - Increased height (h-10 sm:h-12 md:h-14 lg:h-16) and padding for larger button.
+        */}
         <Button
           ref={buttonRef}
-          className="flex items-center space-x-2"
+          className="group flex items-center gap-2 rounded-full  transition-all hover:bg-transparent"
           variant="ghost"
         >
-          <div className="max-w-[120px] truncate text-lg sm:max-w-[300px] lg:max-w-[500px]">
-            {fullModel?.modelName || chatSettings.model}
+          <div className="flex items-center gap-2">
+            {modelStyle.icon && (
+              // Increased container size: from w-6/h-6 to w-8/h-8, with padding increased.
+              <div
+                className={`flex size-8 items-center justify-center rounded-full bg-gradient-to-r p-2${modelStyle.gradient} shadow-md`}
+              >
+                {modelStyle.icon}
+              </div>
+            )}
+            {/* Updated text container: larger text and increased max width */}
+            <div
+              className="max-w-[200px] truncate text-lg font-bold sm:max-w-[250px] md:max-w-[300px] lg:max-w-[350px]"
+              dir="rtl"
+            >
+              {fullModel?.modelName || chatSettings.model}
+            </div>
           </div>
+          {/* Increase settings icon container size for balance */}
 
-          <IconAdjustmentsHorizontal size={28} />
+          <div
+            className="relative flex size-8 items-center justify-center rounded-full bg-gray-200 
+                      text-gray-600 shadow-sm 
+                      transition-colors hover:bg-gray-300 
+                      dark:bg-gray-800 dark:text-gray-300 
+                      dark:hover:bg-gray-700"
+          >
+            <IconSettings size={20} />
+          </div>
         </Button>
       </PopoverTrigger>
 
       <PopoverContent
-        className="bg-background border-input relative flex max-h-[calc(100vh-60px)] w-[300px] flex-col space-y-4 overflow-auto rounded-lg border-2 p-6 sm:w-[350px] md:w-[400px] lg:w-[500px] dark:border-none"
+        className="relative flex max-h-[calc(100vh-60px)] w-[300px] max-w-xs 
+                      flex-col space-y-4 overflow-auto 
+                      rounded-lg border border-gray-300
+                      bg-white p-4 shadow-xl sm:w-[350px] 
+                      md:w-[400px] lg:w-[500px] 
+                      dark:border-gray-800 dark:bg-gray-900"
         align="end"
       >
         <ChatSettingsForm

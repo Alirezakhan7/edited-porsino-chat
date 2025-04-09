@@ -157,9 +157,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     setModels(modelData.models)
 
     setChatSettings({
-      model: (searchParams.get("model") ||
-        workspace?.default_model ||
-        "gpt-4-1106-preview") as LLMID,
+      model: (searchParams.get("model") || "bio-simple") as LLMID,
+
       prompt:
         workspace?.default_prompt ||
         "You are a friendly, helpful AI assistant.",
@@ -171,8 +170,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       embeddingsProvider:
         (workspace?.embeddings_provider as "openai" | "local") || "openai"
     })
-
-    setLoading(false)
+    model: (searchParams.get("model") || "bio-simple") as LLMID,
+      setLoading(false)
   }
 
   if (loading) {
