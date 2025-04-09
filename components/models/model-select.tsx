@@ -73,19 +73,19 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
   const subjectData = {
     math: {
-      icon: <IconMath size={20} className="text-white" />,
+      icon: <IconMath size={20} className="text-emerald-800 dark:text-white" />,
       gradient: "from-emerald-500 to-teal-600"
     },
     chem: {
-      icon: <IconFlask size={20} className="text-white" />,
+      icon: <IconFlask size={20} className="text-blue-800 dark:text-white" />,
       gradient: "from-blue-500 to-indigo-600"
     },
     phys: {
-      icon: <IconAtom size={20} className="text-white" />,
+      icon: <IconAtom size={20} className="text-purple-800 dark:text-white" />,
       gradient: "from-purple-500 to-violet-600"
     },
     bio: {
-      icon: <IconDna size={20} className="text-white" />,
+      icon: <IconDna size={20} className="text-green-800 dark:text-white" />,
       gradient: "from-green-500 to-emerald-600"
     }
   }
