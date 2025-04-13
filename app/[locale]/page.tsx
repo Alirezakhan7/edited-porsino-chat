@@ -1,42 +1,46 @@
 "use client"
 
-import { ChatInput } from "@/components/chat/chat-input-mock"
-import { ChatUI } from "@/components/chat/chat-ui"
-import { QuickSettings } from "@/components/chat/quick-settings"
-import { Brand } from "@/components/ui/brand"
-import { ChatbotUIContext } from "@/context/context"
-import useHotkey from "@/lib/hooks/use-hotkey"
-import { useTheme } from "next-themes"
-import { useContext } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { createBrowserClient } from "@supabase/ssr"
+import ChatMockPage from "./chat-mock-page"
 
-export default function ChatPage() {
-  useHotkey("l", () => {})
+export default function RootPage() {
+  const router = useRouter()
+  const [checking, setChecking] = useState(true)
 
-  const { chatMessages } = useContext(ChatbotUIContext)
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
 
-  const { theme } = useTheme()
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        const { data: homeWorkspace } = await supabase
+          .from("workspaces")
+          .select("id")
+          .eq("user_id", data.session.user.id)
+          .eq("is_home", true)
+          .single()
 
-  return (
-    <>
-      {chatMessages.length === 0 ? (
-        <div className="relative flex h-full flex-col items-center justify-center">
-          <div className="top-50% left-50% -translate-x-50% -translate-y-50% absolute mb-20">
-            <Brand theme={theme === "dark" ? "dark" : "light"} />
-          </div>
+        if (homeWorkspace?.id) {
+          router.replace("/chat")
+        }
+      }
 
-          <div className="absolute left-2 top-2">
-            <QuickSettings />
-          </div>
+      setChecking(false)
+    })
+  }, [router])
 
-          <div className="flex grow flex-col items-center justify-center" />
+  // نمایش لودینگ در زمان چک کردن session
+  if (checking) {
+    return (
+      <div className="text-muted-foreground flex h-screen w-full items-center justify-center">
+        در حال انتقال...
+      </div>
+    )
+  }
 
-          <div className="w-full min-w-[300px] items-end px-2 pb-3 pt-0 sm:w-[600px] sm:pb-8 sm:pt-5 md:w-[700px] lg:w-[700px] xl:w-[800px]">
-            <ChatInput />
-          </div>
-        </div>
-      ) : (
-        <ChatUI />
-      )}
-    </>
-  )
+  return <ChatMockPage />
 }

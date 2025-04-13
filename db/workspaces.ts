@@ -90,3 +90,20 @@ export const deleteWorkspace = async (workspaceId: string) => {
 
   return true
 }
+
+export const getHomeWorkspace = async () => {
+  const session = (await supabase.auth.getSession()).data.session
+
+  if (!session) return null
+
+  const { data: workspace, error } = await supabase
+    .from("workspaces")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .eq("is_home", true)
+    .single()
+
+  if (error) return null
+
+  return workspace
+}

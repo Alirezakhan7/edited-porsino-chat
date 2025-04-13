@@ -45,7 +45,7 @@ export default async function Login({
       throw new Error(workspaceError?.message || "Home workspace not found.")
     }
 
-    return redirect(`/${homeWorkspace.id}/chat`)
+    return redirect(`/chat`)
   }
 
   const signIn = async (formData: FormData) => {
@@ -78,7 +78,7 @@ export default async function Login({
       throw new Error(workspaceError?.message || "Home workspace not found.")
     }
 
-    return redirect(`/${homeWorkspace.id}/chat`)
+    return redirect(`/chat`)
   }
 
   const getEnvVarOrEdgeConfigValue = async (name: string) => {

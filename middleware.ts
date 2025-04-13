@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
       }
 
       return NextResponse.redirect(
-        new URL(`/${homeWorkspace.id}/chat`, request.url)
+        new URL(`/chat`, request.url)
       )
     }
 
@@ -42,5 +42,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/((?!api|static|.*\\..*|_next|auth).*)"
+  matcher: [
+    // تمام مسیرها رو شامل کن بجز مسیرهای خاص زیر:
+    "/((?!api|_next/|favicon.ico|sw.js|icons|.*\\..*).*)"
+  ]
 }

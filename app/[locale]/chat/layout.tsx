@@ -12,11 +12,11 @@ import { getPresetWorkspacesByWorkspaceId } from "@/db/presets"
 import { getPromptWorkspacesByWorkspaceId } from "@/db/prompts"
 import { getAssistantImageFromStorage } from "@/db/storage/assistant-images"
 import { getToolWorkspacesByWorkspaceId } from "@/db/tools"
-import { getWorkspaceById } from "@/db/workspaces"
+import { getHomeWorkspace } from "@/db/workspaces"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { supabase } from "@/lib/supabase/browser-client"
 import { LLMID } from "@/types"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ReactNode, useContext, useEffect, useState } from "react"
 import Loading from "../loading"
 
@@ -24,12 +24,9 @@ interface WorkspaceLayoutProps {
   children: ReactNode
 }
 
-export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
+export default function ChatLayout({ children }: WorkspaceLayoutProps) {
   const router = useRouter()
-
-  const params = useParams()
   const searchParams = useSearchParams()
-  const workspaceId = params.workspaceid as string
 
   const {
     setChatSettings,
@@ -66,32 +63,17 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       if (!session) {
         return router.push("/login")
       } else {
-        await fetchWorkspaceData(workspaceId)
+        const workspace = await getHomeWorkspace()
+        if (!workspace) return router.push("/login")
+
+        await fetchWorkspaceData(workspace.id, workspace)
       }
     })()
   }, [])
 
-  useEffect(() => {
-    ;(async () => await fetchWorkspaceData(workspaceId))()
-
-    setUserInput("")
-    setChatMessages([])
-    setSelectedChat(null)
-
-    setIsGenerating(false)
-    setFirstTokenReceived(false)
-
-    setChatFiles([])
-    setChatImages([])
-    setNewMessageFiles([])
-    setNewMessageImages([])
-    setShowFilesDisplay(false)
-  }, [workspaceId])
-
-  const fetchWorkspaceData = async (workspaceId: string) => {
+  const fetchWorkspaceData = async (workspaceId: string, workspace: any) => {
     setLoading(true)
 
-    const workspace = await getWorkspaceById(workspaceId)
     setSelectedWorkspace(workspace)
 
     const assistantData = await getAssistantWorkspacesByWorkspaceId(workspaceId)
@@ -125,7 +107,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             assistantId: assistant.id,
             path: assistant.image_path,
             base64: "",
-            url
+            url: ""
           }
         ])
       }
@@ -158,7 +140,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
     setChatSettings({
       model: (searchParams.get("model") || "bio-simple") as LLMID,
-
       prompt:
         workspace?.default_prompt ||
         "You are a friendly, helpful AI assistant.",
@@ -170,8 +151,19 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       embeddingsProvider:
         (workspace?.embeddings_provider as "openai" | "local") || "openai"
     })
-    model: (searchParams.get("model") || "bio-simple") as LLMID,
-      setLoading(false)
+
+    setUserInput("")
+    setChatMessages([])
+    setSelectedChat(null)
+    setIsGenerating(false)
+    setFirstTokenReceived(false)
+    setChatFiles([])
+    setChatImages([])
+    setNewMessageFiles([])
+    setNewMessageImages([])
+    setShowFilesDisplay(false)
+
+    setLoading(false)
   }
 
   if (loading) {
