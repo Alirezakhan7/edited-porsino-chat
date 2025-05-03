@@ -33,7 +33,7 @@ export default function ChatMockPage() {
   }, [])
 
   return (
-    <div className="relative flex h-screen w-full flex-col bg-white text-black transition-colors dark:bg-black dark:text-white">
+    <div className="bg-muted/50 relative flex h-screen w-full flex-col text-black transition-colors dark:text-white">
       {/* دکمه‌های ورود و ثبت‌نام بالا چپ */}
       <div className="absolute left-4 top-4 flex gap-2 rounded-xl bg-white/10 p-1 shadow backdrop-blur-sm dark:bg-white/10">
         <button
@@ -60,36 +60,35 @@ export default function ChatMockPage() {
         </button>
       </div>
 
-      {/* عنوان وسط صفحه */}
-      <div className="flex flex-1 items-center justify-center">
-        <h1 className="text-3xl font-bold">!از پرسینو بپرس</h1>
-      </div>
+      {/* محتوا */}
+      <div className="flex flex-1 flex-col items-center justify-center px-4 ">
+        <h1 className="mb-6 text-center  text-3xl font-bold">
+          !از پرسینو بپرس
+        </h1>
 
-      {/* فرم پایین صفحه */}
-      <div className="flex w-full justify-center px-4 pb-4">
         <form
           onSubmit={handleSubmit}
-          className="relative z-10 flex w-full max-w-[700px] items-center gap-2 rounded-xl border border-gray-500 bg-gray-100 px-4 py-3 dark:bg-gray-900"
+          className="relative z-10 flex w-full max-w-[700px] items-center gap-2 rounded-2xl border border-gray-800 bg-[#5D5D5D] px-5 py-4 shadow-lg"
         >
           <div
             onClick={handleUploadClick}
-            className="cursor-pointer p-1 hover:opacity-50"
+            className="cursor-pointer rounded-md p-2 transition hover:bg-gray-300"
             title="آپلود تصویر"
           >
-            <IconPhoto className="size-6" />
+            <IconPhoto className="size-6 text-white" />
           </div>
 
           <textarea
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
-            placeholder="بپرس... مثلاً: تفاوت DNA و RNA چیه؟"
-            className="grow resize-none rounded bg-transparent px-3 py-2 placeholder:text-gray-500 focus:outline-none"
+            placeholder="...سوال خود را بپرسید"
+            className="grow resize-none rounded-md bg-[#5D5D5D] px-3 py-2 text-right text-white placeholder:text-white/70 focus:outline-none"
             rows={1}
           />
 
           <button
             type="submit"
-            className="rounded bg-blue-600 p-2 text-white hover:bg-blue-500"
+            className="rounded-md bg-white p-2 text-black transition hover:bg-gray-200"
             title="ارسال پیام"
           >
             <IconSend className="size-5" />

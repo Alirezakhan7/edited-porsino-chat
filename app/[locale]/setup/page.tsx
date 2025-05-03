@@ -1,256 +1,149 @@
 "use client"
 
-import { ChatbotUIContext } from "@/context/context"
-import { getProfileByUserId, updateProfile } from "@/db/profile"
-import {
-  getHomeWorkspaceByUserId,
-  getWorkspacesByUserId
-} from "@/db/workspaces"
-import {
-  fetchHostedModels,
-  fetchOpenRouterModels
-} from "@/lib/models/fetch-models"
-import { supabase } from "@/lib/supabase/browser-client"
-import { TablesUpdate } from "@/supabase/types"
 import { useRouter } from "next/navigation"
-import { useContext, useEffect, useState } from "react"
-import { APIStep } from "../../../components/setup/api-step"
-import { FinishStep } from "../../../components/setup/finish-step"
-import { ProfileStep } from "../../../components/setup/profile-step"
-import {
-  SETUP_STEP_COUNT,
-  StepContainer
-} from "../../../components/setup/step-container"
+import { useState } from "react"
+import { supabase } from "@/lib/supabase/browser-client"
+import { updateProfile } from "@/db/profile"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function SetupPage() {
-  const {
-    profile,
-    setProfile,
-    setWorkspaces,
-    setSelectedWorkspace,
-    setEnvKeyMap,
-    setAvailableHostedModels,
-    setAvailableOpenRouterModels
-  } = useContext(ChatbotUIContext)
-
   const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [finished, setFinished] = useState(false)
 
-  const [loading, setLoading] = useState(true)
+  const [fullName, setFullName] = useState("")
+  const [userProfile, setUserProfile] = useState("")
+  const [userGrade, setUserGrade] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
-  const [currentStep, setCurrentStep] = useState(1)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
 
-  // Profile Step
-  const [displayName, setDisplayName] = useState("")
-  const [username, setUsername] = useState(profile?.username || "")
-  const [usernameAvailable, setUsernameAvailable] = useState(true)
-
-  // API Step
-  const [useAzureOpenai, setUseAzureOpenai] = useState(false)
-  const [openaiAPIKey, setOpenaiAPIKey] = useState("")
-  const [openaiOrgID, setOpenaiOrgID] = useState("")
-  const [azureOpenaiAPIKey, setAzureOpenaiAPIKey] = useState("")
-  const [azureOpenaiEndpoint, setAzureOpenaiEndpoint] = useState("")
-  const [azureOpenai35TurboID, setAzureOpenai35TurboID] = useState("")
-  const [azureOpenai45TurboID, setAzureOpenai45TurboID] = useState("")
-  const [azureOpenai45VisionID, setAzureOpenai45VisionID] = useState("")
-  const [azureOpenaiEmbeddingsID, setAzureOpenaiEmbeddingsID] = useState("")
-  const [anthropicAPIKey, setAnthropicAPIKey] = useState("")
-  const [googleGeminiAPIKey, setGoogleGeminiAPIKey] = useState("")
-  const [mistralAPIKey, setMistralAPIKey] = useState("")
-  const [groqAPIKey, setGroqAPIKey] = useState("")
-  const [perplexityAPIKey, setPerplexityAPIKey] = useState("")
-  const [openrouterAPIKey, setOpenrouterAPIKey] = useState("")
-
-  useEffect(() => {
-    ;(async () => {
-      const session = (await supabase.auth.getSession()).data.session
-
-      if (!session) {
-        return router.push("/login")
-      } else {
-        const user = session.user
-
-        const profile = await getProfileByUserId(user.id)
-        setProfile(profile)
-        setUsername(profile.username)
-
-        if (!profile.has_onboarded) {
-          setLoading(false)
-        } else {
-          const data = await fetchHostedModels(profile)
-
-          if (!data) return
-
-          setEnvKeyMap(data.envKeyMap)
-          setAvailableHostedModels(data.hostedModels)
-
-          if (profile["openrouter_api_key"] || data.envKeyMap["openrouter"]) {
-            const openRouterModels = await fetchOpenRouterModels()
-            if (!openRouterModels) return
-            setAvailableOpenRouterModels(openRouterModels)
-          }
-
-          const homeWorkspaceId = await getHomeWorkspaceByUserId(
-            session.user.id
-          )
-          return router.push(`/chat`)
-        }
-      }
-    })()
-  }, [])
-
-  const handleShouldProceed = (proceed: boolean) => {
-    if (proceed) {
-      if (currentStep === SETUP_STEP_COUNT) {
-        handleSaveSetupSetting()
-      } else {
-        setCurrentStep(currentStep + 1)
-      }
-    } else {
-      setCurrentStep(currentStep - 1)
-    }
-  }
-
-  const handleSaveSetupSetting = async () => {
     const session = (await supabase.auth.getSession()).data.session
     if (!session) {
-      return router.push("/login")
+      router.push("/login")
+      return
     }
 
-    const user = session.user
-    const profile = await getProfileByUserId(user.id)
+    try {
+      await updateProfile(session.user.id, {
+        full_name: fullName,
+        user_profile: userProfile,
+        user_grade: userGrade,
+        has_onboarded: true
+      })
 
-    const updateProfilePayload: TablesUpdate<"profiles"> = {
-      ...profile,
-      has_onboarded: true,
-      display_name: displayName,
-      username,
-      openai_api_key: openaiAPIKey,
-      openai_organization_id: openaiOrgID,
-      anthropic_api_key: anthropicAPIKey,
-      google_gemini_api_key: googleGeminiAPIKey,
-      mistral_api_key: mistralAPIKey,
-      groq_api_key: groqAPIKey,
-      perplexity_api_key: perplexityAPIKey,
-      openrouter_api_key: openrouterAPIKey,
-      use_azure_openai: useAzureOpenai,
-      azure_openai_api_key: azureOpenaiAPIKey,
-      azure_openai_endpoint: azureOpenaiEndpoint,
-      azure_openai_35_turbo_id: azureOpenai35TurboID,
-      azure_openai_45_turbo_id: azureOpenai45TurboID,
-      azure_openai_45_vision_id: azureOpenai45VisionID,
-      azure_openai_embeddings_id: azureOpenaiEmbeddingsID
+      setFinished(true)
+      setTimeout(() => router.push("/chat"), 3000)
+    } catch (err: any) {
+      setError("خطا در ذخیره اطلاعات: " + err.message)
+    } finally {
+      setLoading(false)
     }
-
-    const updatedProfile = await updateProfile(profile.id, updateProfilePayload)
-    setProfile(updatedProfile)
-
-    const workspaces = await getWorkspacesByUserId(profile.user_id)
-    const homeWorkspace = workspaces.find(w => w.is_home)
-
-    // There will always be a home workspace
-    setSelectedWorkspace(homeWorkspace!)
-    setWorkspaces(workspaces)
-
-    return router.push(`/chat`)
-  }
-
-  const renderStep = (stepNum: number) => {
-    switch (stepNum) {
-      // Profile Step
-      case 1:
-        return (
-          <StepContainer
-            stepDescription="Let's create your profile."
-            stepNum={currentStep}
-            stepTitle="Welcome to Chatbot UI"
-            onShouldProceed={handleShouldProceed}
-            showNextButton={!!(username && usernameAvailable)}
-            showBackButton={false}
-          >
-            <ProfileStep
-              username={username}
-              usernameAvailable={usernameAvailable}
-              displayName={displayName}
-              onUsernameAvailableChange={setUsernameAvailable}
-              onUsernameChange={setUsername}
-              onDisplayNameChange={setDisplayName}
-            />
-          </StepContainer>
-        )
-
-      // API Step
-      case 2:
-        return (
-          <StepContainer
-            stepDescription="Enter API keys for each service you'd like to use."
-            stepNum={currentStep}
-            stepTitle="Set API Keys (optional)"
-            onShouldProceed={handleShouldProceed}
-            showNextButton={true}
-            showBackButton={true}
-          >
-            <APIStep
-              openaiAPIKey={openaiAPIKey}
-              openaiOrgID={openaiOrgID}
-              azureOpenaiAPIKey={azureOpenaiAPIKey}
-              azureOpenaiEndpoint={azureOpenaiEndpoint}
-              azureOpenai35TurboID={azureOpenai35TurboID}
-              azureOpenai45TurboID={azureOpenai45TurboID}
-              azureOpenai45VisionID={azureOpenai45VisionID}
-              azureOpenaiEmbeddingsID={azureOpenaiEmbeddingsID}
-              anthropicAPIKey={anthropicAPIKey}
-              googleGeminiAPIKey={googleGeminiAPIKey}
-              mistralAPIKey={mistralAPIKey}
-              groqAPIKey={groqAPIKey}
-              perplexityAPIKey={perplexityAPIKey}
-              useAzureOpenai={useAzureOpenai}
-              onOpenaiAPIKeyChange={setOpenaiAPIKey}
-              onOpenaiOrgIDChange={setOpenaiOrgID}
-              onAzureOpenaiAPIKeyChange={setAzureOpenaiAPIKey}
-              onAzureOpenaiEndpointChange={setAzureOpenaiEndpoint}
-              onAzureOpenai35TurboIDChange={setAzureOpenai35TurboID}
-              onAzureOpenai45TurboIDChange={setAzureOpenai45TurboID}
-              onAzureOpenai45VisionIDChange={setAzureOpenai45VisionID}
-              onAzureOpenaiEmbeddingsIDChange={setAzureOpenaiEmbeddingsID}
-              onAnthropicAPIKeyChange={setAnthropicAPIKey}
-              onGoogleGeminiAPIKeyChange={setGoogleGeminiAPIKey}
-              onMistralAPIKeyChange={setMistralAPIKey}
-              onGroqAPIKeyChange={setGroqAPIKey}
-              onPerplexityAPIKeyChange={setPerplexityAPIKey}
-              onUseAzureOpenaiChange={setUseAzureOpenai}
-              openrouterAPIKey={openrouterAPIKey}
-              onOpenrouterAPIKeyChange={setOpenrouterAPIKey}
-            />
-          </StepContainer>
-        )
-
-      // Finish Step
-      case 3:
-        return (
-          <StepContainer
-            stepDescription="You are all set up!"
-            stepNum={currentStep}
-            stepTitle="Setup Complete"
-            onShouldProceed={handleShouldProceed}
-            showNextButton={true}
-            showBackButton={true}
-          >
-            <FinishStep displayName={displayName} />
-          </StepContainer>
-        )
-      default:
-        return null
-    }
-  }
-
-  if (loading) {
-    return null
   }
 
   return (
-    <div className="flex h-full items-center justify-center">
-      {renderStep(currentStep)}
-    </div>
+    <>
+      {/* بک‌گراند تمام صفحه */}
+      <div className="fixed inset-0 -z-10 bg-[#1E1E1E]" />
+
+      <div className="flex min-h-screen items-center justify-center">
+        <AnimatePresence mode="wait">
+          {finished ? (
+            <motion.div
+              key="welcome"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-center text-4xl font-bold text-[#D6D6D6]"
+            >
+              به پرسینو خوش اومدی 🎉
+            </motion.div>
+          ) : (
+            <motion.form
+              dir="rtl"
+              key="form"
+              onSubmit={handleSubmit}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4 }}
+              className="mx-auto w-full max-w-xl space-y-6 rounded-2xl border border-[#5D5D5D]/40 bg-[#2C2C2C]/90 p-8 shadow-xl backdrop-blur-md"
+            >
+              <h2 className="text-center text-2xl font-semibold text-[#D6D6D6]">
+                ثبت اطلاعات اولیه
+              </h2>
+
+              <div>
+                <label className="mb-2 block text-right text-lg text-[#D6D6D6]">
+                  نام و نام خانوادگی
+                </label>
+                <input
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  placeholder="مثلاً سارا محمدی"
+                  required
+                  className="w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-right text-lg text-[#D6D6D6]">
+                  رشته تحصیلی
+                </label>
+                <select
+                  value={userProfile}
+                  onChange={e => setUserProfile(e.target.value)}
+                  required
+                  className="w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6] focus:outline-none focus:ring-2 focus:ring-[#ACACAC]"
+                >
+                  <option value="" disabled>
+                    رشته خود را انتخاب کنید
+                  </option>
+                  <option value="ریاضی">ریاضی</option>
+                  <option value="تجربی">تجربی</option>
+                  <option value="انسانی">انسانی</option>
+                  <option value="زبان">زبان</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-right text-lg text-[#D6D6D6]">
+                  پایه تحصیلی
+                </label>
+                <select
+                  value={userGrade}
+                  onChange={e => setUserGrade(e.target.value)}
+                  required
+                  className="w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6] focus:outline-none focus:ring-2 focus:ring-[#ACACAC]"
+                >
+                  <option value="" disabled>
+                    پایه خود را انتخاب کنید
+                  </option>
+                  <option value="دهم">دهم</option>
+                  <option value="یازدهم">یازدهم</option>
+                  <option value="دوازدهم">دوازدهم</option>
+                </select>
+              </div>
+
+              {error && (
+                <p className="text-center text-sm text-red-400">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-full bg-[#ACACAC] py-3 font-semibold text-[#1E1E1E] hover:bg-[#8F8F8F]"
+              >
+                {loading ? "در حال ذخیره..." : "ادامه"}
+              </button>
+            </motion.form>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
   )
 }
