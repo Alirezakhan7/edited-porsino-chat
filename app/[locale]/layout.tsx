@@ -57,6 +57,9 @@ export const metadata: Metadata = {
       template: APP_TITLE_TEMPLATE
     },
     description: APP_DESCRIPTION
+  },
+  icons: {
+    icon: "/favicon.ico" // مسیر دقیق فایل favicon در public
   }
 }
 
