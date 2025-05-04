@@ -1,8 +1,8 @@
-# Chatbot UI
+# Porsino AI
 
 The open-source AI chat app for everyone.
 
-<img src="./public/readme/screenshot.png" alt="Chatbot UI" width="600">
+<img src="./public/readme/screenshot.png" alt="Porsino AI" width="600">
 
 ## Demo
 
@@ -20,9 +20,9 @@ Be back soon.
 
 ## Official Hosted Version
 
-Use Chatbot UI without having to host it yourself!
+Use Porsino AI without having to host it yourself!
 
-Find the official hosted version of Chatbot UI [here](https://chatbotui.com).
+Find the official hosted version of Porsino AI  [here](https://chatbotui.com).
 
 ## Sponsor
 

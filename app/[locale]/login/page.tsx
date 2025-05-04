@@ -69,6 +69,7 @@ export default async function Login({
     const { data, error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
+      console.error("Signup error:", error.message) // ← این خط اضافه شود
       const msg = error.message
       const friendly = msg.includes("already")
         ? "این ایمیل قبلاً ثبت‌نام شده است."

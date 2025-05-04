@@ -7,13 +7,24 @@ export default function AnimatedMessage({ message }: { message: string }) {
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 5000) // ۵ ثانیه
+    const timer = setTimeout(() => setVisible(false), 5000)
     return () => clearTimeout(timer)
   }, [message])
 
   if (!message || !visible) return null
 
-  const isSuccess = message.includes("ایمیل") || message.includes("ارسال")
+  const successKeywords = [
+    "ایمیل",
+    "ارسال",
+    "با موفقیت",
+    "انجام شد",
+    "تأیید شد",
+    "ثبت‌نام با موفقیت",
+    "رمز عبور تغییر یافت",
+    "ورود موفق"
+  ]
+
+  const isSuccess = successKeywords.some(keyword => message.includes(keyword))
 
   return (
     <AnimatePresence mode="wait">
