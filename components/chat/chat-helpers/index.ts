@@ -219,7 +219,9 @@ export const handleHostedChat = async (
   }
 
   const apiEndpoint =
-    provider === "custom" ? "/api/chat/custom" : `/api/chat/${provider}`
+    provider === "custom"
+      ? "https://api.porsino.org/chat"
+      : `/api/chat/${provider}`
 
   const requestBody = {
     chatSettings: payload.chatSettings,
