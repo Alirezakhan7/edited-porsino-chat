@@ -305,7 +305,16 @@ export const Message: FC<MessageProps> = ({
               maxRows={20}
             />
           ) : (
-            <MessageMarkdown content={message.content} />
+            <div style={{ whiteSpace: "pre-wrap" }}>
+              {(() => {
+                try {
+                  const parsed = JSON.parse(message.content)
+                  return parsed.response || message.content
+                } catch {
+                  return message.content
+                }
+              })()}
+            </div>
           )}
         </div>
 

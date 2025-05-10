@@ -1,4 +1,5 @@
 // Only used in use-chat-handler.tsx to keep it clean
+import { createClient } from "@/lib/supabase/client"
 
 import { createChatFiles } from "@/db/chat-files"
 import { createChat } from "@/db/chats"
@@ -201,6 +202,7 @@ export const handleHostedChat = async (
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
   setToolInUse: React.Dispatch<React.SetStateAction<string>>
 ) => {
+  console.log("🛫 handleHostedChat started...")
   const provider =
     modelData.provider === "openai" && profile.use_azure_openai
       ? "azure"
@@ -224,9 +226,8 @@ export const handleHostedChat = async (
       : `/api/chat/${provider}`
 
   const requestBody = {
-    chatSettings: payload.chatSettings,
-    messages: formattedMessages,
-    customModelId: provider === "custom" ? modelData.hostedId : ""
+    message:
+      payload.chatMessages[payload.chatMessages.length - 1].message.content
   }
 
   const response = await fetchChatResponse(
@@ -259,8 +260,17 @@ export const fetchChatResponse = async (
   setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
 ) => {
+  const supabase = createClient()
+  const session = await supabase.auth.getSession()
+  const token = session.data.session?.access_token
+  console.log("📡 Sending fetch to:", url)
+
   const response = await fetch(url, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` })
+    },
     body: JSON.stringify(body),
     signal: controller.signal
   })

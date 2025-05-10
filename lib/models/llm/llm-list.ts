@@ -7,6 +7,14 @@ import { OPENAI_LLM_LIST } from "./openai-llm-list"
 import { PERPLEXITY_LLM_LIST } from "./perplexity-llm-list"
 
 export const LLM_LIST: LLM[] = [
+  {
+    modelId: "bio-simple",
+    modelName: "Biology Simple",
+    provider: "custom",
+    hostedId: "bio-simple",
+    platformLink: "",
+    imageInput: false
+  },
   ...OPENAI_LLM_LIST,
   ...GOOGLE_LLM_LIST,
   ...MISTRAL_LLM_LIST,

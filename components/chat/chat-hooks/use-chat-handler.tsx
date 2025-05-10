@@ -193,6 +193,7 @@ export const useChatHandler = () => {
     chatMessages: ChatMessage[],
     isRegeneration: boolean
   ) => {
+    console.log("✅ handleSendMessage triggered!", messageContent)
     const startingInput = messageContent
 
     try {
@@ -218,6 +219,9 @@ export const useChatHandler = () => {
         ...availableLocalModels,
         ...availableOpenRouterModels
       ].find(llm => llm.modelId === chatSettings?.model)
+
+      console.log("📦 modelData:", modelData)
+      console.log("⚙️ chatSettings:", chatSettings)
 
       validateChatSettings(
         chatSettings,
