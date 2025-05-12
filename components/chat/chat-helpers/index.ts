@@ -227,7 +227,8 @@ export const handleHostedChat = async (
 
   const requestBody = {
     message:
-      payload.chatMessages[payload.chatMessages.length - 1].message.content
+      payload.chatMessages[payload.chatMessages.length - 1].message.content,
+    customModelId: payload.chatSettings.model
   }
 
   const response = await fetchChatResponse(
