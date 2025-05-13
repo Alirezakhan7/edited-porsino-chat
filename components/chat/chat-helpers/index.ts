@@ -265,6 +265,8 @@ export const fetchChatResponse = async (
   const session = await supabase.auth.getSession()
   const token = session.data.session?.access_token
   console.log("📡 Sending fetch to:", url)
+  console.log("🟢 Request body:", body)
+  console.log("🔑 Authorization token:", token)
 
   const response = await fetch(url, {
     method: "POST",

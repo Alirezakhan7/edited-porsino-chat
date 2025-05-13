@@ -222,6 +222,7 @@ export const useChatHandler = () => {
 
       console.log("📦 modelData:", modelData)
       console.log("⚙️ chatSettings:", chatSettings)
+      console.log("🟢 Sending to API with model:", chatSettings?.model)
 
       validateChatSettings(
         chatSettings,
