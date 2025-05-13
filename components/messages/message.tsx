@@ -22,7 +22,7 @@ import { FilePreview } from "../ui/file-preview"
 import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { MessageActions } from "./message-actions"
-import { MessageMarkdown } from "./message-markdown" // فرض می‌کنیم این کامپوننت برای رندر مارک‌داون است
+import { MessageMarkdown } from "./message-markdown"
 
 const ICON_SIZE = 32
 
@@ -179,28 +179,11 @@ export const Message: FC<MessageProps> = ({
     return acc
   }, fileAccumulator)
 
-  // تابع کمکی برای رندر محتوای پیام (با فرض اینکه قبلا به نحوی مدیریت میشده)
-  // اگر از MessageMarkdown استفاده نمی‌کنید، این بخش را با منطق خودتان جایگزین کنید
-  const renderMessageContent = () => {
-    if (message.content === null || message.content === undefined) return ""
-    try {
-      // اگر محتوا JSON است و ساختار خاصی دارد (مثلا { response: "متن" })
-      const parsed = JSON.parse(message.content)
-      if (typeof parsed === "object" && parsed !== null && parsed.response) {
-        return parsed.response
-      }
-      return message.content
-    } catch (error) {
-      // اگر JSON نیست یا ساختار مورد انتظار را ندارد، خود محتوا را برگردان
-      return message.content
-    }
-  }
-
   return (
     <div
       className={cn(
-        "flex w-full justify-end", // تغییر: justify-center به justify-end برای قرارگیری بلوک پیام در سمت راست
-        message.role === "user" ? "" : "bg-secondary" // این کلاس پس‌زمینه ردیف را برای پیام‌های غیرکاربر (مثلا AI) تعیین می‌کند. اگر نمی‌خواهید، این بخش را حذف کنید.
+        "flex w-full justify-center",
+        message.role === "user" ? "" : "bg-secondary"
       )}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -208,15 +191,10 @@ export const Message: FC<MessageProps> = ({
     >
       <div
         className={cn(
-          "relative flex flex-col p-4 sm:px-0", // استایل‌های پایه که قبلا هم بودند
+          "relative flex flex-col p-4 sm:px-0",
           message.role === "user"
-            ? "max-w-[80%] self-end rounded-2xl border border-blue-200 bg-blue-100 py-3 pl-4 pr-6 text-black shadow-md" // استایل پیام کاربر (با حباب) - بدون تغییر
-            : [
-                // استایل پیام هوش مصنوعی
-                "max-w-[80%] self-end", // تغییر: self-start به self-end برای قرارگیری در سمت راست
-                // حذف استایل‌های مربوط به حباب: rounded-2xl, border, bg-gray-100, shadow-md
-                "py-3 pl-6 pr-4 text-black" // حفظ پدینگ و رنگ متن اصلی پیام AI
-              ]
+            ? "max-w-[80%] self-end rounded-2xl border border-blue-200 bg-blue-100 py-3 pl-4 pr-6 text-black shadow-md"
+            : "max-w-[80%] self-start rounded-2xl border border-gray-200 bg-gray-100 py-3 pl-6 pr-4 text-black shadow-md"
         )}
       >
         <div className="absolute right-5 top-7 sm:right-0">
@@ -237,6 +215,7 @@ export const Message: FC<MessageProps> = ({
                 className="border-primary bg-primary text-secondary rounded border-DEFAULT p-1"
                 size={ICON_SIZE}
               />
+
               <div className="text-lg font-semibold">Prompt</div>
             </div>
           ) : (
@@ -268,10 +247,10 @@ export const Message: FC<MessageProps> = ({
                 )
               ) : profile?.image_url ? (
                 <Image
-                  className={`size-[${ICON_SIZE}px] rounded`} // اطمینان از اندازه صحیح آواتار کاربر
+                  className={`size-[32px] rounded`}
                   src={profile?.image_url}
-                  height={ICON_SIZE}
-                  width={ICON_SIZE}
+                  height={32}
+                  width={32}
                   alt="user image"
                 />
               ) : (
@@ -280,6 +259,7 @@ export const Message: FC<MessageProps> = ({
                   size={ICON_SIZE}
                 />
               )}
+
               <div className="font-semibold">
                 {message.role === "assistant"
                   ? message.assistant_id
@@ -308,6 +288,7 @@ export const Message: FC<MessageProps> = ({
                     return (
                       <div className="flex animate-pulse items-center space-x-2">
                         <IconFileText size={20} />
+
                         <div>Searching files...</div>
                       </div>
                     )
@@ -315,6 +296,7 @@ export const Message: FC<MessageProps> = ({
                     return (
                       <div className="flex animate-pulse items-center space-x-2">
                         <IconBolt size={20} />
+
                         <div>Using {toolInUse}...</div>
                       </div>
                     )
@@ -324,15 +306,21 @@ export const Message: FC<MessageProps> = ({
           ) : isEditing ? (
             <TextareaAutosize
               textareaRef={editInputRef}
-              className="text-md" // ممکن است نیاز به استایل راست‌چین برای ویرایش هم باشد: className="text-md text-right rtl"
+              className="text-md"
               value={editedMessage}
               onValueChange={setEditedMessage}
               maxRows={20}
             />
           ) : (
-            // استفاده از MessageMarkdown یا نمایش مستقیم محتوا با استایل راست‌چین
             <div className="rtl whitespace-pre-wrap text-right">
-              <MessageMarkdown content={message.content || ""} />
+              {(() => {
+                try {
+                  const parsed = JSON.parse(message.content)
+                  return parsed.response || message.content
+                } catch {
+                  return message.content
+                }
+              })()}
             </div>
           )}
         </div>
@@ -362,6 +350,7 @@ export const Message: FC<MessageProps> = ({
                   {Object.keys(fileSummary).length > 1 ? "Files" : "File"}{" "}
                   <IconCaretDownFilled className="ml-1" />
                 </div>
+
                 <div className="mt-3 space-y-4">
                   {Object.values(fileSummary).map((file, index) => (
                     <div key={index}>
@@ -369,8 +358,10 @@ export const Message: FC<MessageProps> = ({
                         <div>
                           <FileIcon type={file.type} />
                         </div>
+
                         <div className="truncate">{file.name}</div>
                       </div>
+
                       {fileItems
                         .filter(fileItem => {
                           const parentFile = files.find(
@@ -404,11 +395,12 @@ export const Message: FC<MessageProps> = ({
         <div className="mt-3 flex flex-wrap gap-2">
           {message.image_paths.map((path, index) => {
             const item = chatImages.find(image => image.path === path)
+
             return (
               <Image
                 key={index}
                 className="cursor-pointer rounded hover:opacity-50"
-                src={path.startsWith("data") ? path : item?.base64 || ""} // اطمینان از وجود item?.base64
+                src={path.startsWith("data") ? path : item?.base64}
                 alt="message image"
                 width={300}
                 height={300}
@@ -420,6 +412,7 @@ export const Message: FC<MessageProps> = ({
                     url: path.startsWith("data") ? "" : item?.url || "",
                     file: null
                   })
+
                   setShowImagePreview(true)
                 }}
                 loading="lazy"
@@ -432,6 +425,7 @@ export const Message: FC<MessageProps> = ({
             <Button size="sm" onClick={handleSendEdit}>
               Save & Send
             </Button>
+
             <Button size="sm" variant="outline" onClick={onCancelEdit}>
               Cancel
             </Button>
