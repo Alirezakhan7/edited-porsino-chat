@@ -189,14 +189,7 @@ export const Message: FC<MessageProps> = ({
       onMouseLeave={() => setIsHovering(false)}
       onKeyDown={handleKeyDown}
     >
-      <div
-        className={cn(
-          "relative flex flex-col p-4 sm:px-0",
-          message.role === "user"
-            ? "max-w-[80%] self-end rounded-2xl border border-blue-200 bg-blue-100 py-3 pl-4 pr-6 text-black shadow-md"
-            : "max-w-[80%] self-start rounded-2xl border border-gray-200 bg-gray-100 py-3 pl-6 pr-4 text-black shadow-md"
-        )}
-      >
+      <div className="relative flex w-full flex-col p-6 sm:w-[550px] sm:px-0 md:w-[650px] lg:w-[650px] xl:w-[700px]">
         <div className="absolute right-5 top-7 sm:right-0">
           <MessageActions
             onCopy={handleCopy}
