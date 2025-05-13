@@ -26,25 +26,6 @@ import { MessageMarkdown } from "./message-markdown"
 
 const ICON_SIZE = 32
 
-const FakeThinking = () => {
-  const steps = [
-    "در حال جستجو در پایگاه داده...",
-    "در حال تحلیل منابع...",
-    "در حال تولید پاسخ نهایی..."
-  ]
-  const [currentStep, setCurrentStep] = useState(0)
-
-  useEffect(() => {
-    const interval = setInterval(
-      () => setCurrentStep(prev => (prev + 1) % steps.length),
-      1500
-    )
-    return () => clearInterval(interval)
-  }, [])
-
-  return <div className="animate-pulse text-gray-500">{steps[currentStep]}</div>
-}
-
 interface MessageProps {
   message: Tables<"messages">
   fileItems: Tables<"file_items">[]
@@ -96,30 +77,6 @@ export const Message: FC<MessageProps> = ({
     useState<Tables<"file_items"> | null>(null)
 
   const [viewSources, setViewSources] = useState(false)
-
-  const [displayedText, setDisplayedText] = useState("")
-  const typingRef = useRef<NodeJS.Timeout | null>(null)
-
-  useEffect(() => {
-    if (!isGenerating && isLast && message.role === "assistant") {
-      let index = 0
-      setDisplayedText("")
-      typingRef.current = setInterval(() => {
-        if (index < message.content.length) {
-          setDisplayedText(prev => prev + message.content[index])
-          index++
-        } else {
-          if (typingRef.current) clearInterval(typingRef.current)
-        }
-      }, 30)
-    } else {
-      setDisplayedText(message.content)
-    }
-
-    return () => {
-      if (typingRef.current) clearInterval(typingRef.current)
-    }
-  }, [isGenerating, isLast, message.content, message.role])
 
   const handleCopy = () => {
     if (navigator.clipboard) {
@@ -226,7 +183,7 @@ export const Message: FC<MessageProps> = ({
     <div
       className={cn(
         "flex w-full justify-center",
-        message.role === "user" ? "justify-end" : "bg-secondary justify-start"
+        message.role === "user" ? "" : "bg-secondary"
       )}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -348,15 +305,15 @@ export const Message: FC<MessageProps> = ({
               maxRows={20}
             />
           ) : (
-            <div style={{ whiteSpace: "pre-wrap" }}>
-              {!firstTokenReceived &&
-              isGenerating &&
-              isLast &&
-              message.role === "assistant" ? (
-                <FakeThinking />
-              ) : (
-                displayedText
-              )}
+            <div className="rtl whitespace-pre-wrap text-right">
+              {(() => {
+                try {
+                  const parsed = JSON.parse(message.content)
+                  return parsed.response || message.content
+                } catch {
+                  return message.content
+                }
+              })()}
             </div>
           )}
         </div>
