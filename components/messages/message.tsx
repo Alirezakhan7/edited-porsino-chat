@@ -26,6 +26,107 @@ import { MessageMarkdown } from "./message-markdown"
 
 const ICON_SIZE = 32
 
+const renderStructuredMessage = (content: string) => {
+  const sectionRegex = /\*\*(.*?)\*\*\s*([\s\S]*?)(?=\n\*\*|$)/g
+
+  const matches = Array.from(content.matchAll(sectionRegex))
+
+  const sections = matches.map(match => ({
+    title: match[1].trim(),
+    body: match[2].trim()
+  }))
+
+  const lastMatch = matches.at(-1)
+  const endOfLastMatch = lastMatch?.index! + lastMatch![0].length
+  const trailingText = content.slice(endOfLastMatch).trim()
+
+  const styleByTitle = (title: string) => {
+    const t = title.toLowerCase()
+    if (["کتاب", "رسمی", "منبع", "درسی"].some(k => t.includes(k))) return "book"
+    if (["ساده", "یعنی", "یه جور", "مثال", "زبان"].some(k => t.includes(k)))
+      return "casual"
+    if (["خلاصه", "جمع‌بندی", "مرور", "کلیدی"].some(k => t.includes(k)))
+      return "summary"
+    if (
+      [
+        "نگران",
+        "دوست",
+        "می‌تونی",
+        "خوبه",
+        "آفرین",
+        "عالی",
+        "پیشرفت",
+        "انگیزه"
+      ].some(k => t.includes(k))
+    )
+      return "encourage"
+    return "default"
+  }
+
+  const styleMap = {
+    book: "bg-blue-50 border-r-4 border-blue-400 text-blue-800",
+    casual: "bg-yellow-50 border-r-4 border-yellow-400 text-yellow-800",
+    summary: "bg-green-50 border-r-4 border-green-500 text-green-700",
+    encourage: "italic text-sm text-gray-600",
+    default: "bg-gray-100 border-r-4 border-gray-300 text-gray-800"
+  }
+
+  const renderBody = (rawBody: string) => {
+    const cleanedBody = rawBody
+      .replace(/(\w)-\n/g, "$1") // حذف خط تیره‌هایی که وسط کلمه اومدن
+      .replace(/\n{3,}/g, "\n\n") // جلوگیری از چندین فاصله خالی
+
+    const lines = cleanedBody.split("\n").map(line => line.trim())
+    const isBulletList = lines.every(line => line.startsWith("- "))
+
+    if (isBulletList) {
+      return (
+        <ul className="list-disc space-y-2 hyphens-none break-words pr-4 leading-loose">
+          {lines.map((line, i) => (
+            <li key={i}>{line.replace(/^-\s*/, "")}</li>
+          ))}
+        </ul>
+      )
+    }
+
+    return (
+      <p className="hyphens-none whitespace-pre-line break-words leading-loose">
+        {cleanedBody}
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-6 text-right leading-relaxed" dir="rtl">
+      {sections.map(({ title, body }, i) => {
+        const styleKey = styleByTitle(title)
+        const className =
+          styleKey === "encourage"
+            ? styleMap[styleKey]
+            : `${styleMap[styleKey]} p-4 rounded`
+
+        return (
+          <div key={i} className={className}>
+            {styleKey !== "encourage" && (
+              <p className="mb-2 font-bold">{title}</p>
+            )}
+            {renderBody(body)}
+          </div>
+        )
+      })}
+
+      {trailingText && (
+        <p
+          className="mt-4 whitespace-pre-line text-sm italic leading-loose text-gray-600"
+          dir="rtl"
+        >
+          {trailingText}
+        </p>
+      )}
+    </div>
+  )
+}
+
 interface MessageProps {
   message: Tables<"messages">
   fileItems: Tables<"file_items">[]
@@ -305,13 +406,15 @@ export const Message: FC<MessageProps> = ({
               maxRows={20}
             />
           ) : (
-            <div className="rtl whitespace-pre-wrap text-right">
+            <div className="rtl text-right">
               {(() => {
                 try {
                   const parsed = JSON.parse(message.content)
-                  return parsed.response || message.content
+                  return renderStructuredMessage(
+                    parsed.response || message.content
+                  )
                 } catch {
-                  return message.content
+                  return renderStructuredMessage(message.content)
                 }
               })()}
             </div>
