@@ -27,8 +27,9 @@ import { MessageMarkdown } from "./message-markdown"
 const ICON_SIZE = 32
 
 const renderStructuredMessage = (content: string) => {
-  const sectionRegex = /\*\*(.*?)\*\*\s*([\s\S]*?)(?=\n\*\*|$)/g
+  if (!content || typeof content !== "string") return null
 
+  const sectionRegex = /\*\*(.*?)\*\*\s*([\s\S]*?)(?=\n\*\*|$)/g
   const matches = Array.from(content.matchAll(sectionRegex))
 
   const sections = matches.map(match => ({
@@ -37,7 +38,7 @@ const renderStructuredMessage = (content: string) => {
   }))
 
   const lastMatch = matches.at(-1)
-  const endOfLastMatch = lastMatch?.index! + lastMatch![0].length
+  const endOfLastMatch = lastMatch ? lastMatch.index + lastMatch[0].length : 0
   const trailingText = content.slice(endOfLastMatch).trim()
 
   const styleByTitle = (title: string) => {
@@ -73,8 +74,8 @@ const renderStructuredMessage = (content: string) => {
 
   const renderBody = (rawBody: string) => {
     const cleanedBody = rawBody
-      .replace(/(\w)-\n/g, "$1") // حذف خط تیره‌هایی که وسط کلمه اومدن
-      .replace(/\n{3,}/g, "\n\n") // جلوگیری از چندین فاصله خالی
+      .replace(/(\w)-\n/g, "$1")
+      .replace(/\n{3,}/g, "\n\n")
 
     const lines = cleanedBody.split("\n").map(line => line.trim())
     const isBulletList = lines.every(line => line.startsWith("- "))
