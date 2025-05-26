@@ -62,21 +62,6 @@ export const MessageActions: FC<MessageActionsProps> = ({
         />
       )} */}
 
-      {!isAssistant && isHovering && (
-        <WithTooltip
-          delayDuration={1000}
-          side="bottom"
-          display={<div>Edit</div>}
-          trigger={
-            <IconEdit
-              className="cursor-pointer hover:opacity-50"
-              size={MESSAGE_ICON_SIZE}
-              onClick={onEdit}
-            />
-          }
-        />
-      )}
-
       {(isHovering || isLast) && (
         <WithTooltip
           delayDuration={1000}
@@ -92,21 +77,6 @@ export const MessageActions: FC<MessageActionsProps> = ({
                 onClick={handleCopy}
               />
             )
-          }
-        />
-      )}
-
-      {isLast && (
-        <WithTooltip
-          delayDuration={1000}
-          side="bottom"
-          display={<div>Regenerate</div>}
-          trigger={
-            <IconRepeat
-              className="cursor-pointer hover:opacity-50"
-              size={MESSAGE_ICON_SIZE}
-              onClick={onRegenerate}
-            />
           }
         />
       )}
