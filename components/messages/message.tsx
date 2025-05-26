@@ -68,11 +68,31 @@ const renderStructuredMessage = (content: string) => {
   }
 
   const styleMap = {
-    book: "bg-blue-50 border-r-4 border-blue-400 text-blue-800",
-    casual: "bg-yellow-50 border-r-4 border-yellow-400 text-yellow-800",
-    summary: "bg-green-50 border-r-4 border-green-500 text-green-700",
-    encourage: "italic text-sm text-gray-600",
-    default: "bg-gray-100 border-r-4 border-gray-300 text-gray-800"
+    book: {
+      bg: "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-600 text-blue-900",
+      icon: "📘",
+      font: "font-semibold"
+    },
+    casual: {
+      bg: "bg-gradient-to-br from-yellow-100 to-yellow-50 border-yellow-600 text-yellow-900",
+      icon: "💡",
+      font: "font-normal"
+    },
+    summary: {
+      bg: "bg-gradient-to-br from-green-100 to-green-50 border-green-600 text-green-900",
+      icon: "📌",
+      font: "font-bold"
+    },
+    encourage: {
+      bg: "", // فقط متن ساده
+      icon: "❤️",
+      font: "italic text-sm text-gray-700"
+    },
+    default: {
+      bg: "bg-gradient-to-br from-gray-100 to-gray-50 border-gray-400 text-gray-900",
+      icon: "🧩",
+      font: "font-normal"
+    }
   }
 
   const renderBody = (rawBody: string) => {
@@ -110,9 +130,15 @@ const renderStructuredMessage = (content: string) => {
             : `${styleMap[styleKey]} p-4 rounded`
 
         return (
-          <div key={i} className={className}>
+          <div
+            key={i}
+            className={`rounded border-r-4 p-4 shadow-sm ${style.bg} ${style.font} leading-loose`}
+          >
             {styleKey !== "encourage" && (
-              <p className="mb-2 font-bold">{title}</p>
+              <p className="mb-2 flex items-center gap-2 font-bold">
+                <span className="text-xl">{style.icon}</span>
+                {title}
+              </p>
             )}
             {renderBody(body)}
           </div>
@@ -121,10 +147,10 @@ const renderStructuredMessage = (content: string) => {
 
       {trailingText && (
         <p
-          className="mt-4 whitespace-pre-line text-sm italic leading-loose text-gray-600"
+          className="mt-4 flex items-center gap-2 whitespace-pre-line text-sm italic leading-loose text-gray-700"
           dir="rtl"
         >
-          {trailingText}
+          ❤️ {trailingText}
         </p>
       )}
     </div>
