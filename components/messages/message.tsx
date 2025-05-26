@@ -124,7 +124,7 @@ const renderStructuredMessage = (content: string) => {
     <div className="space-y-6 text-right leading-relaxed" dir="rtl">
       {sections.map(({ title, body }, i) => {
         const styleKey = styleByTitle(title)
-        const style = styleMap[styleKey] // ⬅️ این خط فراموش شده بود!
+        const style = styleMap[styleKey]
 
         return (
           <div
@@ -142,12 +142,21 @@ const renderStructuredMessage = (content: string) => {
         )
       })}
 
-      {trailingText && (
+      {sections.length > 0 && trailingText && (
         <p
-          className="mt-4 flex items-center gap-2 whitespace-pre-line text-sm italic leading-loose text-gray-700"
+          className="mt-4 flex items-center gap-2 whitespace-pre-line text-sm italic leading-loose text-gray-700 dark:text-gray-300"
           dir="rtl"
         >
           ❤️ {trailingText}
+        </p>
+      )}
+
+      {sections.length === 0 && content && (
+        <p
+          className="whitespace-pre-line leading-loose text-gray-800 dark:text-gray-200"
+          dir="rtl"
+        >
+          {content}
         </p>
       )}
     </div>
