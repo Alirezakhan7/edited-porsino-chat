@@ -417,7 +417,9 @@ export const Message: FC<MessageProps> = ({
                           <div className="animate-ping-once absolute inset-0 rounded-full border-2 border-blue-400 opacity-50"></div>
                           <div className="absolute inset-0 rounded-full border-2 border-blue-600"></div>
                         </div>
-                        <span className="animate-blink">منتظر باشید...</span>
+                        <span dir="rtl" className="animate-blink">
+                          منتظر باشید...
+                        </span>
                       </div>
                     )
 
