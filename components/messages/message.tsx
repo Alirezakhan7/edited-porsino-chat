@@ -38,7 +38,10 @@ const renderStructuredMessage = (content: string) => {
   }))
 
   const lastMatch = matches.at(-1)
-  const endOfLastMatch = lastMatch ? lastMatch.index + lastMatch[0].length : 0
+  const endOfLastMatch =
+    typeof lastMatch?.index === "number"
+      ? lastMatch.index + lastMatch[0].length
+      : 0
   const trailingText = content.slice(endOfLastMatch).trim()
 
   const styleByTitle = (title: string) => {
