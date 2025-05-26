@@ -124,10 +124,7 @@ const renderStructuredMessage = (content: string) => {
     <div className="space-y-6 text-right leading-relaxed" dir="rtl">
       {sections.map(({ title, body }, i) => {
         const styleKey = styleByTitle(title)
-        const className =
-          styleKey === "encourage"
-            ? styleMap[styleKey]
-            : `${styleMap[styleKey]} p-4 rounded`
+        const style = styleMap[styleKey] // ⬅️ این خط فراموش شده بود!
 
         return (
           <div
