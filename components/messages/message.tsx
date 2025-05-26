@@ -412,8 +412,15 @@ export const Message: FC<MessageProps> = ({
                 switch (toolInUse) {
                   case "none":
                     return (
-                      <IconCircleFilled className="animate-pulse" size={20} />
+                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <div className="animate-spin-slow relative size-5">
+                          <div className="animate-ping-once absolute inset-0 rounded-full border-2 border-blue-400 opacity-50"></div>
+                          <div className="absolute inset-0 rounded-full border-2 border-blue-600"></div>
+                        </div>
+                        <span className="animate-blink">منتظر باشید...</span>
+                      </div>
                     )
+
                   case "retrieval":
                     return (
                       <div className="flex animate-pulse items-center space-x-2">
