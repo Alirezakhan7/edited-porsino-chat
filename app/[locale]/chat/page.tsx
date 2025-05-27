@@ -1,6 +1,5 @@
 "use client"
 
-import { ChatHelp } from "@/components/chat/chat-help"
 import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
 import { ChatInput } from "@/components/chat/chat-input"
 import { ChatSettings } from "@/components/chat/chat-settings"
@@ -102,7 +101,7 @@ export default function ChatPage() {
 
           <div className="mt-4 text-center">
             <a
-              href="https://forms.gle/your-form-link" // ← این لینک رو جایگزین کن
+              href="https://docs.google.com/forms/d/e/1FAIpQLSfYtegINbTbweUImTQRDuQIygS7Qzzo0I0LJ-jlKJzsWxte_A/viewform?usp=header" // ← این لینک رو جایگزین کن
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 underline transition hover:text-blue-800"
