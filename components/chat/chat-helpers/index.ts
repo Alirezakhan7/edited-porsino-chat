@@ -286,34 +286,13 @@ export const fetchChatResponse = async (
     }
 
     const errorData = await response.json()
-    const errorText = errorData.detail || "خطای نامشخصی رخ داده است."
 
-    // 👇 نمایش خطا در چت، به جای فقط Toast
-    setChatMessages(prevMessages => {
-      const lastUserMessage = prevMessages[prevMessages.length - 2] // چون قبلش پیام کاربر اضافه شده
-      const errorMessageId = uuidv4()
+    const errorText =
+      errorData?.detail && typeof errorData.detail === "string"
+        ? errorData.detail
+        : "خطایی رخ داده است. لطفاً دوباره تلاش کنید."
 
-      const newAssistantMessage: ChatMessage = {
-        message: {
-          chat_id: "", // در حالت temporary می‌سازه
-          assistant_id: null,
-          content: `❌ ${errorText}`,
-          created_at: "",
-          id: errorMessageId,
-          image_paths: [],
-          model: "", // اختیاری
-          role: "assistant",
-          sequence_number: lastUserMessage.message.sequence_number + 1,
-          updated_at: "",
-          user_id: ""
-        },
-        fileItems: []
-      }
-
-      return [...prevMessages.slice(0, -1), newAssistantMessage] // جایگزین پیام خالی قبل
-    })
-
-    toast.error(errorData.message)
+    toast.error(errorText)
 
     setIsGenerating(false)
     setChatMessages(prevMessages => prevMessages.slice(0, -2))
