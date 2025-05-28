@@ -23,6 +23,7 @@ export default function ChatPage() {
   const { chatMessages } = useContext(ChatbotUIContext)
   const [openNotice1, setOpenNotice1] = useState(false)
   const [openNotice2, setOpenNotice2] = useState(false)
+  const [openVersionDialog, setOpenVersionDialog] = useState(false)
 
   const { handleNewChat, handleFocusChatInput } = useChatHandler()
 
@@ -53,7 +54,11 @@ export default function ChatPage() {
           {/* برند وسط صفحه */}
           <div className="top-50% left-50% -translate-x-50% -translate-y-50% absolute mb-20">
             <Brand theme={theme === "dark" ? "dark" : "light"} />
-            <div className="text-muted-foreground mt-2 text-center text-base font-semibold">
+            <div
+              onClick={() => setOpenVersionDialog(true)}
+              className="text-muted-foreground mt-2 cursor-pointer text-center text-base font-semibold hover:underline"
+              title="مشاهده تاریخچه نسخه‌ها"
+            >
               Porsino AI v 0.13
             </div>
           </div>
@@ -108,6 +113,56 @@ export default function ChatPage() {
             >
               رفتن به فرم ثبت‌نام
             </a>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={openVersionDialog} onOpenChange={setOpenVersionDialog}>
+        <DialogContent className="rtl max-w-[90%] text-right sm:max-w-lg">
+          <DialogTitle>📦 تاریخچه نسخه‌ها</DialogTitle>
+          <div className="space-y-4 text-sm leading-6">
+            <div>
+              <strong className="text-blue-600">v0.13</strong>
+              <ul
+                className="text-muted-foreground mt-1 list-disc pr-4"
+                dir="rtl"
+              >
+                <li dir="auto">افزودن محدودیت توکن و پیام خطا در استریم</li>
+                <li dir="auto">پشتیبانی از استریم برای پاسخ‌های هوش مصنوعی</li>
+                <li dir="auto">بهبود دسته‌بندی سوالات با Agent جدید</li>
+              </ul>
+            </div>
+            <div>
+              <strong className="text-blue-600">v0.12</strong>
+              <ul
+                className="text-muted-foreground mt-1 list-disc pr-4"
+                dir="rtl"
+              >
+                <li dir="auto">افزایش دقت مدل زیست‌شناسی در پاسخ‌دهی</li>
+                <li dir="auto">ارتقاء ساختار حافظه با LangGraph</li>
+              </ul>
+            </div>
+            <div>
+              <strong className="text-blue-600">v0.11</strong>
+              <ul
+                className="text-muted-foreground mt-1 list-disc pr-4"
+                dir="rtl"
+              >
+                <li dir="auto">افزودن دسته‌بندی مشاوره‌ای (emotional)</li>
+                <li dir="auto">ساختار جدید ورودی مدل با context</li>
+              </ul>
+            </div>
+            <div>
+              <strong className="text-blue-600">v0.10</strong>
+              <ul
+                className="text-muted-foreground mt-1 list-disc pr-4"
+                dir="rtl"
+              >
+                <li dir="auto">اولین نسخه MVP فقط با مدل زیست‌شناسی ساده</li>
+                <li dir="auto">
+                  پاسخ‌دهی مستقیم با استفاده از context بدون حافظه
+                </li>
+              </ul>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

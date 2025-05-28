@@ -116,6 +116,7 @@ export default async function Login({
           signIn={signIn}
           signUp={signUp}
           resetPassword={handleResetPassword}
+          defaultMode={searchParams?.mode}
         />
       </div>
     </div>

@@ -10,10 +10,26 @@ interface Props {
   signIn: (data: FormData) => Promise<{ message?: string } | void>
   signUp: (data: FormData) => Promise<{ message?: string } | void>
   resetPassword: (data: FormData) => Promise<void>
+  defaultMode?: "login" | "signup" // ← این خط جدید
 }
 
-export default function AuthForm({ signIn, signUp, resetPassword }: Props) {
-  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login")
+interface Props {
+  signIn: (data: FormData) => Promise<{ message?: string } | void>
+  signUp: (data: FormData) => Promise<{ message?: string } | void>
+  resetPassword: (data: FormData) => Promise<void>
+  defaultMode?: "login" | "signup" // ← prop جدید برای تعیین حالت پیش‌فرض
+}
+
+export default function AuthForm({
+  signIn,
+  signUp,
+  resetPassword,
+  defaultMode // ← حواست باشه اینجا هم destructure بشه
+}: Props) {
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">(
+    defaultMode === "signup" ? "signup" : "login"
+  )
+
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
