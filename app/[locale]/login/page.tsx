@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function Login({
   searchParams
 }: {
-  searchParams: { message?: string }
+  searchParams: { message?: string; mode?: string }
 }) {
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
@@ -102,6 +102,7 @@ export default async function Login({
       `/login?message=${encodeURIComponent("ایمیلی برای بازیابی رمز عبور ارسال شد")}`
     )
   }
+  const mode = searchParams?.mode === "signup" ? "signup" : "login"
 
   return (
     <div
@@ -116,7 +117,7 @@ export default async function Login({
           signIn={signIn}
           signUp={signUp}
           resetPassword={handleResetPassword}
-          defaultMode={searchParams?.mode}
+          defaultMode={mode}
         />
       </div>
     </div>
