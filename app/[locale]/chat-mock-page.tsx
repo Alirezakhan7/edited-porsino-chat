@@ -43,7 +43,7 @@ export default function ChatMockPage() {
           <IconLogin className="size-4" /> ورود
         </button>
         <button
-          onClick={() => router.push("/login")}
+          onClick={() => router.push("/login?mode=signup")}
           className="flex items-center gap-1 rounded-md px-3 py-1 text-sm font-semibold transition hover:bg-white/20"
         >
           <IconUserPlus className="size-4" /> ثبت‌نام
