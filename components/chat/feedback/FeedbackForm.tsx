@@ -76,11 +76,7 @@ export default function FeedbackForm({
     <div className="flex items-center gap-1 pt-2">
       {/* دکمه لایک */}
       <button
-        className={`group relative overflow-hidden rounded-full p-1 transition-all duration-300 hover:scale-110${
-          likePressed
-            ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg"
-            : "bg-white hover:bg-green-50 dark:bg-gray-800 dark:hover:bg-green-900/20"
-        }`}
+        className={`group relative overflow-hidden rounded-full bg-transparent p-1 transition-all duration-300 hover:scale-110`}
         aria-label="لایک"
         title="لایک"
         onClick={submitLike}
@@ -89,17 +85,17 @@ export default function FeedbackForm({
       >
         <div className="relative flex items-center justify-center">
           <svg
-            width="13"
-            height="13"
-            className=""
+            width="14"
+            height="14"
+            className="text-black dark:text-white"
             fill="none"
             viewBox="0 0 24 24"
+            stroke="currentColor"
           >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2.2}
-              stroke={likePressed ? "white" : "green"}
               d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"
             />
           </svg>
@@ -108,7 +104,7 @@ export default function FeedbackForm({
 
       {/* دکمه دیسلایک */}
       <button
-        className="group relative overflow-hidden rounded-full bg-white p-1 transition-all duration-300 hover:scale-110 hover:bg-rose-50 dark:bg-gray-800 dark:hover:bg-rose-900/20"
+        className="group relative overflow-hidden rounded-full bg-transparent p-1 transition-all duration-300 hover:scale-110"
         aria-label="گزارش"
         title="گزارش"
         onClick={() => setModalOpen(true)}
@@ -116,17 +112,17 @@ export default function FeedbackForm({
       >
         <div className="relative flex items-center justify-center">
           <svg
-            width="13"
-            height="13"
-            className="text-red-600"
+            width="14"
+            height="14"
+            className="text-black dark:text-white"
             fill="none"
             viewBox="0 0 24 24"
+            stroke="currentColor"
           >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2.2}
-              stroke="red"
               d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"
             />
           </svg>

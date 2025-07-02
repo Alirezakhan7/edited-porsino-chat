@@ -469,7 +469,6 @@ export const Message: FC<MessageProps> = ({
             </div>
           )}
         </div>
-        <FeedbackForm conversationId={selectedChat?.id || "dummy-id"} />
         {message.role === "assistant" && selectedChat?.id && (
           <FeedbackForm conversationId={selectedChat.id} />
         )}
