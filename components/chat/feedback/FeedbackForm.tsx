@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 
-// اتصال به Supabase واقعی
+// اتصال به Supabase (بدون تغییر)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -14,14 +14,17 @@ interface FeedbackFormProps {
 export default function FeedbackForm({
   conversationId = "demo-123"
 }: FeedbackFormProps) {
+  // --- State Management ---
+  const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(
+    null
+  )
   const [modalOpen, setModalOpen] = useState(false)
   const [reasons, setReasons] = useState<string[]>([])
   const [comment, setComment] = useState("")
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [likePressed, setLikePressed] = useState(false)
 
-  // دلایل به فارسی
+  // دلایل به فارسی (بدون تغییر)
   const reasonOptions = [
     { id: "incorrect", label: "پاسخ اشتباه بود", icon: "❌" },
     { id: "generic", label: "خیلی کلی بود", icon: "📝" },
@@ -36,10 +39,15 @@ export default function FeedbackForm({
     )
   }
 
-  // ارسال بازخورد دیسلایک
-  const submitFeedback = async () => {
-    setLoading(true)
+  // --- Server Interactions (Logic Unchanged) ---
 
+  // ارسال بازخورد دیسلایک (منطق سرور بدون تغییر)
+  const submitDislikeFeedback = async () => {
+    if (reasons.length === 0 && !comment) {
+      alert("لطفاً حداقل یک دلیل انتخاب کنید یا نظری بنویسید.")
+      return
+    }
+    setLoading(true)
     const { error } = await supabase.from("feedbacks").insert([
       {
         conversation_id: conversationId,
@@ -57,156 +65,123 @@ export default function FeedbackForm({
       setSubmitted(true)
       setTimeout(() => {
         setModalOpen(false)
-        setReasons([])
-        setComment("")
-        setSubmitted(false)
-      }, 2000)
+        setFeedbackSent("dislike") // دکمه دیسلایک را قرمز می‌کند
+      }, 1500)
     }
   }
 
-  // ارسال لایک
+  // ارسال لایک (منطق سرور بدون تغییر)
   const submitLike = async () => {
-    setLikePressed(true)
+    setFeedbackSent("like") // فوراً دکمه را سبز می‌کند
     await supabase
       .from("feedbacks")
       .insert([{ conversation_id: conversationId, feedback_type: "like" }])
   }
 
+  // --- Render ---
   return (
-    <div className="flex items-center gap-1 pt-2">
+    <div className="flex items-center gap-2 pt-2">
       {/* دکمه لایک */}
       <button
-        className={`group relative overflow-hidden rounded-full bg-transparent p-1 transition-all duration-300 hover:scale-110`}
+        className={`flex items-center justify-center rounded-full p-1.5 transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
+          feedbackSent === "like"
+            ? "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400"
+            : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        }`}
         aria-label="لایک"
         title="لایک"
         onClick={submitLike}
-        disabled={likePressed}
-        style={{ border: "none" }}
+        disabled={!!feedbackSent}
       >
-        <div className="relative flex items-center justify-center">
-          <svg
-            width="14"
-            height="14"
-            className="text-black dark:text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.2}
-              d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"
-            />
-          </svg>
-        </div>
+        <svg
+          width="16"
+          height="16"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"
+          />
+        </svg>
       </button>
 
       {/* دکمه دیسلایک */}
       <button
-        className="group relative overflow-hidden rounded-full bg-transparent p-1 transition-all duration-300 hover:scale-110"
+        className={`flex items-center justify-center rounded-full p-1.5 transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
+          feedbackSent === "dislike"
+            ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400"
+            : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        }`}
         aria-label="گزارش"
         title="گزارش"
         onClick={() => setModalOpen(true)}
-        style={{ border: "none" }}
+        disabled={!!feedbackSent}
       >
-        <div className="relative flex items-center justify-center">
-          <svg
-            width="14"
-            height="14"
-            className="text-black dark:text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.2}
-              d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"
-            />
-          </svg>
-        </div>
+        <svg
+          width="16"
+          height="16"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"
+          />
+        </svg>
       </button>
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm dark:bg-black/80"
-            onClick={() => setModalOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !loading && setModalOpen(false)}
           ></div>
 
           {/* Modal Content */}
-          <div className="animate-modal-enter relative max-h-[90vh] w-full max-w-xs overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
+          <div className="animate-modal-enter relative flex max-h-[90vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
             {/* Header */}
-            <div className="rounded-t-2xl bg-gradient-to-r from-red-500 to-rose-600 p-3 text-white">
-              <button
-                className="absolute right-2 top-2 rounded-full p-1 hover:bg-white/20"
-                onClick={() => setModalOpen(false)}
-                aria-label="بستن"
-                style={{ border: "none" }}
-              >
-                <svg
-                  width="13"
-                  height="13"
-                  className="text-white"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    d="M6 6l8 8M6 14L14 6"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-              <div className="flex items-center gap-2">
-                <div className="rounded-full bg-white/20 p-1">
-                  <svg
-                    width="13"
-                    height="13"
-                    className=""
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-base font-bold">گزارش پاسخ</h3>
-                  <p className="text-xs text-white/80">
-                    به بهبود کیفیت کمک کنید
-                  </p>
-                </div>
-              </div>
+            <div className="shrink-0 bg-gray-50 p-4 dark:bg-gray-800/50">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                گزارش پاسخ
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                به ما در بهبود کیفیت پاسخ‌ها کمک کنید.
+              </p>
             </div>
 
             {/* Body */}
-            <div className="max-h-[calc(90vh-70px)] overflow-y-auto p-3">
-              <div className="mb-3">
-                <label className="mb-2 block text-xs font-semibold text-gray-700 dark:text-gray-300">
+            <div className="grow overflow-y-auto p-4">
+              <div className="mb-4">
+                <label className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
                   ایراد این پاسخ چه بود؟
                 </label>
                 <div className="space-y-2">
                   {reasonOptions.map(reason => (
                     <label
                       key={reason.id}
-                      className={`flex cursor-pointer items-center gap-2 rounded-lg p-1.5 text-xs ${
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-colors ${
                         reasons.includes(reason.label)
-                          ? "bg-red-50 dark:bg-red-900/30"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                          ? "border-red-500 bg-red-50 dark:border-red-500 dark:bg-red-900/30"
+                          : "border-gray-200 bg-transparent hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={reasons.includes(reason.label)}
                         onChange={() => toggleReason(reason.label)}
-                        className="size-3 rounded accent-red-600"
+                        className="size-4 rounded accent-red-600 focus:ring-2 focus:ring-red-500/50"
                       />
-                      <span className="text-base">{reason.icon}</span>
-                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                      <span className="text-lg">{reason.icon}</span>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">
                         {reason.label}
                       </span>
                     </label>
@@ -214,45 +189,51 @@ export default function FeedbackForm({
                 </div>
               </div>
 
-              <div className="mb-3">
-                <label className="mb-1 block text-xs font-semibold text-gray-700 dark:text-gray-300">
+              <div>
+                <label
+                  htmlFor="comment"
+                  className="mb-1 block text-sm font-semibold text-gray-800 dark:text-gray-200"
+                >
                   توضیحات بیشتر (اختیاری)
                 </label>
                 <textarea
+                  id="comment"
                   placeholder="نظرت را بنویس..."
-                  className="w-full resize-none rounded-lg border-2 border-gray-200 bg-white p-2 text-xs text-gray-900 transition-colors duration-200 placeholder:text-gray-500 focus:border-red-400 focus:ring-0 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:border-red-500"
+                  className="w-full resize-none rounded-lg border-2 border-gray-200 bg-white p-2 text-sm text-gray-900 transition-colors duration-200 placeholder:text-gray-400 focus:border-red-500 focus:ring-1 focus:ring-red-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-red-500"
                   value={comment}
                   onChange={e => setComment(e.target.value)}
-                  rows={2}
+                  rows={3}
                   maxLength={300}
                 />
-                <div className="text-2xs mt-1 text-left text-gray-400">
+                <div className="mt-1 text-left text-xs text-gray-400">
                   {comment.length}/300
                 </div>
               </div>
+            </div>
 
+            {/* Footer */}
+            <div className="shrink-0 border-t border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
               <button
-                className={`w-full rounded-lg py-2 text-xs font-bold transition-all duration-300 ${
+                className={`w-full rounded-lg px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                   loading
-                    ? "cursor-not-allowed bg-gray-400 text-white"
+                    ? "cursor-not-allowed bg-gray-400"
                     : submitted
-                      ? "bg-green-500 text-white hover:bg-green-600"
-                      : "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg hover:from-red-600 hover:to-rose-700"
+                      ? "bg-green-500 hover:bg-green-600 focus:ring-green-500"
+                      : "bg-red-600 hover:bg-red-700 focus:ring-red-600"
                 }`}
                 disabled={loading || submitted}
-                onClick={submitFeedback}
+                onClick={submitDislikeFeedback}
               >
                 {loading ? (
                   <div className="flex items-center justify-center gap-2">
-                    <div className="size-3 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
-                    در حال ارسال...
+                    <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                    <span>در حال ارسال...</span>
                   </div>
                 ) : submitted ? (
                   <div className="flex items-center justify-center gap-2">
                     <svg
-                      width="12"
-                      height="12"
-                      className=""
+                      width="16"
+                      height="16"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -262,7 +243,7 @@ export default function FeedbackForm({
                         clipRule="evenodd"
                       />
                     </svg>
-                    ممنون بابت بازخوردت!
+                    <span>ممنون از بازخورد شما!</span>
                   </div>
                 ) : (
                   "ارسال بازخورد"
@@ -273,11 +254,12 @@ export default function FeedbackForm({
         </div>
       )}
 
+      {/* انیمیشن ورود مودال */}
       <style jsx>{`
         @keyframes modal-enter {
           from {
             opacity: 0;
-            transform: scale(0.9) translateY(20px);
+            transform: scale(0.95) translateY(10px);
           }
           to {
             opacity: 1;
@@ -285,7 +267,7 @@ export default function FeedbackForm({
           }
         }
         .animate-modal-enter {
-          animation: modal-enter 0.3s ease-out;
+          animation: modal-enter 0.2s ease-out;
         }
       `}</style>
     </div>
