@@ -8,7 +8,6 @@ import {
   IconBolt,
   IconCaretDownFilled,
   IconCaretRightFilled,
-  IconCircleFilled,
   IconFileText,
   IconMoodSmile,
   IconPencil
@@ -23,12 +22,10 @@ import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { MessageActions } from "./message-actions"
 import { MessageMarkdown } from "./message-markdown"
-// مسیر import را به حالت اولیه برمی‌گردانیم
 import FeedbackForm from "../chat/feedback/FeedbackForm"
 
 const ICON_SIZE = 32
 
-// این تابع بدون تغییر باقی می‌ماند
 const renderStructuredMessage = (content: string) => {
   if (!content || typeof content !== "string") return null
 
@@ -155,12 +152,7 @@ const renderStructuredMessage = (content: string) => {
       )}
 
       {sections.length === 0 && content && (
-        <p
-          className="whitespace-pre-line leading-loose text-gray-800 dark:text-gray-200"
-          dir="rtl"
-        >
-          {content}
-        </p>
+        <MessageMarkdown content={content} />
       )}
     </div>
   )
@@ -200,7 +192,6 @@ export const Message: FC<MessageProps> = ({
     toolInUse,
     files,
     models
-    // دیگر به selectedChat در اینجا نیازی نداریم
   } = useContext(ChatbotUIContext)
 
   const { handleSendMessage } = useChatHandler()
@@ -319,12 +310,6 @@ export const Message: FC<MessageProps> = ({
     }
     return acc
   }, fileAccumulator)
-
-  // ========== تغییر اصلی اینجاست ==========
-  // شناسه مکالمه را مستقیماً از خود پیام می‌گیریم.
-  // فرض بر این است که ستون مربوطه در جدول messages شما 'chat_id' نام دارد.
-  // اگر نام دیگری دارد (مثلاً 'conversation_id')، آن را جایگزین کنید.
-  const conversationId = message.chat_id
 
   return (
     <div
@@ -476,10 +461,8 @@ export const Message: FC<MessageProps> = ({
           )}
         </div>
 
-        {/* ========== تغییر اصلی اینجاست ========== */}
-        {/* از شناسه‌ای که مستقیماً از پیام گرفتیم استفاده می‌کنیم */}
-        {message.role === "assistant" && conversationId && (
-          <FeedbackForm conversationId={conversationId} />
+        {message.role === "assistant" && message.id && (
+          <FeedbackForm messageId={message.id} />
         )}
 
         {fileItems.length > 0 && (
@@ -557,7 +540,7 @@ export const Message: FC<MessageProps> = ({
               <Image
                 key={index}
                 className="cursor-pointer rounded hover:opacity-50"
-                src={path.startsWith("data") ? path : item?.base64}
+                src={path.startsWith("data") ? path : item?.base64 || ""}
                 alt="message image"
                 width={300}
                 height={300}

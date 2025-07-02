@@ -1,18 +1,18 @@
 import { useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 
-// کلاینت سوپابیس را مانند ساختار اولیه پروژه شما ایجاد می‌کنیم
+// کلاینت را فقط برای فراخوانی تابع نیاز داریم
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
 interface FeedbackFormProps {
-  // شناسه مکالمه را به عنوان یک پراپرتی الزامی و بدون مقدار پیش‌فرض تعریف می‌کنیم
-  conversationId: string
+  // پراپرتی ما مطابق راه‌حل نهایی، messageId است
+  messageId: string
 }
 
-export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
+export default function FeedbackForm({ messageId }: FeedbackFormProps) {
   // --- State Management ---
   const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(
     null
@@ -23,13 +23,10 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  // اگر به هر دلیلی شناسه مکالمه وجود نداشت، کامپوننت را رندر نمی‌کنیم
-  if (!conversationId) {
-    console.error("FeedbackForm cannot render without a conversationId.")
+  if (!messageId) {
     return null
   }
 
-  // دلایل به فارسی (بدون تغییر)
   const reasonOptions = [
     { id: "incorrect", label: "پاسخ اشتباه بود", icon: "❌" },
     { id: "generic", label: "خیلی کلی بود", icon: "📝" },
@@ -44,29 +41,38 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
     )
   }
 
-  // --- Server Interactions ---
+  // --- فراخوانی تابع Supabase ---
+  const submitFeedbackViaFunction = async (feedbackData: object) => {
+    setLoading(true)
+    const { error } = await supabase.functions.invoke("submit-feedback", {
+      body: {
+        message_id: messageId,
+        ...feedbackData
+      }
+    })
+    setLoading(false)
 
-  // ارسال بازخورد دیسلایک
+    if (error) {
+      console.error("Error calling Supabase function:", error)
+      alert("خطا در ارسال بازخورد. لطفاً دوباره تلاش کنید.")
+      return false
+    }
+    return true
+  }
+
   const submitDislikeFeedback = async () => {
     if (reasons.length === 0 && !comment) {
       alert("لطفاً حداقل یک دلیل انتخاب کنید یا نظری بنویسید.")
       return
     }
-    setLoading(true)
-    const { error } = await supabase.from("feedbacks").insert([
-      {
-        conversation_id: conversationId,
-        feedback_type: "dislike",
-        feedback_reasons: reasons,
-        extra_comment: comment
-      }
-    ])
-    setLoading(false)
 
-    if (error) {
-      console.error("Supabase error:", error)
-      alert("خطا در ارسال بازخورد. لطفاً دوباره تلاش کنید.")
-    } else {
+    const success = await submitFeedbackViaFunction({
+      feedback_type: "dislike",
+      feedback_reasons: reasons,
+      extra_comment: comment
+    })
+
+    if (success) {
       setSubmitted(true)
       setTimeout(() => {
         setModalOpen(false)
@@ -75,24 +81,17 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
     }
   }
 
-  // ارسال لایک
   const submitLike = async () => {
-    setFeedbackSent("like")
-    const { error } = await supabase
-      .from("feedbacks")
-      .insert([{ conversation_id: conversationId, feedback_type: "like" }])
-
-    if (error) {
-      console.error("Supabase error on like:", error)
-      setFeedbackSent(null)
-      alert("خطا در ثبت لایک.")
+    setFeedbackSent("like") // آپدیت خوش‌بینانه در UI
+    const success = await submitFeedbackViaFunction({ feedback_type: "like" })
+    if (!success) {
+      setFeedbackSent(null) // بازگرداندن UI به حالت قبل در صورت خطا
     }
   }
 
   // --- Render ---
   return (
     <div className="flex items-center gap-2 pt-2">
-      {/* دکمه لایک */}
       <button
         className={`flex items-center justify-center rounded-full p-1.5 transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
           feedbackSent === "like"
@@ -120,7 +119,6 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
         </svg>
       </button>
 
-      {/* دکمه دیسلایک */}
       <button
         className={`flex items-center justify-center rounded-full p-1.5 transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
           feedbackSent === "dislike"
@@ -148,21 +146,16 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
         </svg>
       </button>
 
-      {/* Modal */}
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 text-right"
           dir="rtl"
         >
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => !loading && setModalOpen(false)}
           ></div>
-
-          {/* Modal Content */}
           <div className="animate-modal-enter relative flex max-h-[90vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
-            {/* Header */}
             <div className="shrink-0 bg-gray-50 p-4 dark:bg-gray-800/50">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 گزارش پاسخ
@@ -171,8 +164,6 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
                 به ما در بهبود کیفیت پاسخ‌ها کمک کنید
               </p>
             </div>
-
-            {/* Body */}
             <div className="grow overflow-y-auto p-4">
               <div className="mb-4">
                 <label className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200">
@@ -182,11 +173,7 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
                   {reasonOptions.map(reason => (
                     <label
                       key={reason.id}
-                      className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-colors ${
-                        reasons.includes(reason.label)
-                          ? "border-red-500 bg-red-50 dark:border-red-500 dark:bg-red-900/30"
-                          : "border-gray-200 bg-transparent hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
-                      }`}
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-colors ${reasons.includes(reason.label) ? "border-red-500 bg-red-50 dark:border-red-500 dark:bg-red-900/30" : "border-gray-200 bg-transparent hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"}`}
                     >
                       <input
                         type="checkbox"
@@ -202,7 +189,6 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
                   ))}
                 </div>
               </div>
-
               <div>
                 <label
                   htmlFor="comment"
@@ -224,17 +210,9 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
                 </div>
               </div>
             </div>
-
-            {/* Footer */}
             <div className="shrink-0 border-t border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
               <button
-                className={`w-full rounded-lg px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
-                  loading
-                    ? "cursor-not-allowed bg-gray-400"
-                    : submitted
-                      ? "bg-green-500 hover:bg-green-600 focus:ring-green-500"
-                      : "bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                }`}
+                className={`w-full rounded-lg px-4 py-2.5 text-sm font-bold text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${loading ? "cursor-not-allowed bg-gray-400" : submitted ? "bg-green-500 hover:bg-green-600 focus:ring-green-500" : "bg-red-600 hover:bg-red-700 focus:ring-red-600"}`}
                 disabled={loading || submitted}
                 onClick={submitDislikeFeedback}
               >
@@ -267,23 +245,6 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
           </div>
         </div>
       )}
-
-      {/* انیمیشن ورود مودال */}
-      <style jsx>{`
-        @keyframes modal-enter {
-          from {
-            opacity: 0;
-            transform: scale(0.95) translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-        .animate-modal-enter {
-          animation: modal-enter 0.2s ease-out;
-        }
-      `}</style>
     </div>
   )
 }
