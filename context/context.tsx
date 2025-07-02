@@ -11,10 +11,12 @@ import {
 import { AssistantImage } from "@/types/images/assistant-image"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
 import { Dispatch, SetStateAction, createContext } from "react"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 interface ChatbotUIContext {
   // PROFILE STORE
   profile: Tables<"profiles"> | null
+  supabase: SupabaseClient | null
   setProfile: Dispatch<SetStateAction<Tables<"profiles"> | null>>
 
   // ITEMS STORE
@@ -142,7 +144,7 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   // PROFILE STORE
   profile: null,
   setProfile: () => {},
-
+  supabase: null,
   // ITEMS STORE
   assistants: [],
   setAssistants: () => {},

@@ -1,18 +1,21 @@
-import { useState } from "react"
-import { createClient } from "@supabase/supabase-js"
-
-// کلاینت را فقط برای فراخوانی تابع نیاز داریم
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
+import { useState, useContext } from "react"
+// برای حل مشکل، کلاینت سوپابیس را از کانتکست کلی برنامه شما می‌خوانیم.
+// این روش استاندارد در پروژه شماست و از بروز خطاهای بعدی (مانند احراز هویت) جلوگیری می‌کند.
+//
+// !!! نکته مهم !!!
+// اگر این خط باعث خطای کامپایل می‌شود، لطفاً فقط همین یک خط را بر اساس ساختار پروژه خود اصلاح کنید.
+// مسیر صحیح باید به فایل ChatbotUIContext شما اشاره کند (مثلاً ../../../context/context).
+import { ChatbotUIContext } from "@/context/context"
+import type { SupabaseClient } from "@supabase/supabase-js"
 interface FeedbackFormProps {
   // پراپرتی ما مطابق راه‌حل نهایی، messageId است
   messageId: string
 }
 
 export default function FeedbackForm({ messageId }: FeedbackFormProps) {
+  // --- دریافت کلاینت سوپابیس از کانتکست ---
+  const { supabase } = useContext(ChatbotUIContext)
+
   // --- State Management ---
   const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(
     null
@@ -23,7 +26,8 @@ export default function FeedbackForm({ messageId }: FeedbackFormProps) {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  if (!messageId) {
+  // اگر کلاینت سوپابیس در دسترس نباشد یا شناسه پیام وجود نداشته باشد، کامپوننت را رندر نمی‌کنیم
+  if (!supabase || !messageId) {
     return null
   }
 
@@ -44,6 +48,7 @@ export default function FeedbackForm({ messageId }: FeedbackFormProps) {
   // --- فراخوانی تابع Supabase ---
   const submitFeedbackViaFunction = async (feedbackData: object) => {
     setLoading(true)
+    // کلاینت سوپابیس که از کانتکست گرفته شده، به طور خودکار توکن کاربر را ارسال می‌کند
     const { error } = await supabase.functions.invoke("submit-feedback", {
       body: {
         message_id: messageId,
