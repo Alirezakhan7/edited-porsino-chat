@@ -80,7 +80,7 @@ export default function FeedbackForm({
 
   // --- Render ---
   return (
-    <div className="flex items-center gap-2 pt-2">
+    <div className="flex items-center gap-2 pt-2 text-right" dir="rtl">
       {/* دکمه لایک */}
       <button
         className={`flex items-center justify-center rounded-full p-1.5 transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -153,8 +153,8 @@ export default function FeedbackForm({
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 گزارش پاسخ
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                به ما در بهبود کیفیت پاسخ‌ها کمک کنید.
+              <p className="text-sm text-gray-500 dark:text-gray-400 ">
+                به ما در بهبود کیفیت پاسخ‌ها کمک کنید
               </p>
             </div>
 
