@@ -23,10 +23,12 @@ import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { MessageActions } from "./message-actions"
 import { MessageMarkdown } from "./message-markdown"
+// مسیر import را به حالت اولیه برمی‌گردانیم
 import FeedbackForm from "../chat/feedback/FeedbackForm"
 
 const ICON_SIZE = 32
 
+// این تابع بدون تغییر باقی می‌ماند
 const renderStructuredMessage = (content: string) => {
   if (!content || typeof content !== "string") return null
 
@@ -197,11 +199,9 @@ export const Message: FC<MessageProps> = ({
     assistantImages,
     toolInUse,
     files,
-    models,
-    selectedChat
+    models
+    // دیگر به selectedChat در اینجا نیازی نداریم
   } = useContext(ChatbotUIContext)
-
-  console.log("✅ MESSAGE", message)
 
   const { handleSendMessage } = useChatHandler()
 
@@ -319,6 +319,12 @@ export const Message: FC<MessageProps> = ({
     }
     return acc
   }, fileAccumulator)
+
+  // ========== تغییر اصلی اینجاست ==========
+  // شناسه مکالمه را مستقیماً از خود پیام می‌گیریم.
+  // فرض بر این است که ستون مربوطه در جدول messages شما 'chat_id' نام دارد.
+  // اگر نام دیگری دارد (مثلاً 'conversation_id')، آن را جایگزین کنید.
+  const conversationId = message.chat_id
 
   return (
     <div
@@ -469,8 +475,11 @@ export const Message: FC<MessageProps> = ({
             </div>
           )}
         </div>
-        {message.role === "assistant" && selectedChat?.id && (
-          <FeedbackForm conversationId={selectedChat.id} />
+
+        {/* ========== تغییر اصلی اینجاست ========== */}
+        {/* از شناسه‌ای که مستقیماً از پیام گرفتیم استفاده می‌کنیم */}
+        {message.role === "assistant" && conversationId && (
+          <FeedbackForm conversationId={conversationId} />
         )}
 
         {fileItems.length > 0 && (

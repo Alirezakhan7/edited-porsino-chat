@@ -1,17 +1,14 @@
 import { useState } from "react"
-// به روش اصلی وارد کردن کتابخانه سوپابیس بازمی‌گردیم
-// این روش باید در محیط پروژه شما به درستی کار کند
 import { createClient } from "@supabase/supabase-js"
 
-// کلاینت سوپابیس را دوباره در همین فایل ایجاد می‌کنیم
-// با فرض اینکه متغیرهای محیطی شما به درستی تنظیم شده‌اند
+// کلاینت سوپابیس را مانند ساختار اولیه پروژه شما ایجاد می‌کنیم
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
 interface FeedbackFormProps {
-  // این بخش را بدون تغییر نگه می‌داریم تا شناسه مکالمه الزامی باشد
+  // شناسه مکالمه را به عنوان یک پراپرتی الزامی و بدون مقدار پیش‌فرض تعریف می‌کنیم
   conversationId: string
 }
 
@@ -26,8 +23,9 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  // اگر شناسه مکالمه وجود نداشت، کامپوننت را رندر نمی‌کنیم تا از خطا جلوگیری شود
+  // اگر به هر دلیلی شناسه مکالمه وجود نداشت، کامپوننت را رندر نمی‌کنیم
   if (!conversationId) {
+    console.error("FeedbackForm cannot render without a conversationId.")
     return null
   }
 
@@ -66,28 +64,26 @@ export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
     setLoading(false)
 
     if (error) {
-      // نمایش خطای دقیق‌تر به کاربر در کنسول
       console.error("Supabase error:", error)
       alert("خطا در ارسال بازخورد. لطفاً دوباره تلاش کنید.")
     } else {
       setSubmitted(true)
       setTimeout(() => {
         setModalOpen(false)
-        setFeedbackSent("dislike") // دکمه دیسلایک را قرمز می‌کند
+        setFeedbackSent("dislike")
       }, 1500)
     }
   }
 
   // ارسال لایک
   const submitLike = async () => {
-    setFeedbackSent("like") // فوراً دکمه را سبز می‌کند
+    setFeedbackSent("like")
     const { error } = await supabase
       .from("feedbacks")
       .insert([{ conversation_id: conversationId, feedback_type: "like" }])
 
     if (error) {
       console.error("Supabase error on like:", error)
-      // Optionally revert the UI change
       setFeedbackSent(null)
       alert("خطا در ثبت لایک.")
     }
