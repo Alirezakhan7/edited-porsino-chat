@@ -23,6 +23,7 @@ import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { MessageActions } from "./message-actions"
 import { MessageMarkdown } from "./message-markdown"
+import FeedbackForm from "../chat/feedback/FeedbackForm"
 
 const ICON_SIZE = 32
 
@@ -196,8 +197,11 @@ export const Message: FC<MessageProps> = ({
     assistantImages,
     toolInUse,
     files,
-    models
+    models,
+    selectedChat
   } = useContext(ChatbotUIContext)
+
+  console.log("✅ MESSAGE", message)
 
   const { handleSendMessage } = useChatHandler()
 
@@ -465,6 +469,10 @@ export const Message: FC<MessageProps> = ({
             </div>
           )}
         </div>
+        <FeedbackForm conversationId={selectedChat?.id || "dummy-id"} />
+        {message.role === "assistant" && selectedChat?.id && (
+          <FeedbackForm conversationId={selectedChat.id} />
+        )}
 
         {fileItems.length > 0 && (
           <div className="border-primary mt-6 border-t pt-4 font-bold">
