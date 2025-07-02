@@ -1,25 +1,21 @@
 import { useState } from "react"
+// به روش اصلی وارد کردن کتابخانه سوپابیس بازمی‌گردیم
+// این روش باید در محیط پروژه شما به درستی کار کند
 import { createClient } from "@supabase/supabase-js"
 
-// اتصال به Supabase (بدون تغییر)
+// کلاینت سوپابیس را دوباره در همین فایل ایجاد می‌کنیم
+// با فرض اینکه متغیرهای محیطی شما به درستی تنظیم شده‌اند
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
 interface FeedbackFormProps {
-  conversationId?: string
+  // این بخش را بدون تغییر نگه می‌داریم تا شناسه مکالمه الزامی باشد
+  conversationId: string
 }
 
-export default function FeedbackForm({
-  conversationId = "demo-123"
-}: FeedbackFormProps) {
-  console.log("NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
-  console.log(
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY:",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
-
+export default function FeedbackForm({ conversationId }: FeedbackFormProps) {
   // --- State Management ---
   const [feedbackSent, setFeedbackSent] = useState<"like" | "dislike" | null>(
     null
@@ -29,6 +25,11 @@ export default function FeedbackForm({
   const [comment, setComment] = useState("")
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+
+  // اگر شناسه مکالمه وجود نداشت، کامپوننت را رندر نمی‌کنیم تا از خطا جلوگیری شود
+  if (!conversationId) {
+    return null
+  }
 
   // دلایل به فارسی (بدون تغییر)
   const reasonOptions = [
@@ -45,9 +46,9 @@ export default function FeedbackForm({
     )
   }
 
-  // --- Server Interactions (Logic Unchanged) ---
+  // --- Server Interactions ---
 
-  // ارسال بازخورد دیسلایک (منطق سرور بدون تغییر)
+  // ارسال بازخورد دیسلایک
   const submitDislikeFeedback = async () => {
     if (reasons.length === 0 && !comment) {
       alert("لطفاً حداقل یک دلیل انتخاب کنید یا نظری بنویسید.")
@@ -65,8 +66,9 @@ export default function FeedbackForm({
     setLoading(false)
 
     if (error) {
-      alert("خطا در ارسال بازخورد.")
-      console.error(error)
+      // نمایش خطای دقیق‌تر به کاربر در کنسول
+      console.error("Supabase error:", error)
+      alert("خطا در ارسال بازخورد. لطفاً دوباره تلاش کنید.")
     } else {
       setSubmitted(true)
       setTimeout(() => {
@@ -76,12 +78,19 @@ export default function FeedbackForm({
     }
   }
 
-  // ارسال لایک (منطق سرور بدون تغییر)
+  // ارسال لایک
   const submitLike = async () => {
     setFeedbackSent("like") // فوراً دکمه را سبز می‌کند
-    await supabase
+    const { error } = await supabase
       .from("feedbacks")
       .insert([{ conversation_id: conversationId, feedback_type: "like" }])
+
+    if (error) {
+      console.error("Supabase error on like:", error)
+      // Optionally revert the UI change
+      setFeedbackSent(null)
+      alert("خطا در ثبت لایک.")
+    }
   }
 
   // --- Render ---
