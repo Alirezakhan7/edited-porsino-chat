@@ -80,7 +80,7 @@ export default function FeedbackForm({
 
   // --- Render ---
   return (
-    <div className="flex items-center gap-2 pt-2 text-right" dir="rtl">
+    <div className="flex items-center gap-2 pt-2">
       {/* دکمه لایک */}
       <button
         className={`flex items-center justify-center rounded-full p-1.5 transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -139,7 +139,10 @@ export default function FeedbackForm({
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 text-right"
+          dir="rtl"
+        >
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
