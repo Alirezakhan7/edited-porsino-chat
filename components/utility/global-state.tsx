@@ -201,6 +201,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     <ChatbotUIContext.Provider
       value={{
         // PROFILE STORE
+        supabase,
         profile,
         setProfile,
 
