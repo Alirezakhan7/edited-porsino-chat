@@ -6,11 +6,16 @@ interface ModernProgressBarProps {
   onComplete: () => void
 }
 
-// پیام‌های مختلف برای نمایش در هر مرحله
+// پیام‌های مختلف برای نمایش در هر ۵ ثانیه
 const messages = [
-  "در حال آماده‌سازی پاسخ...", // 0-4 ثانیه
-  "در حال جستجو در منابع... 🔎", // 5-9 ثانیه
-  "تقریباً آماده است، در حال جمع‌بندی... ✍️" // 10+ ثانیه
+  "در حال آماده‌سازی پاسخ...", // 0-4s
+  "در حال جستجو در منابع... 🔎", // 5-9s
+  "تقریباً آماده است، در حال جمع‌بندی... ✍️", // 10-14s
+  "در حال بررسی اطلاعات مرتبط... 🧠", // 15-19s
+  "در حال تحلیل دقیق سوال شما... 📊", // 20-24s
+  "بازبینی نهایی در حال انجام است... 🔁", // 25-29s
+  "در حال تهیه پاسخ نهایی... 📦", // 30-34s
+  "آخرین لحظات تا تکمیل پاسخ... ⏳" // 35-39s
 ]
 
 const ModernProgressBar: React.FC<ModernProgressBarProps> = ({
@@ -23,42 +28,41 @@ const ModernProgressBar: React.FC<ModernProgressBarProps> = ({
 
   useEffect(() => {
     if (isGenerating) {
-      // ریست کردن وضعیت برای هر بار اجرا
+      // ریست کردن وضعیت
       setProgress(0)
       setLoadingMessage(messages[0])
-      setBarClassName("from-cyan-400 to-blue-600") // رنگ اولیه
+      setBarClassName("from-cyan-400 to-blue-600")
 
       const interval = setInterval(() => {
         setProgress(prev => {
           const nextProgress = prev + 5
 
-          // توقف در ۹۵ درصد تا زمان دریافت پاسخ
+          // توقف در ۹۵٪
           if (nextProgress >= 95) {
             clearInterval(interval)
             return 95
           }
 
-          // تغییر پیام بر اساس پیشرفت (هر ۵ ثانیه)
-          if (nextProgress >= 50) {
-            setLoadingMessage(messages[2])
-          } else if (nextProgress >= 25) {
-            setLoadingMessage(messages[1])
+          // انتخاب پیام متناسب با مرحله
+          const index = Math.floor(nextProgress / 12.5) // هر 12.5٪ ≈ ۵ ثانیه
+          if (messages[index]) {
+            setLoadingMessage(messages[index])
           }
 
           return nextProgress
         })
-      }, 1000) // هر ثانیه ۵ درصد
+      }, 2000) // هر ۲ ثانیه ۵٪
 
       return () => clearInterval(interval)
     } else {
-      // پاسخ دریافت شده است
+      // پایان و نمایش پیام نهایی
       setLoadingMessage("پاسخ آماده شد! ✅")
-      setBarClassName("from-emerald-400 to-green-600") // تغییر رنگ به گرادیانت سبز
+      setBarClassName("from-emerald-400 to-green-600")
       setProgress(100)
 
       const timer = setTimeout(() => {
         onComplete()
-      }, 800) // تاخیر بیشتر برای نمایش کامل شدن و پیام نهایی
+      }, 800)
 
       return () => clearTimeout(timer)
     }
@@ -75,7 +79,9 @@ const ModernProgressBar: React.FC<ModernProgressBarProps> = ({
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               {loadingMessage}
             </span>
-            <span className="font-mono text-xs text-blue-500 dark:text-blue-400">{`%${Math.round(progress)}`}</span>
+            <span className="font-mono text-xs text-blue-500 dark:text-blue-400">
+              %{Math.round(progress)}
+            </span>
           </div>
           <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
             <motion.div
