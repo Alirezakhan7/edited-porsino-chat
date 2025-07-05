@@ -202,3 +202,9 @@
 .animate-fade-down {
   animation: fadeDown 0.5s ease-out forwards;
 }
+@layer utilities {
+  .fade-mask {
+    mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+  }
+}

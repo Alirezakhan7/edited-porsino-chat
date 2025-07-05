@@ -102,6 +102,7 @@ export default async function RootLayout({
             <div className="bg-background text-foreground flex h-dvh flex-col items-center overflow-x-auto">
               {session ? <GlobalState>{children}</GlobalState> : children}
             </div>
+            <div id="portals" />
           </TranslationsProvider>
         </Providers>
       </body>

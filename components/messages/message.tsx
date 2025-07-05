@@ -23,7 +23,8 @@ import { WithTooltip } from "../ui/with-tooltip"
 import { MessageActions } from "./message-actions"
 import { MessageMarkdown } from "./message-markdown"
 import FeedbackForm from "../chat/feedback/FeedbackForm"
-
+import Portal from "@/components/ui/portal"
+import ModernProgressBar from "@/components/ui/ModernProgressBar" // مسیر را متناسب با ساختار پروژه خود تنظیم کنید
 const ICON_SIZE = 32
 
 const renderStructuredMessage = (content: string) => {
@@ -314,14 +315,20 @@ export const Message: FC<MessageProps> = ({
   return (
     <div
       className={cn(
-        "flex w-full justify-center",
-        message.role === "user" ? "" : "bg-secondary"
+        "flex w-full",
+        message.role === "user"
+          ? "justify-end" // پیام کاربر راست‌چین
+          : "justify-center " // پیام دستیار بدون تغییر
       )}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-      onKeyDown={handleKeyDown}
     >
-      <div className="relative flex w-full flex-col p-6 sm:w-[550px] sm:px-0 md:w-[650px] lg:w-[650px] xl:w-[700px]">
+      <div
+        className={cn(
+          "relative flex flex-col",
+          message.role === "user"
+            ? "ml-auto w-fit min-w-[110px] max-w-[80%] rounded-2xl bg-[#a3c5c0] px-5 py-3  shadow dark:bg-[#49746f]"
+            : "w-full p-6 sm:w-[550px] sm:px-0 md:w-[650px] lg:w-[650px] xl:w-[700px]"
+        )}
+      >
         <div className="absolute right-5 top-7 sm:right-0">
           <MessageActions
             onCopy={handleCopy}
@@ -407,22 +414,17 @@ export const Message: FC<MessageProps> = ({
                 switch (toolInUse) {
                   case "none":
                     return (
-                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <div className="animate-spin-slow relative size-5">
-                          <div className="animate-ping-once absolute inset-0 rounded-full border-2 border-blue-400 opacity-50"></div>
-                          <div className="absolute inset-0 rounded-full border-2 border-blue-600"></div>
-                        </div>
-                        <span dir="rtl" className="animate-blink">
-                          منتظر باشید...
-                        </span>
-                      </div>
+                      // کد جدید در اینجا جایگزین می‌شود
+                      <ModernProgressBar
+                        isGenerating={isGenerating}
+                        onComplete={() => setIsGenerating(false)}
+                      />
                     )
 
                   case "retrieval":
                     return (
                       <div className="flex animate-pulse items-center space-x-2">
                         <IconFileText size={20} />
-
                         <div>Searching files...</div>
                       </div>
                     )
@@ -430,7 +432,6 @@ export const Message: FC<MessageProps> = ({
                     return (
                       <div className="flex animate-pulse items-center space-x-2">
                         <IconBolt size={20} />
-
                         <div>Using {toolInUse}...</div>
                       </div>
                     )

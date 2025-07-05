@@ -296,7 +296,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
       </div>
 
       <div className="flex w-full justify-center">
-        <div className="relative mt-3 w-full max-w-2xl">
+        <div className="relative  w-full max-w-6xl">
           <div className="flex flex-col rounded-2xl  bg-white/40 p-3 shadow-2xl backdrop-blur-md dark:bg-[#3c3c3c]">
             <TextareaAutosize
               textareaRef={chatInputRef}
@@ -438,11 +438,6 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
             </div>
           </div>
         </div>
-      </div>
-      <div className="z-50 hidden md:fixed md:bottom-2 md:left-0 md:flex md:w-full md:justify-center">
-        <span className="text-center text-[10px] font-light text-gray-900 dark:text-white">
-          .امکان وجود خطا در پاسخ‌ها وجود دارد. لطفاً با دقت بررسی نمایید
-        </span>
       </div>
     </>
   )
