@@ -39,10 +39,10 @@ export const MessageReplies: FC<MessageRepliesProps> = ({}) => {
 
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Are you sure absolutely sure?</SheetTitle>
+          <SheetTitle>واقعا مطمئنی؟</SheetTitle>
           <SheetDescription>
-            This action cannot be undone. This will permanently delete your
-            account and remove your data from our servers.
+            این عمل قابل بازگشت نیست. این کار حساب کاربری شما را به‌طور دائمی
+            حذف کرده و داده‌های شما را از سرورهای ما پاک خواهد کرد
           </SheetDescription>
         </SheetHeader>
       </SheetContent>

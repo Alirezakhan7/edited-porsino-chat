@@ -102,21 +102,19 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
   return (
     <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
       <DialogTrigger asChild>
-        <IconTrash className="hover:opacity-50" size={18} />
+        <IconTrash className="text-neutral-900 transition-colors hover:text-red-500 dark:text-neutral-200" />
       </DialogTrigger>
 
       <DialogContent className="min-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Delete {folder.name}</DialogTitle>
+          <DialogTitle>پاک کردن {folder.name}</DialogTitle>
 
-          <DialogDescription>
-            Are you sure you want to delete this folder?
-          </DialogDescription>
+          <DialogDescription>آیا مطمئنی که این پوشه پاک بشه؟</DialogDescription>
         </DialogHeader>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setShowFolderDialog(false)}>
-            Cancel
+            منصرف شدم
           </Button>
 
           <Button
@@ -124,7 +122,7 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
             variant="destructive"
             onClick={handleDeleteFolderAndItems}
           >
-            Delete Folder & Included Items
+            پوشه و فایل های داخلش را پاک کن
           </Button>
 
           <Button
@@ -132,7 +130,7 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
             variant="destructive"
             onClick={handleDeleteFolderOnly}
           >
-            Delete Folder Only
+            فقط پوشه را پاک کن
           </Button>
         </DialogFooter>
       </DialogContent>

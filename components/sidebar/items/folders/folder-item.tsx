@@ -82,9 +82,9 @@ export const Folder: FC<FolderProps> = ({
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center space-x-2">
             {isExpanded ? (
-              <IconChevronDown stroke={3} />
+              <IconChevronDown className="text-foreground" stroke={3} />
             ) : (
-              <IconChevronRight stroke={3} />
+              <IconChevronDown className="text-foreground" stroke={3} />
             )}
 
             <div className=" px-3 py-1 font-semibold text-black dark:text-white">

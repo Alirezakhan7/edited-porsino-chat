@@ -47,27 +47,30 @@ export const UpdateFolder: FC<UpdateFolderProps> = ({ folder }) => {
   return (
     <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
       <DialogTrigger asChild>
-        <IconEdit className="hover:opacity-50" size={18} />
+        <IconEdit
+          className="text-foreground transition-opacity hover:opacity-70"
+          size={18}
+        />
       </DialogTrigger>
 
       <DialogContent onKeyDown={handleKeyDown}>
         <DialogHeader>
-          <DialogTitle>Edit Folder</DialogTitle>
+          <DialogTitle>ویرایش پوشه</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-1">
-          <Label>Name</Label>
+          <Label>نام</Label>
 
           <Input value={name} onChange={e => setName(e.target.value)} />
         </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setShowFolderDialog(false)}>
-            Cancel
+            صرف نظر کن
           </Button>
 
           <Button ref={buttonRef} onClick={handleUpdateFolder}>
-            Save
+            ذخیره کن
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -52,22 +52,22 @@ export const UpdateChat: FC<UpdateChatProps> = ({ chat }) => {
 
       <DialogContent onKeyDown={handleKeyDown}>
         <DialogHeader>
-          <DialogTitle>Edit Chat</DialogTitle>
+          <DialogTitle>ویرایش گفت و گو</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-1">
-          <Label>Name</Label>
+          <Label>نام</Label>
 
           <Input value={name} onChange={e => setName(e.target.value)} />
         </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setShowChatDialog(false)}>
-            Cancel
+            صرف نظر کردن
           </Button>
 
           <Button ref={buttonRef} onClick={handleUpdateChat}>
-            Save
+            ذخیره کردن
           </Button>
         </DialogFooter>
       </DialogContent>
