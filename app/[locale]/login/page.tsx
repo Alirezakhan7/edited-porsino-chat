@@ -89,7 +89,7 @@ export default async function Login({
     const supabase = createClient(cookieStore)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/auth/reset-password`
+      redirectTo: "https://chat.porsino.org/auth/reset-password"
     })
 
     if (error) {

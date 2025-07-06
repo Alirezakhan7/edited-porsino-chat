@@ -18,7 +18,7 @@ function ResetPasswordForm() {
 
     async function handleExchangeSession() {
       if (!code) {
-        setError("کد بازیابی پیدا نشد.")
+        setError("کد بازیابی پیدا نشد")
         setLoading(false)
         return
       }
@@ -102,7 +102,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#1E1E1E] px-4">
-      <Suspense fallback={<p className="text-white">در حال بارگذاری...</p>}>
+      <Suspense fallback={<p className="text-white">در حال بارگذاری</p>}>
         <ResetPasswordForm />
       </Suspense>
     </div>
