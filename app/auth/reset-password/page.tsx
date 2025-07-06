@@ -10,33 +10,35 @@ function ResetPasswordForm() {
   const [password, setPassword] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
-  const [tokenReady, setTokenReady] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const supabase = createClient()
     const code = searchParams.get("code")
-    if (code) {
-      setTokenReady(true)
+
+    async function handleExchangeSession() {
+      if (!code) {
+        setError("کد بازیابی پیدا نشد.")
+        setLoading(false)
+        return
+      }
+
+      const { error: sessionError } =
+        await supabase.auth.exchangeCodeForSession(code)
+
+      if (sessionError) {
+        setError("خطا در ورود با لینک بازیابی: " + sessionError.message)
+      }
+
+      setLoading(false)
     }
+
+    handleExchangeSession()
   }, [searchParams])
 
   const handleSubmit = async () => {
     const supabase = createClient()
-    const code = searchParams.get("code")
 
-    if (!code) {
-      setError("کد بازیابی پیدا نشد.")
-      return
-    }
-
-    // مرحله ۱: ایجاد session با code
-    const { error: sessionError } =
-      await supabase.auth.exchangeCodeForSession(code)
-    if (sessionError) {
-      setError("خطا در ورود با لینک بازیابی: " + sessionError.message)
-      return
-    }
-
-    // مرحله ۲: تغییر رمز
     const { error: updateError } = await supabase.auth.updateUser({ password })
     if (updateError) {
       setError(updateError.message)
@@ -46,18 +48,30 @@ function ResetPasswordForm() {
     }
   }
 
-  if (!tokenReady)
+  if (loading) {
     return (
-      <p className="mt-10 text-center text-white">
-        در حال بارگذاری لینک بازیابی رمز عبور...
-      </p>
+      <p className="mt-10 text-center text-white">در حال اعتبارسنجی لینک...</p>
     )
-  if (submitted)
+  }
+
+  if (submitted) {
     return (
       <p className="mt-10 text-center text-green-500">
         رمز عبور با موفقیت تغییر کرد! در حال انتقال...
       </p>
     )
+  }
+
+  if (error) {
+    return (
+      <div className="mt-10 text-center text-red-500">
+        <p>خطا: {error}</p>
+        <p className="mt-2 text-sm text-gray-400">
+          لطفاً دوباره از فرم بازیابی رمز عبور استفاده کنید.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full max-w-md space-y-6 rounded-xl bg-[#1E1E1E] p-8 shadow-md">
