@@ -13,19 +13,33 @@ function ResetPasswordForm() {
   const [tokenReady, setTokenReady] = useState(false)
 
   useEffect(() => {
-    const type = searchParams.get("type")
-    const token = searchParams.get("access_token")
-    if (type === "recovery" && token) {
+    const code = searchParams.get("code")
+    if (code) {
       setTokenReady(true)
     }
   }, [searchParams])
 
   const handleSubmit = async () => {
     const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({ password })
+    const code = searchParams.get("code")
 
-    if (error) {
-      setError(error.message)
+    if (!code) {
+      setError("کد بازیابی پیدا نشد.")
+      return
+    }
+
+    // مرحله ۱: ایجاد session با code
+    const { error: sessionError } =
+      await supabase.auth.exchangeCodeForSession(code)
+    if (sessionError) {
+      setError("خطا در ورود با لینک بازیابی: " + sessionError.message)
+      return
+    }
+
+    // مرحله ۲: تغییر رمز
+    const { error: updateError } = await supabase.auth.updateUser({ password })
+    if (updateError) {
+      setError(updateError.message)
     } else {
       setSubmitted(true)
       setTimeout(() => router.push("/login"), 2000)
