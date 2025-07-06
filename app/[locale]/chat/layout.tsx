@@ -167,13 +167,9 @@ export default function ChatLayout({ children }: WorkspaceLayoutProps) {
     setLoading(false)
   }
 
-  if (loading) {
-    return <Loading />
-  }
-
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
-      <Dashboard>{children}</Dashboard>
+      {loading ? <Loading /> : <Dashboard>{children}</Dashboard>}
     </ThemeProvider>
   )
 }
