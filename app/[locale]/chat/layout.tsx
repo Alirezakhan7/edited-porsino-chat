@@ -1,5 +1,6 @@
 "use client"
 
+import { ThemeProvider } from "next-themes"
 import { Dashboard } from "@/components/ui/dashboard"
 import { ChatbotUIContext } from "@/context/context"
 import { getAssistantWorkspacesByWorkspaceId } from "@/db/assistants"
@@ -170,5 +171,9 @@ export default function ChatLayout({ children }: WorkspaceLayoutProps) {
     return <Loading />
   }
 
-  return <Dashboard>{children}</Dashboard>
+  return (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
+      <Dashboard>{children}</Dashboard>
+    </ThemeProvider>
+  )
 }

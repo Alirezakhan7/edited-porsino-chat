@@ -87,7 +87,9 @@ export const Folder: FC<FolderProps> = ({
               <IconChevronRight stroke={3} />
             )}
 
-            <div>{folder.name}</div>
+            <div className="rounded-md bg-white/70 px-3 py-1 font-semibold text-black dark:bg-white/10 dark:text-white">
+              {folder.name}
+            </div>
           </div>
 
           {isHovering && (
