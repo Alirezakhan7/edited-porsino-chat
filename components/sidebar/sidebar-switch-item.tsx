@@ -7,13 +7,22 @@ interface SidebarSwitchItemProps {
   contentType: ContentType
   icon: React.ReactNode
   onContentTypeChange: (contentType: ContentType) => void
+  setShowSidebar: (isOpen: boolean) => void
 }
 
 export const SidebarSwitchItem: FC<SidebarSwitchItemProps> = ({
   contentType,
   icon,
-  onContentTypeChange
+  onContentTypeChange,
+  setShowSidebar // ← اینجا اضافه شد
 }) => {
+  const handleClick = () => {
+    onContentTypeChange(contentType as ContentType)
+    if (contentType === "chats") {
+      setShowSidebar(true)
+    }
+  }
+
   return (
     <WithTooltip
       display={
@@ -23,7 +32,7 @@ export const SidebarSwitchItem: FC<SidebarSwitchItemProps> = ({
         <TabsTrigger
           className="hover:opacity-50"
           value={contentType}
-          onClick={() => onContentTypeChange(contentType as ContentType)}
+          onClick={handleClick}
         >
           {icon}
         </TabsTrigger>

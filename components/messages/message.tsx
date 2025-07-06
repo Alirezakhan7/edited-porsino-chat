@@ -115,14 +115,14 @@ const renderStructuredMessage = (content: string) => {
     }
 
     return (
-      <p className="hyphens-none whitespace-pre-line break-words leading-loose">
+      <p className="hyphens-none whitespace-pre-line break-words leading-[2]">
         {cleanedBody}
       </p>
     )
   }
 
   return (
-    <div className="space-y-6 text-right leading-relaxed" dir="rtl">
+    <div className="space-y-6 text-right leading-[2]" dir="rtl">
       {sections.map(({ title, body }, i) => {
         const styleKey = styleByTitle(title)
         const style = styleMap[styleKey]

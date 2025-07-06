@@ -19,18 +19,21 @@ export const SIDEBAR_ICON_SIZE = 28
 
 interface SidebarSwitcherProps {
   onContentTypeChange: (contentType: ContentType) => void
+  setShowSidebar: (isOpen: boolean) => void
 }
 
 export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
-  onContentTypeChange
+  onContentTypeChange,
+  setShowSidebar
 }) => {
   return (
-    <div className="flex flex-col justify-between border-r-2 pb-5">
-      <TabsList className="bg-background grid h-[440px] grid-rows-7">
+    <div className="flex flex-col justify-between border-r-2 bg-[#e9f5db] pb-5 text-white dark:bg-[#111d13]">
+      <TabsList className="grid h-[440px] grid-rows-7 bg-[#e9f5db] dark:bg-[#111d13]">
         <SidebarSwitchItem
           icon={<IconMessage size={SIDEBAR_ICON_SIZE} />}
           contentType="chats"
           onContentTypeChange={onContentTypeChange}
+          setShowSidebar={setShowSidebar}
         />
         {/*
         <SidebarSwitchItem

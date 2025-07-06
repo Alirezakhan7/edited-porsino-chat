@@ -2,11 +2,9 @@ import { ChatbotUIContext } from "@/context/context"
 import { Tables } from "@/supabase/types"
 import { ContentType } from "@/types"
 import { FC, useContext } from "react"
-import { SIDEBAR_WIDTH } from "../ui/dashboard"
 import { TabsContent } from "../ui/tabs"
-import { WorkspaceSwitcher } from "../utility/workspace-switcher"
-import { WorkspaceSettings } from "../workspace/workspace-settings"
 import { SidebarContent } from "./sidebar-content"
+// SIDEBAR_WIDTH و WorkspaceSwitcher و WorkspaceSettings دیگر استفاده نمی‌شوند مگر اینکه جای دیگری لازم باشند
 
 interface SidebarProps {
   contentType: ContentType
@@ -52,12 +50,7 @@ export const Sidebar: FC<SidebarProps> = ({ contentType, showSidebar }) => {
   return (
     <TabsContent
       className="m-0 w-full space-y-2"
-      style={{
-        // Sidebar - SidebarSwitcher
-        minWidth: showSidebar ? `calc(${SIDEBAR_WIDTH}px - 60px)` : "0px",
-        maxWidth: showSidebar ? `calc(${SIDEBAR_WIDTH}px - 60px)` : "0px",
-        width: showSidebar ? `calc(${SIDEBAR_WIDTH}px - 60px)` : "0px"
-      }}
+      // style از اینجا حذف شد تا عرض را از والد به ارث ببرد
       value={contentType}
     >
       <div className="flex h-full flex-col p-3">
@@ -66,37 +59,11 @@ export const Sidebar: FC<SidebarProps> = ({ contentType, showSidebar }) => {
             case "chats":
               return renderSidebarContent("chats", chats, chatFolders)
 
-            //case "presets":
-            // return renderSidebarContent("presets", presets, presetFolders)
-
-            //case "prompts":
-            //return renderSidebarContent("prompts", prompts, promptFolders)
-
             case "files":
               return renderSidebarContent("files", files, filesFolders)
 
-              {
-                /*case "collections":
-              return renderSidebarContent(
-                "collections",
-                collections,
-                collectionFolders
-              )
-              
-            case "assistants":
-              return renderSidebarContent(
-                "assistants",
-                assistants,
-                assistantFolders
-              )
+            // ... (بقیه case ها)
 
-            case "tools":
-              return renderSidebarContent("tools", tools, toolFolders)
- 
-            case "models":
-              return renderSidebarContent("models", models, modelFolders)
-              */
-              }
             default:
               return null
           }

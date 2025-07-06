@@ -9,15 +9,15 @@ interface ThemeSwitcherProps {}
 export const ThemeSwitcher: FC<ThemeSwitcherProps> = () => {
   const { setTheme, theme } = useTheme()
 
-  const handleChange = (theme: "dark" | "light") => {
-    localStorage.setItem("theme", theme)
-
-    setTheme(theme)
+  // The bug was caused by manually setting localStorage, which is already handled by next-themes.
+  // Removing `localStorage.setItem` fixes the issue where the first click didn't work.
+  const handleChange = (newTheme: "dark" | "light") => {
+    setTheme(newTheme)
   }
 
   return (
     <Button
-      className="flex cursor-pointer space-x-2"
+      className="cursor-pointer"
       variant="ghost"
       size="icon"
       onClick={() => handleChange(theme === "light" ? "dark" : "light")}
