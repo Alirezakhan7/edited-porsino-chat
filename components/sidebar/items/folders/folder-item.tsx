@@ -87,7 +87,7 @@ export const Folder: FC<FolderProps> = ({
               <IconChevronRight stroke={3} />
             )}
 
-            <div className="rounded-md bg-white/70 px-3 py-1 font-semibold text-black dark:bg-white/10 dark:text-white">
+            <div className=" px-3 py-1 font-semibold text-black dark:text-white">
               {folder.name}
             </div>
           </div>

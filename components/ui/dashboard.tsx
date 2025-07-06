@@ -123,7 +123,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
             style={{ width: `${SIDEBAR_WIDTH}px` }}
           >
             <Tabs
-              className="flex h-full bg-[#dcebca] dark:bg-[#0a140d]"
+              className="flex h-full bg-[#f0f7eb] dark:bg-[#0a140d]"
               value={contentType}
               onValueChange={tabValue => {
                 setContentType(tabValue as ContentType)
@@ -167,7 +167,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
                 : "0px"
             }}
           >
-            <div className="size-full overflow-hidden border-r-2 bg-[#dcebca] text-white dark:border-none dark:bg-[#0a140d]">
+            <div className="size-full overflow-hidden border-r-2 bg-[#f0f7eb] text-white dark:border-none dark:bg-[#0a140d]">
               <Sidebar contentType={contentType} showSidebar={showSidebar} />
             </div>
           </div>

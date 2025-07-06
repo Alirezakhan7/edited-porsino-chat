@@ -37,7 +37,7 @@ export default function RootPage() {
   if (checking) {
     return (
       <div className="text-muted-foreground flex h-screen w-full items-center justify-center">
-        در حال انتقال...
+        ... در حال انتقال
       </div>
     )
   }
