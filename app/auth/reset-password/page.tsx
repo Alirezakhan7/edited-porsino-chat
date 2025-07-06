@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 
@@ -15,7 +15,6 @@ function ResetPasswordForm() {
   useEffect(() => {
     const type = searchParams.get("type")
     const token = searchParams.get("access_token")
-
     if (type === "recovery" && token) {
       setTokenReady(true)
     }
@@ -33,28 +32,51 @@ function ResetPasswordForm() {
     }
   }
 
-  if (!tokenReady) return <p>در حال بارگذاری لینک بازیابی...</p>
-  if (submitted) return <p>رمز با موفقیت تغییر کرد</p>
+  if (!tokenReady)
+    return (
+      <p className="mt-10 text-center text-white">
+        در حال بارگذاری لینک بازیابی رمز عبور...
+      </p>
+    )
+  if (submitted)
+    return (
+      <p className="mt-10 text-center text-green-500">
+        رمز عبور با موفقیت تغییر کرد! در حال انتقال...
+      </p>
+    )
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>تغییر رمز عبور</h2>
+    <div className="w-full max-w-md space-y-6 rounded-xl bg-[#1E1E1E] p-8 shadow-md">
+      <h2 className="text-center text-2xl font-bold text-white">
+        تغییر رمز عبور
+      </h2>
+
       <input
         type="password"
         placeholder="رمز جدید"
         value={password}
         onChange={e => setPassword(e.target.value)}
+        className="w-full rounded-md border border-gray-600 bg-gray-800 p-3 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
       />
-      <button onClick={handleSubmit}>ذخیره رمز جدید</button>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+
+      <button
+        onClick={handleSubmit}
+        className="w-full rounded-md bg-orange-500 py-3 font-bold text-white transition-colors hover:bg-orange-600"
+      >
+        ذخیره رمز جدید
+      </button>
+
+      {error && <p className="text-center text-sm text-red-500">{error}</p>}
     </div>
   )
 }
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<p>در حال بارگذاری...</p>}>
-      <ResetPasswordForm />
-    </Suspense>
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#1E1E1E] px-4">
+      <Suspense fallback={<p className="text-white">در حال بارگذاری...</p>}>
+        <ResetPasswordForm />
+      </Suspense>
+    </div>
   )
 }
