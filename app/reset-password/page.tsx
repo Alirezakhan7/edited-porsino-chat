@@ -50,14 +50,14 @@ function ResetPasswordForm() {
 
   if (loading) {
     return (
-      <p className="mt-10 text-center text-white">در حال اعتبارسنجی لینک...</p>
+      <p className="mt-10 text-center text-white">در حال اعتبارسنجی لینک</p>
     )
   }
 
   if (submitted) {
     return (
       <p className="mt-10 text-center text-green-500">
-        رمز عبور با موفقیت تغییر کرد! در حال انتقال...
+        رمز عبور با موفقیت تغییر کرد! در حال انتقال
       </p>
     )
   }
@@ -67,7 +67,7 @@ function ResetPasswordForm() {
       <div className="mt-10 text-center text-red-500">
         <p>خطا: {error}</p>
         <p className="mt-2 text-sm text-gray-400">
-          لطفاً دوباره از فرم بازیابی رمز عبور استفاده کنید.
+          لطفاً دوباره از فرم بازیابی رمز عبور استفاده کنید
         </p>
       </div>
     )
