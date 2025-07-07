@@ -102,7 +102,7 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
   return (
     <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
       <DialogTrigger asChild>
-        <IconTrash className="text-neutral-900 transition-colors hover:text-red-500 dark:text-neutral-200" />
+        <IconTrash className="text-neutral-900 transition-colors hover:text-red-500 dark:text-neutral-200 dark:hover:text-red-500" />
       </DialogTrigger>
 
       <DialogContent className="min-w-[550px]">

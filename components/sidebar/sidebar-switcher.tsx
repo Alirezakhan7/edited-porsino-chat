@@ -27,8 +27,8 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
   setShowSidebar
 }) => {
   return (
-    <div className="flex flex-col justify-between border-r-2 bg-[#e9f5db] pb-5 text-white dark:bg-[#111d13]">
-      <TabsList className="grid h-[440px] grid-rows-7 bg-[#e9f5db] dark:bg-[#111d13]">
+    <div className="flex flex-col justify-between  bg-[#f8f8f8] pb-5 text-black dark:bg-[#3a3b3d] dark:text-white">
+      <TabsList className="grid h-[440px] grid-rows-7 bg-[#f8f8f8] dark:bg-[#3a3b3d]">
         <SidebarSwitchItem
           icon={<IconMessage size={SIDEBAR_ICON_SIZE} />}
           contentType="chats"

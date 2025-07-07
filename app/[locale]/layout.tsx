@@ -92,7 +92,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} bg-background text-foreground`}>
-        <Providers attribute="class" defaultTheme="dark">
+        <Providers attribute="class" defaultTheme="dark" enableSystem={false}>
           <TranslationsProvider
             namespaces={i18nNamespaces}
             locale={locale}
