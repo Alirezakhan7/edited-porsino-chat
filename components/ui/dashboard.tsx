@@ -8,14 +8,13 @@ import useHotkey from "@/lib/hooks/use-hotkey"
 import { useMediaQuery } from "@/lib/hooks/use-media-query"
 import { cn } from "@/lib/utils"
 import { ContentType } from "@/types"
-// IconMenu2 را برای دکمه همبرگری اضافه کنید
 import { IconChevronCompactRight, IconMenu2 } from "@tabler/icons-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { FC, useEffect, useState } from "react"
 import { useSelectFileHandler } from "../chat/chat-hooks/use-select-file-handler"
 import { CommandK } from "../utility/command-k"
 
-export const SIDEBAR_WIDTH = 300 // عرض سایدبار در موبایل
+export const SIDEBAR_WIDTH = 300
 export const SIDEBAR_DESKTOP_WIDTH = 350
 export const SIDEBAR_SWITCHER_WIDTH = 60
 
@@ -25,6 +24,7 @@ interface DashboardProps {
 
 export const Dashboard: FC<DashboardProps> = ({ children }) => {
   const isMobile = useMediaQuery("(max-width: 768px)")
+  const [isMounted, setIsMounted] = useState(false) // <-- مرحله ۱: استیت جدید
 
   useHotkey("s", () => {
     if (!isMobile) setShowSidebar(prevState => !prevState)
@@ -43,14 +43,21 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
   const [showSidebar, setShowSidebar] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
 
+  // <-- مرحله ۲: اضافه کردن useEffect برای isMounted
   useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted) return // <-- صبر کن تا کلاینت آماده شود
+
     if (isMobile) {
       setShowSidebar(false)
     } else {
       const storedState = localStorage.getItem("showSidebar")
       setShowSidebar(storedState === null ? true : storedState === "true")
     }
-  }, [isMobile])
+  }, [isMobile, isMounted]) // <-- isMounted به وابستگی‌ها اضافه شد
 
   // ... (توابع درگ و دراپ بدون تغییر) ...
   const onFileDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -86,16 +93,20 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
     }
   }
 
+  // <-- مرحله ۳: قبل از mount شدن کامپوننت، چیزی رندر نکن (یا لودر نمایش بده)
+  if (!isMounted) {
+    return null // یا <LoadingSpinner />
+  }
+
   return (
     <div className="flex size-full">
       <CommandK />
 
-      {/* ******************** دکمه همبرگری شناور (فقط موبایل) ******************** */}
       {isMobile && (
         <div
           className="fixed top-4 z-30 flex items-center space-x-2 transition-all duration-300"
           style={{
-            left: showSidebar ? `${SIDEBAR_WIDTH + 16}px` : "16px" // ← حرکت همراه با سایدبار
+            left: showSidebar ? `${SIDEBAR_WIDTH + 16}px` : "16px"
           }}
         >
           <Button
@@ -111,9 +122,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         </div>
       )}
 
-      {/* ******************** بخش سایدبار ******************** */}
       {isMobile ? (
-        // چیدمان موبایل: سایدبار به صورت کشویی (Drawer)
         <>
           <div
             className={cn(
@@ -146,7 +155,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
           )}
         </>
       ) : (
-        // چیدمان دسکتاپ
         <Tabs
           className="flex"
           value={contentType}
@@ -174,7 +182,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         </Tabs>
       )}
 
-      {/* ******************** بخش محتوای اصلی ******************** */}
       <div
         className="relative flex w-full grow flex-col"
         onDrop={onFileDrop}
@@ -182,7 +189,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
       >
-        {/* MobileHeader به طور کامل حذف شد */}
         <main className="size-full grow">
           {isDragging ? (
             <div className="flex h-full items-center justify-center bg-black/50 text-2xl text-white">
@@ -193,7 +199,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
           )}
         </main>
 
-        {/* دکمه باز/بسته کردن فقط در دسکتاپ */}
         {!isMobile && (
           <Button
             className={cn(
