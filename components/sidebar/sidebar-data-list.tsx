@@ -221,7 +221,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
     <>
       <div
         ref={divRef}
-        className="mt-2 flex flex-col overflow-auto"
+        className="mt-2 flex max-w-full flex-col overflow-auto overflow-x-hidden"
         onDrop={handleDrop}
       >
         {data.length === 0 && (
@@ -234,9 +234,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
 
         {(dataWithFolders.length > 0 || dataWithoutFolders.length > 0) && (
           <div
-            className={`h-full ${
-              isOverflowing ? "w-[calc(100%-8px)]" : "w-full"
-            } space-y-2 pt-2 ${isOverflowing ? "mr-2" : ""}`}
+            className={`h-full ${isOverflowing ? "w-[calc(100%-8px)]" : "w-full"} max-w-full space-y-2 overflow-x-hidden pt-2 ${isOverflowing ? "mr-2" : ""}`}
           >
             {folders.map(folder => (
               <Folder

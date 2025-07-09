@@ -49,11 +49,10 @@ export const Sidebar: FC<SidebarProps> = ({ contentType, showSidebar }) => {
 
   return (
     <TabsContent
-      className="m-0 w-full space-y-2"
-      // style از اینجا حذف شد تا عرض را از والد به ارث ببرد
+      className="m-0 w-full max-w-full space-y-2 overflow-x-hidden"
       value={contentType}
     >
-      <div className="flex h-full flex-col p-3">
+      <div className="flex h-full max-w-full flex-col overflow-x-hidden p-3">
         {(() => {
           switch (contentType) {
             case "chats":
