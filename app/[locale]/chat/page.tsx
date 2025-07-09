@@ -54,7 +54,7 @@ export default function ChatPage() {
                 <span className="text-5xl font-black md:text-6xl">
                   ، پرسینو{" "}
                 </span>
-                آمادست
+                آماده‌ست
               </h1>
               <h2 className="mt-2 text-2xl font-light tracking-tight md:text-3xl">
                 چه سوالی می‌خوای ازش{" "}
