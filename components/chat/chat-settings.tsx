@@ -1,4 +1,5 @@
 import { ChatbotUIContext } from "@/context/context"
+import { IconChevronDown } from "@tabler/icons-react"
 import { CHAT_SETTING_LIMITS } from "@/lib/chat-setting-limits"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLMID, ModelProvider } from "@/types"
@@ -18,6 +19,16 @@ interface ChatSettingsProps {}
 
 export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
   useHotkey("i", () => handleClick())
+  const customModelNames: Record<string, string> = {
+    "math-simple": "ریاضی - پاسخ سریع",
+    "math-advanced": "ریاضی - یادگیری مفهومی",
+    "chem-simple": "شیمی - ساده",
+    "chem-advanced": "شیمی - پیشرفته",
+    "phys-simple": "فیزیک - ساده",
+    "phys-advanced": "فیزیک - پیشرفته",
+    "bio-simple": "زیست - ساده",
+    "bio-advanced": "زیست - پیشرفته"
+  }
 
   const {
     chatSettings,
@@ -115,24 +126,45 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
           className="group flex items-center gap-2 rounded-full  transition-all hover:bg-transparent"
           variant="ghost"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-row-reverse items-center justify-between gap-2">
+            {/* آیکون درس سمت راست */}
             {modelStyle.icon && (
-              // Increased container size: from w-6/h-6 to w-8/h-8, with padding increased.
               <div
                 className={`flex size-8 items-center justify-center rounded-full bg-gradient-to-r p-2 ${modelStyle.gradient} shadow-md`}
               >
                 {modelStyle.icon}
               </div>
             )}
-            {/* Updated text container: larger text and increased max width */}
-            <div
-              className="max-w-[200px] truncate text-lg font-bold sm:max-w-[250px] md:max-w-[300px] lg:max-w-[350px]"
-              dir="rtl"
-            >
-              {fullModel?.modelName || chatSettings.model}
+
+            {/* نام مدل با تفکیک و فلش */}
+            <div className="flex items-center gap-2 text-right" dir="rtl">
+              {/* بلاک دوخطی با self-center */}
+              <div className="flex flex-col self-center leading-tight">
+                <span className="text-lg font-bold">
+                  {customModelNames[
+                    fullModel?.modelId ?? chatSettings.model
+                  ]?.split(" - ")[0] ??
+                    fullModel?.modelName?.split(" - ")[0] ??
+                    chatSettings.model}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {customModelNames[
+                    fullModel?.modelId ?? chatSettings.model
+                  ]?.split(" - ")[1] ??
+                    fullModel?.modelName?.split(" - ")[1] ??
+                    ""}
+                </span>
+              </div>
+
+              {/* فلش رو‌به‌پایین */}
+              <IconChevronDown
+                size={18}
+                className="self-center text-gray-500 dark:text-gray-300"
+              />
             </div>
           </div>
-          {/* Increase settings icon container size for balance */}
+
+          {/* Increase settings icon container size for balance
 
           <div
             className="relative flex size-8 items-center justify-center rounded-full bg-gray-200 
@@ -143,6 +175,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
           >
             <IconSettings size={20} />
           </div>
+           */}
         </Button>
       </PopoverTrigger>
 

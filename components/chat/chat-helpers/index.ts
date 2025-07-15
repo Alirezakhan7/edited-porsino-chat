@@ -180,7 +180,8 @@ export const handleLocalChat = async (
     isRegeneration
       ? payload.chatMessages[payload.chatMessages.length - 1]
       : tempAssistantMessage,
-    false,
+    false, // isHosted
+    false, // isMathModel (مدل لوکال ریاضی نیست)
     newAbortController,
     setFirstTokenReceived,
     setChatMessages,
@@ -225,11 +226,17 @@ export const handleHostedChat = async (
       ? "https://api.porsino.org/chat"
       : `/api/chat/${provider}`
 
+  // START: ✨ اصلاح شده
+  // این خط جا افتاده بود و باعث خطا می‌شد
+  const isMathModel = payload.chatSettings.model === "math-advanced"
+
   const requestBody = {
     message:
       payload.chatMessages[payload.chatMessages.length - 1].message.content,
-    customModelId: payload.chatSettings.model
+    customModelId: payload.chatSettings.model,
+    isNewProblem: !isRegeneration
   }
+  // END: ✨ اصلاح شده
 
   const response = await fetchChatResponse(
     apiEndpoint,
@@ -246,6 +253,7 @@ export const handleHostedChat = async (
       ? payload.chatMessages[payload.chatMessages.length - 1]
       : tempAssistantChatMessage,
     true,
+    isMathModel, // حالا این متغیر تعریف شده و خطا نمی‌دهد
     newAbortController,
     setFirstTokenReceived,
     setChatMessages,
@@ -305,64 +313,91 @@ export const processResponse = async (
   response: Response,
   lastChatMessage: ChatMessage,
   isHosted: boolean,
+  isMathModel: boolean, // 💎 این پارامتر باید در تعریف تابع وجود داشته باشد
   controller: AbortController,
   setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
   setToolInUse: React.Dispatch<React.SetStateAction<string>>
 ) => {
-  let fullText = ""
-  let contentToAdd = ""
+  if (isMathModel) {
+    // منطق جدید برای پردازش پاسخ JSON مدل ریاضی
+    setFirstTokenReceived(true)
+    setToolInUse("none")
 
-  if (response.body) {
-    await consumeReadableStream(
-      response.body,
-      chunk => {
-        setFirstTokenReceived(true)
-        setToolInUse("none")
+    try {
+      const jsonResponse = await response.json()
+      // فرض می‌کنیم پاسخ دریافتی یک کلید به نام 'answer' دارد
+      const fullText = jsonResponse.answer || JSON.stringify(jsonResponse)
 
-        try {
-          contentToAdd = isHosted
-            ? chunk
-            : // Ollama's streaming endpoint returns new-line separated JSON
-              // objects. A chunk may have more than one of these objects, so we
-              // need to split the chunk by new-lines and handle each one
-              // separately.
-              chunk
-                .trimEnd()
-                .split("\n")
-                .reduce(
-                  (acc, line) => acc + JSON.parse(line).message.content,
-                  ""
-                )
-          fullText += contentToAdd
-        } catch (error) {
-          console.error("Error parsing JSON:", error)
-        }
-
-        setChatMessages(prev =>
-          prev.map(chatMessage => {
-            if (chatMessage.message.id === lastChatMessage.message.id) {
-              const updatedChatMessage: ChatMessage = {
-                message: {
-                  ...chatMessage.message,
-                  content: fullText
-                },
-                fileItems: chatMessage.fileItems
-              }
-
-              return updatedChatMessage
+      setChatMessages(prev =>
+        prev.map(chatMessage => {
+          if (chatMessage.message.id === lastChatMessage.message.id) {
+            const updatedChatMessage: ChatMessage = {
+              message: {
+                ...chatMessage.message,
+                content: fullText
+              },
+              fileItems: chatMessage.fileItems
             }
-
-            return chatMessage
-          })
-        )
-      },
-      controller.signal
-    )
-
-    return fullText
+            return updatedChatMessage
+          }
+          return chatMessage
+        })
+      )
+      return fullText
+    } catch (error) {
+      console.error("Error parsing math JSON response:", error)
+      throw new Error("Failed to parse math response.")
+    }
   } else {
-    throw new Error("Response body is null")
+    // همان منطق قبلی برای مدل‌های جریانی
+    let fullText = ""
+    let contentToAdd = ""
+
+    if (response.body) {
+      await consumeReadableStream(
+        response.body,
+        chunk => {
+          setFirstTokenReceived(true)
+          setToolInUse("none")
+
+          try {
+            contentToAdd = isHosted
+              ? chunk
+              : chunk
+                  .trimEnd()
+                  .split("\n")
+                  .reduce(
+                    (acc, line) => acc + JSON.parse(line).message.content,
+                    ""
+                  )
+            fullText += contentToAdd
+          } catch (error) {
+            console.error("Error parsing JSON:", error)
+          }
+
+          setChatMessages(prev =>
+            prev.map(chatMessage => {
+              if (chatMessage.message.id === lastChatMessage.message.id) {
+                const updatedChatMessage: ChatMessage = {
+                  message: {
+                    ...chatMessage.message,
+                    content: fullText
+                  },
+                  fileItems: chatMessage.fileItems
+                }
+                return updatedChatMessage
+              }
+              return chatMessage
+            })
+          )
+        },
+        controller.signal
+      )
+      return fullText
+    } else {
+      throw new Error("Response body is null")
+    }
   }
 }
 

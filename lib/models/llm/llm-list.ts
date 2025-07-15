@@ -16,10 +16,10 @@ export const LLM_LIST: LLM[] = [
     imageInput: false
   },
   {
-    modelId: "math-simple",
-    modelName: "Math Simple",
+    modelId: "math-advanced",
+    modelName: "Math advanced",
     provider: "custom",
-    hostedId: "math-simple",
+    hostedId: "math-advanced",
     platformLink: "",
     imageInput: false
   },

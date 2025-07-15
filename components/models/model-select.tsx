@@ -61,8 +61,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
   ]
 
   const customModelNames: Record<string, string> = {
-    "math-simple": "ریاضی - ساده",
-    "math-advanced": "ریاضی - پیشرفته",
+    "math-simple": "پاسخ سریع",
+    "math-advanced": "یادگیری مفهومی",
     "chem-simple": "شیمی - ساده",
     "chem-advanced": "شیمی - پیشرفته",
     "phys-simple": "فیزیک - ساده",
@@ -144,7 +144,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
             <div className="border-b border-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:border-gray-800 dark:text-gray-400">
               دسته‌بندی
             </div>
-            <div className="grid grid-cols-2 gap-2 p-2">
+            <div dir="rtl" className="grid grid-cols-2 gap-2 p-2 text-right">
               {["math", "chem", "phys", "bio"].map(subject => (
                 <div
                   key={subject}
@@ -185,7 +185,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
                         key={level}
                         onClick={() => handleSelectModel(modelId)}
                         className={`
-                        cursor-pointer rounded-xl border p-3 text-center text-sm
+                        cursor-pointer rounded-xl border p-2 text-center text-sm
                         font-semibold text-gray-800 transition-all dark:text-white
                         ${
                           isSelected
@@ -193,7 +193,18 @@ export const ModelSelect: FC<ModelSelectProps> = ({
                             : "border-gray-300 bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                         }`}
                       >
-                        {level === "simple" ? "ساده" : "پیشرفته"}
+                        <span className="justify-right flex items-center gap-2">
+                          {modelId === "math-simple" && (
+                            <span className="text-lg">⚡</span>
+                          )}
+                          {modelId === "math-advanced" && (
+                            <span className="text-lg">🧠</span>
+                          )}
+                          <span>
+                            {customModelNames[modelId] ??
+                              (level === "simple" ? "ساده" : "پیشرفته")}
+                          </span>
+                        </span>
                       </div>
                     )
                   })}

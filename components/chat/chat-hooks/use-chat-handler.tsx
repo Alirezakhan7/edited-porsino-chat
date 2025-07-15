@@ -300,17 +300,20 @@ export const useChatHandler = () => {
 
         setToolInUse("none")
 
+        // START: ✨ اصلاح شده
         generatedText = await processResponse(
           response,
           isRegeneration
             ? payload.chatMessages[payload.chatMessages.length - 1]
             : tempAssistantChatMessage,
           true,
+          false, // آرگومان isMathModel اینجا هم اضافه شد
           newAbortController,
           setFirstTokenReceived,
           setChatMessages,
           setToolInUse
         )
+        // END: ✨ اصلاح شده
       } else {
         if (modelData!.provider === "ollama") {
           generatedText = await handleLocalChat(

@@ -38,9 +38,11 @@ export const ChatSettingsForm: FC<ChatSettingsFormProps> = ({
   if (!profile) return null
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <Label>Model</Label>
+    <div className="space-y-3" dir="rtl">
+      <div className="space-y-1 text-right">
+        <Label className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          درس‌ها
+        </Label>
 
         <ModelSelect
           selectedModelId={chatSettings.model}
