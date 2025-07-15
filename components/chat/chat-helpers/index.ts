@@ -6,10 +6,7 @@ import { createChat } from "@/db/chats"
 import { createMessageFileItems } from "@/db/message-file-items"
 import { createMessages, updateMessage } from "@/db/messages"
 import { uploadMessageImage } from "@/db/storage/message-images"
-import {
-  buildFinalMessages,
-  adaptMessagesForGoogleGemini
-} from "@/lib/build-prompt"
+import { buildFinalMessages } from "@/lib/build-prompt"
 import { consumeReadableStream } from "@/lib/consume-stream"
 import { Tables, TablesInsert } from "@/supabase/types"
 import {
@@ -18,12 +15,14 @@ import {
   ChatPayload,
   ChatSettings,
   LLM,
+  LLMID,
   MessageImage
 } from "@/types"
 import React from "react"
 import { toast } from "sonner"
 import { v4 as uuidv4 } from "uuid"
 
+// این تابع بدون تغییر باقی می‌ماند
 export const validateChatSettings = (
   chatSettings: ChatSettings | null,
   modelData: LLM | undefined,
@@ -34,24 +33,21 @@ export const validateChatSettings = (
   if (!chatSettings) {
     throw new Error("Chat settings not found")
   }
-
   if (!modelData) {
     throw new Error("Model not found")
   }
-
   if (!profile) {
     throw new Error("Profile not found")
   }
-
   if (!selectedWorkspace) {
     throw new Error("Workspace not found")
   }
-
   if (!messageContent) {
     throw new Error("Message content not found")
   }
 }
 
+// این تابع بدون تغییر باقی می‌ماند
 export const handleRetrieval = async (
   userInput: string,
   newMessageFiles: ChatFile[],
@@ -80,6 +76,7 @@ export const handleRetrieval = async (
   return results
 }
 
+// این تابع بدون تغییر باقی می‌ماند
 export const createTempMessages = (
   messageContent: string,
   chatMessages: ChatMessage[],
@@ -145,48 +142,7 @@ export const createTempMessages = (
   }
 }
 
-export const handleLocalChat = async (
-  payload: ChatPayload,
-  profile: Tables<"profiles">,
-  chatSettings: ChatSettings,
-  tempAssistantMessage: ChatMessage,
-  isRegeneration: boolean,
-  newAbortController: AbortController,
-  setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>,
-  setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
-  setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  setToolInUse: React.Dispatch<React.SetStateAction<string>>
-) => {
-  const formattedMessages = await buildFinalMessages(payload, profile, [])
-
-  // Ollama API: https://github.com/jmorganca/ollama/blob/main/docs/api.md
-  const response = await fetchChatResponse(
-    process.env.NEXT_PUBLIC_OLLAMA_URL + "/api/chat",
-    {
-      model: chatSettings.model,
-      messages: formattedMessages,
-      options: {
-        temperature: payload.chatSettings.temperature
-      }
-    },
-    false,
-    newAbortController,
-    setIsGenerating,
-    setChatMessages
-  )
-
-  return await processResponse(
-    response,
-    isRegeneration
-      ? payload.chatMessages[payload.chatMessages.length - 1]
-      : tempAssistantMessage,
-    false,
-    newAbortController,
-    setFirstTokenReceived,
-    setChatMessages,
-    setToolInUse
-  )
-}
+// ❌ تابع handleLocalChat به طور کامل حذف شد
 
 export const handleHostedChat = async (
   payload: ChatPayload,
@@ -200,63 +156,49 @@ export const handleHostedChat = async (
   setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>,
   setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  setToolInUse: React.Dispatch<React.SetStateAction<string>>
+  setToolInUse: React.Dispatch<React.SetStateAction<string>>,
+  isNewProblem: boolean = false // <-- پارامتر جدید برای ریست کردن
 ) => {
   console.log("🛫 handleHostedChat started...")
-  const provider =
-    modelData.provider === "openai" && profile.use_azure_openai
-      ? "azure"
-      : modelData.provider
 
-  let draftMessages = await buildFinalMessages(payload, profile, chatImages)
+  // منطق پیچیده تشخیص provider و Google Gemini حذف شد
+  let formattedMessages = await buildFinalMessages(payload, profile, chatImages)
 
-  let formattedMessages: any[] = []
-  if (provider === "google") {
-    formattedMessages = await adaptMessagesForGoogleGemini(
-      payload,
-      draftMessages
-    )
-  } else {
-    formattedMessages = draftMessages
-  }
-
-  const apiEndpoint =
-    provider === "custom"
-      ? "https://api.porsino.org/chat"
-      : `/api/chat/${provider}`
+  // آدرس API همیشه ثابت و متعلق به شماست
+  const apiEndpoint = "https://api.porsino.org/chat"
 
   const requestBody = {
     message:
       payload.chatMessages[payload.chatMessages.length - 1].message.content,
-    customModelId: payload.chatSettings.model
+    customModelId: payload.chatSettings.model,
+    isNewProblem: isNewProblem // <-- فلگ جدید ارسال می‌شود
   }
 
   const response = await fetchChatResponse(
     apiEndpoint,
     requestBody,
-    true,
     newAbortController,
     setIsGenerating,
     setChatMessages
   )
 
+  // فراخوانی processResponse با پارامتر modelId برای تشخیص نوع پاسخ
   return await processResponse(
     response,
     isRegeneration
       ? payload.chatMessages[payload.chatMessages.length - 1]
       : tempAssistantChatMessage,
-    true,
     newAbortController,
     setFirstTokenReceived,
     setChatMessages,
-    setToolInUse
+    setToolInUse,
+    payload.chatSettings.model // <-- پارامتر modelId
   )
 }
 
 export const fetchChatResponse = async (
   url: string,
   body: object,
-  isHosted: boolean,
   controller: AbortController,
   setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
@@ -264,9 +206,9 @@ export const fetchChatResponse = async (
   const supabase = createClient()
   const session = await supabase.auth.getSession()
   const token = session.data.session?.access_token
+
   console.log("📡 Sending fetch to:", url)
   console.log("🟢 Request body:", body)
-  console.log("🔑 Authorization token:", token)
 
   const response = await fetch(url, {
     method: "POST",
@@ -279,14 +221,8 @@ export const fetchChatResponse = async (
   })
 
   if (!response.ok) {
-    if (response.status === 404 && !isHosted) {
-      toast.error(
-        "Model not found. Make sure you have it downloaded via Ollama."
-      )
-    }
-
+    // شرط مخصوص خطای Ollama حذف شد
     const errorData = await response.json()
-
     const errorText =
       errorData?.detail && typeof errorData.detail === "string"
         ? errorData.detail
@@ -304,15 +240,40 @@ export const fetchChatResponse = async (
 export const processResponse = async (
   response: Response,
   lastChatMessage: ChatMessage,
-  isHosted: boolean,
   controller: AbortController,
   setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  setToolInUse: React.Dispatch<React.SetStateAction<string>>
+  setToolInUse: React.Dispatch<React.SetStateAction<string>>,
+  modelId: LLMID // <-- پارامتر جدید برای تشخیص نوع پاسخ
 ) => {
-  let fullText = ""
-  let contentToAdd = ""
+  // اگر مدل ریاضی بود، پاسخ JSON را پردازش می‌کنیم
+  if (modelId === "math-advanced") {
+    setFirstTokenReceived(true)
+    setToolInUse("none")
 
+    const payload = await response.json()
+    const fullText = payload.answer || ""
+
+    // در مراحل بعد، state های topic_summary و suggestions را اینجا آپدیت می‌کنیم
+    console.log("Math Agent Payload:", payload) // برای تست و مشاهده داده‌های دریافتی
+
+    setChatMessages(prev =>
+      prev.map(chatMessage => {
+        if (chatMessage.message.id === lastChatMessage.message.id) {
+          const updatedChatMessage: ChatMessage = {
+            message: { ...chatMessage.message, content: fullText },
+            fileItems: chatMessage.fileItems
+          }
+          return updatedChatMessage
+        }
+        return chatMessage
+      })
+    )
+    return fullText
+  }
+
+  // در غیر این صورت (برای مدل‌های زیست)، پاسخ را استریم می‌کنیم
+  let fullText = ""
   if (response.body) {
     await consumeReadableStream(
       response.body,
@@ -320,46 +281,24 @@ export const processResponse = async (
         setFirstTokenReceived(true)
         setToolInUse("none")
 
-        try {
-          contentToAdd = isHosted
-            ? chunk
-            : // Ollama's streaming endpoint returns new-line separated JSON
-              // objects. A chunk may have more than one of these objects, so we
-              // need to split the chunk by new-lines and handle each one
-              // separately.
-              chunk
-                .trimEnd()
-                .split("\n")
-                .reduce(
-                  (acc, line) => acc + JSON.parse(line).message.content,
-                  ""
-                )
-          fullText += contentToAdd
-        } catch (error) {
-          console.error("Error parsing JSON:", error)
-        }
+        // منطق پیچیده برای Ollama حذف شده و فقط chunk باقی می‌ماند
+        fullText += chunk
 
         setChatMessages(prev =>
           prev.map(chatMessage => {
             if (chatMessage.message.id === lastChatMessage.message.id) {
               const updatedChatMessage: ChatMessage = {
-                message: {
-                  ...chatMessage.message,
-                  content: fullText
-                },
+                message: { ...chatMessage.message, content: fullText },
                 fileItems: chatMessage.fileItems
               }
-
               return updatedChatMessage
             }
-
             return chatMessage
           })
         )
       },
       controller.signal
     )
-
     return fullText
   } else {
     throw new Error("Response body is null")
