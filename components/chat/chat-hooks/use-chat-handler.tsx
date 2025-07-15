@@ -5,23 +5,26 @@ import { getAssistantToolsByAssistantId } from "@/db/assistant-tools"
 import { updateChat } from "@/db/chats"
 import { getCollectionFilesByCollectionId } from "@/db/collection-files"
 import { deleteMessagesIncludingAndAfter } from "@/db/messages"
+import { buildFinalMessages } from "@/lib/build-prompt"
 import { Tables } from "@/supabase/types"
 import { ChatMessage, ChatPayload, LLMID, ModelProvider } from "@/types"
 import { useRouter } from "next/navigation"
 import { useContext, useEffect, useRef } from "react"
+import { LLM_LIST } from "../../../lib/models/llm/llm-list"
 import {
   createTempMessages,
   handleCreateChat,
   handleCreateMessages,
-  handleHostedChat, //  <-- فقط handleHostedChat باقی مانده است
+  handleHostedChat,
+  handleLocalChat,
   handleRetrieval,
+  processResponse,
   validateChatSettings
 } from "../chat-helpers"
 
 export const useChatHandler = () => {
   const router = useRouter()
 
-  // لیست متغیرهای دریافتی از context ساده‌سازی شده است
   const {
     userInput,
     chatFiles,
@@ -36,6 +39,8 @@ export const useChatHandler = () => {
     setSelectedChat,
     setChats,
     setSelectedTools,
+    availableLocalModels,
+    availableOpenRouterModels,
     abortController,
     setAbortController,
     chatSettings,
@@ -72,9 +77,105 @@ export const useChatHandler = () => {
     }
   }, [isPromptPickerOpen, isFilePickerOpen, isToolPickerOpen])
 
-  // handleNewChat بدون تغییر باقی می‌ماند
   const handleNewChat = async () => {
-    /* ... منطق این تابع بدون تغییر است ... */
+    if (!selectedWorkspace) return
+
+    setUserInput("")
+    setChatMessages([])
+    setSelectedChat(null)
+    setChatFileItems([])
+
+    setIsGenerating(false)
+    setFirstTokenReceived(false)
+
+    setChatFiles([])
+    setChatImages([])
+    setNewMessageFiles([])
+    setNewMessageImages([])
+    setShowFilesDisplay(false)
+    setIsPromptPickerOpen(false)
+    setIsFilePickerOpen(false)
+
+    setSelectedTools([])
+    setToolInUse("none")
+
+    if (selectedAssistant) {
+      setChatSettings({
+        model: selectedAssistant.model as LLMID,
+        prompt: selectedAssistant.prompt,
+        temperature: selectedAssistant.temperature,
+        contextLength: selectedAssistant.context_length,
+        includeProfileContext: selectedAssistant.include_profile_context,
+        includeWorkspaceInstructions:
+          selectedAssistant.include_workspace_instructions,
+        embeddingsProvider: selectedAssistant.embeddings_provider as
+          | "openai"
+          | "local"
+      })
+
+      let allFiles = []
+
+      const assistantFiles = (
+        await getAssistantFilesByAssistantId(selectedAssistant.id)
+      ).files
+      allFiles = [...assistantFiles]
+      const assistantCollections = (
+        await getAssistantCollectionsByAssistantId(selectedAssistant.id)
+      ).collections
+      for (const collection of assistantCollections) {
+        const collectionFiles = (
+          await getCollectionFilesByCollectionId(collection.id)
+        ).files
+        allFiles = [...allFiles, ...collectionFiles]
+      }
+      const assistantTools = (
+        await getAssistantToolsByAssistantId(selectedAssistant.id)
+      ).tools
+
+      setSelectedTools(assistantTools)
+      setChatFiles(
+        allFiles.map(file => ({
+          id: file.id,
+          name: file.name,
+          type: file.type,
+          file: null
+        }))
+      )
+
+      if (allFiles.length > 0) setShowFilesDisplay(true)
+    } else if (selectedPreset) {
+      setChatSettings({
+        model: selectedPreset.model as LLMID,
+        prompt: selectedPreset.prompt,
+        temperature: selectedPreset.temperature,
+        contextLength: selectedPreset.context_length,
+        includeProfileContext: selectedPreset.include_profile_context,
+        includeWorkspaceInstructions:
+          selectedPreset.include_workspace_instructions,
+        embeddingsProvider: selectedPreset.embeddings_provider as
+          | "openai"
+          | "local"
+      })
+    } else if (selectedWorkspace) {
+      // setChatSettings({
+      //   model: (selectedWorkspace.default_model ||
+      //     "gpt-4-1106-preview") as LLMID,
+      //   prompt:
+      //     selectedWorkspace.default_prompt ||
+      //     "You are a friendly, helpful AI assistant.",
+      //   temperature: selectedWorkspace.default_temperature || 0.5,
+      //   contextLength: selectedWorkspace.default_context_length || 4096,
+      //   includeProfileContext:
+      //     selectedWorkspace.include_profile_context || true,
+      //   includeWorkspaceInstructions:
+      //     selectedWorkspace.include_workspace_instructions || true,
+      //   embeddingsProvider:
+      //     (selectedWorkspace.embeddings_provider as "openai" | "local") ||
+      //     "openai"
+      // })
+    }
+
+    return router.push(`/chat`)
   }
 
   const handleFocusChatInput = () => {
@@ -91,8 +192,8 @@ export const useChatHandler = () => {
     messageContent: string,
     chatMessages: ChatMessage[],
     isRegeneration: boolean
-    // در مرحله بعد پارامتر isNewProblem به اینجا اضافه خواهد شد
   ) => {
+    console.log("✅ handleSendMessage triggered!", messageContent)
     const startingInput = messageContent
 
     try {
@@ -105,17 +206,23 @@ export const useChatHandler = () => {
       const newAbortController = new AbortController()
       setAbortController(newAbortController)
 
-      // ساخت modelData بسیار ساده‌تر می‌شود چون فقط مدل‌های شما وجود دارند
-      const modelData = models
-        .map(model => ({
+      const modelData = [
+        ...models.map(model => ({
           modelId: model.model_id as LLMID,
           modelName: model.name,
           provider: "custom" as ModelProvider,
           hostedId: model.id,
           platformLink: "",
           imageInput: false
-        }))
-        .find(llm => llm.modelId === chatSettings?.model)
+        })),
+        ...LLM_LIST,
+        ...availableLocalModels,
+        ...availableOpenRouterModels
+      ].find(llm => llm.modelId === chatSettings?.model)
+
+      console.log("📦 modelData:", modelData)
+      console.log("⚙️ chatSettings:", chatSettings)
+      console.log("🟢 Sending to API with model:", chatSettings?.model)
 
       validateChatSettings(
         chatSettings,
@@ -126,7 +233,9 @@ export const useChatHandler = () => {
       )
 
       let currentChat = selectedChat ? { ...selectedChat } : null
+
       const b64Images = newMessageImages.map(image => image.base64)
+
       let retrievedFileItems: Tables<"file_items">[] = []
 
       if (
@@ -134,6 +243,7 @@ export const useChatHandler = () => {
         useRetrieval
       ) {
         setToolInUse("retrieval")
+
         retrievedFileItems = await handleRetrieval(
           userInput,
           newMessageFiles,
@@ -167,23 +277,71 @@ export const useChatHandler = () => {
 
       let generatedText = ""
 
-      // بخش اصلی ساده‌سازی: دیگر نیازی به if/else برای ollama نیست
-      // ما همیشه از handleHostedChat برای ارتباط با porsino.org استفاده می‌کنیم
-      generatedText = await handleHostedChat(
-        payload,
-        profile!,
-        modelData!,
-        tempAssistantChatMessage,
-        isRegeneration,
-        newAbortController,
-        newMessageImages,
-        chatImages,
-        setIsGenerating,
-        setFirstTokenReceived,
-        setChatMessages,
-        setToolInUse
-        // isNewProblem در مرحله بعد به اینجا اضافه می‌شود
-      )
+      if (selectedTools.length > 0) {
+        setToolInUse("Tools")
+
+        const formattedMessages = await buildFinalMessages(
+          payload,
+          profile!,
+          chatImages
+        )
+
+        const response = await fetch("/api/chat/tools", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            chatSettings: payload.chatSettings,
+            messages: formattedMessages,
+            selectedTools
+          })
+        })
+
+        setToolInUse("none")
+
+        generatedText = await processResponse(
+          response,
+          isRegeneration
+            ? payload.chatMessages[payload.chatMessages.length - 1]
+            : tempAssistantChatMessage,
+          true,
+          newAbortController,
+          setFirstTokenReceived,
+          setChatMessages,
+          setToolInUse
+        )
+      } else {
+        if (modelData!.provider === "ollama") {
+          generatedText = await handleLocalChat(
+            payload,
+            profile!,
+            chatSettings!,
+            tempAssistantChatMessage,
+            isRegeneration,
+            newAbortController,
+            setIsGenerating,
+            setFirstTokenReceived,
+            setChatMessages,
+            setToolInUse
+          )
+        } else {
+          generatedText = await handleHostedChat(
+            payload,
+            profile!,
+            modelData!,
+            tempAssistantChatMessage,
+            isRegeneration,
+            newAbortController,
+            newMessageImages,
+            chatImages,
+            setIsGenerating,
+            setFirstTokenReceived,
+            setChatMessages,
+            setToolInUse
+          )
+        }
+      }
 
       if (!currentChat) {
         currentChat = await handleCreateChat(
@@ -201,11 +359,14 @@ export const useChatHandler = () => {
         const updatedChat = await updateChat(currentChat.id, {
           updated_at: new Date().toISOString()
         })
-        setChats(prevChats =>
-          prevChats.map(prevChat =>
+
+        setChats(prevChats => {
+          const updatedChats = prevChats.map(prevChat =>
             prevChat.id === updatedChat.id ? updatedChat : prevChat
           )
-        )
+
+          return updatedChats
+        })
       }
 
       await handleCreateMessages(
@@ -256,7 +417,7 @@ export const useChatHandler = () => {
 
   return {
     chatInputRef,
-    // prompt, <-- این متغیر تعریف نشده بود، حذف شد
+    prompt,
     handleNewChat,
     handleSendMessage,
     handleFocusChatInput,
