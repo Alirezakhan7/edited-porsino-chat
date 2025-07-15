@@ -23,6 +23,14 @@ export const LLM_LIST: LLM[] = [
     platformLink: "",
     imageInput: false
   },
+  {
+    modelId: "math-simple",
+    modelName: "Math simple",
+    provider: "custom",
+    hostedId: "math-simple",
+    platformLink: "",
+    imageInput: false
+  },
   ...OPENAI_LLM_LIST,
   ...GOOGLE_LLM_LIST,
   ...MISTRAL_LLM_LIST,

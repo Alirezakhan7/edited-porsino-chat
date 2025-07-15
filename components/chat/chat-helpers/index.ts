@@ -203,7 +203,6 @@ export const handleHostedChat = async (
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
   setToolInUse: React.Dispatch<React.SetStateAction<string>>
 ) => {
-  console.log("🛫 handleHostedChat started...")
   const provider =
     modelData.provider === "openai" && profile.use_azure_openai
       ? "azure"
@@ -272,9 +271,6 @@ export const fetchChatResponse = async (
   const supabase = createClient()
   const session = await supabase.auth.getSession()
   const token = session.data.session?.access_token
-  console.log("📡 Sending fetch to:", url)
-  console.log("🟢 Request body:", body)
-  console.log("🔑 Authorization token:", token)
 
   const response = await fetch(url, {
     method: "POST",
