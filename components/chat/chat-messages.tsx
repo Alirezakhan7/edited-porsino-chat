@@ -46,18 +46,18 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
 
   const containerClasses = isClassroomMode
     ? `
-      mx-auto max-w-5xl relative
+      mx-auto max-w-5xl relative mb-40
       bg-white dark:bg-gray-900
       border border-gray-200 dark:border-gray-700
       rounded-2xl shadow-xl overflow-hidden
       transition-all duration-300 ease-in-out
       backdrop-blur-sm
       before:absolute before:inset-0 before:bg-gradient-to-br 
-      before:from-blue-50/50 before:to-indigo-50/50 
-      dark:before:from-blue-900/10 dark:before:to-purple-900/10
+      before:from-emerald-50/30 before:to-teal-50/30 
+      dark:before:from-emerald-900/10 dark:before:to-teal-900/10
       before:pointer-events-none
     `
-    : "mx-auto max-w-4xl space-y-6"
+    : "mx-auto max-w-4xl space-y-6 mb-40"
 
   const messagesContainerClasses = isClassroomMode
     ? `
@@ -69,20 +69,21 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
     : "space-y-6"
 
   return (
-    <div className="flex-1 overflow-y-auto pb-36 pt-4 md:pt-6">
+    <div className="flex-1 overflow-y-auto py-4 md:pt-6">
       <div className={containerClasses}>
         {/* Modern Classroom Header */}
         {isClassroomMode && (
           <div
             className="
-            relative z-10 border-b border-blue-500/20 bg-gradient-to-r from-blue-600 to-indigo-600
+            relative z-10 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-600 to-teal-600
             p-4 text-white md:p-6
-            lg:px-8 dark:from-blue-800
-            dark:to-indigo-800
+            lg:px-8 dark:from-emerald-800
+            dark:to-teal-800
           "
+            dir="rtl"
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 space-x-reverse">
                 <div
                   className="
                   rounded-full border 
@@ -92,29 +93,30 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
                 >
                   {getSubjectIcon()}
                 </div>
-                <div>
+                <div className="text-right">
                   <h2 className="text-lg font-bold md:text-xl">
-                    {getSubjectName()} Classroom
+                    کلاس {getSubjectName() === "Mathematics"}
                   </h2>
                   {topicSummary && (
-                    <p className="mt-1 text-sm text-blue-100 opacity-90">
+                    <p className="mt-1 text-sm text-emerald-100 opacity-90">
                       {topicSummary}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="hidden items-center space-x-2 text-sm text-blue-100 md:flex">
-                <span>Advanced Learning</span>
-                <ChevronRight className="size-4" />
+              <div className="hidden items-center space-x-2 space-x-reverse text-sm text-emerald-100 md:flex">
+                <span>یادگیری پیشرفته</span>
+                <ChevronRight className="size-4 rotate-180" />
                 <span
                   className="
                   rounded-full border border-white/20 
-                  bg-white/10 px-2
-                  py-1 backdrop-blur-sm
+                  bg-white/10 px-3
+                  py-1 font-medium
+                  backdrop-blur-sm
                 "
                 >
-                  Interactive
+                  تعاملی
                 </span>
               </div>
             </div>
@@ -128,27 +130,32 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
             <div
               className="
               mx-2 rounded-xl border
-              border-gray-200 bg-gradient-to-br from-gray-50
-              to-gray-100 py-8
-              text-center md:mx-4 md:py-12 dark:border-gray-700
-              dark:from-gray-800 dark:to-gray-900
+              border-emerald-200/50 bg-gradient-to-br from-emerald-50/50
+              to-teal-50/50 py-8
+              text-center backdrop-blur-sm md:mx-4 md:py-12
+              dark:border-emerald-700/50 dark:from-emerald-900/20
+              dark:to-teal-900/20
             "
+              dir="rtl"
             >
               <div
                 className="
                 mb-4 inline-flex rounded-full 
-                bg-blue-100 p-3
-                text-blue-600 dark:bg-blue-900/30
-                dark:text-blue-400
+                border border-emerald-200/50
+                bg-emerald-100/70 p-3
+                text-emerald-600
+                backdrop-blur-sm
+                dark:border-emerald-700/50 dark:bg-emerald-900/40 dark:text-emerald-400
               "
               >
                 {getSubjectIcon()}
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
-                Welcome to {getSubjectName()} Classroom
+              <h3 className="mb-2 text-lg font-semibold text-emerald-800 dark:text-emerald-200">
+                به کلاس {getSubjectName() === "Mathematics"} خوش آمدید
               </h3>
-              <p className="mx-auto max-w-md text-sm text-gray-600 dark:text-gray-400">
-                {`Ask me anything about ${getSubjectName().toLowerCase()} and I'll help you learn with detailed explanations and examples.`}
+              <p className="mx-auto max-w-md text-sm text-emerald-600 dark:text-emerald-400">
+                هر سوالی درباره {getSubjectName() === "Mathematics"} داشته
+                باشید، با توضیحات کامل و مثال‌های عملی پاسخ خواهم داد.
               </p>
             </div>
           )}
@@ -203,18 +210,20 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
       {isClassroomMode && (
         <div
           className="
-          fixed bottom-24 right-4 z-50
+          fixed bottom-32 left-4 z-50
           md:hidden
         "
         >
           <button
             className="
-            rounded-full bg-blue-600
+            rounded-full border
+            border-emerald-500/30 bg-emerald-600/80
             p-3 text-white
-            shadow-lg transition-all
-            duration-200 hover:scale-110
-            hover:bg-blue-700 active:scale-95 dark:bg-blue-700
-            dark:hover:bg-blue-600
+            shadow-lg backdrop-blur-sm
+            transition-all duration-200 hover:scale-110
+            hover:bg-emerald-700/80 active:scale-95
+            dark:bg-emerald-700/80
+            dark:hover:bg-emerald-600/80
           "
           >
             {getSubjectIcon()}
