@@ -1,13 +1,12 @@
+import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
 import { ChatbotUIContext } from "@/context/context"
 import { Tables } from "@/supabase/types"
 import { FC, useContext, useEffect, useRef, useState } from "react"
-import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
 import { Message } from "../messages/message"
 
 interface ChatMessagesProps {}
 
 export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
-  // 👇 مرحله ۱: chatSettings را از کانتکست دریافت می‌کنیم
   const { chatMessages, chatFileItems, chatSettings } =
     useContext(ChatbotUIContext)
   const { handleSendEdit } = useChatHandler()
@@ -21,20 +20,20 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
     }
   }, [chatMessages])
 
-  // 👇 مرحله ۲: منطق شرطی را بر اساس مدل انتخاب‌شده ایجاد می‌کنیم
   const isClassroomMode = ["math-advanced", "physics-advanced"].includes(
     chatSettings?.model || ""
   )
 
-  // کلاس‌های CSS بر اساس حالت کلاس درس یا حالت عادی
-  const containerClasses = isClassroomMode
+  // 👇 استایل شرطی فقط برای کانتینر داخلی پیام‌ها
+  const messageContainerClasses = isClassroomMode
     ? "mx-auto max-w-4xl space-y-6 bg-black bg-opacity-20 rounded-xl border border-gray-600 p-4 md:p-6" // استایل تخته سیاه
     : "mx-auto max-w-4xl space-y-6" // استایل عادی
 
   return (
+    // 👇 مرحله ۱: این div اصلی دست‌نخورده باقی می‌ماند تا چیدمان صفحه حفظ شود
     <div className="flex-1 overflow-y-auto pb-36 pt-4 md:pt-6">
-      {/* 👇 مرحله ۳: کلاس‌های شرطی را اینجا اعمال می‌کنیم */}
-      <div className={containerClasses}>
+      {/* 👇 مرحله ۲: استایل شرطی به این div داخلی اعمال می‌شود */}
+      <div className={messageContainerClasses}>
         {chatMessages
           .sort((a, b) => a.message.sequence_number - b.message.sequence_number)
           .map((chatMessage, index, array) => {
@@ -57,7 +56,6 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
               />
             )
           })}
-        {/* نقطهٔ اسکرول خودکار */}
         <div ref={scrollRef} />
       </div>
     </div>
