@@ -18,6 +18,41 @@ import { ChatMessages } from "./chat-messages"
 import { ChatScrollButtons } from "./chat-scroll-buttons"
 import { ChatSecondaryButtons } from "./chat-secondary-buttons"
 
+// =================================================================
+// 👇 کامپوننت جدید برای دکمه‌های پیشنهادی
+// =================================================================
+interface ChatSuggestionsProps {
+  onSuggestionClick: (suggestion: string) => void
+}
+
+const ChatSuggestions: FC<ChatSuggestionsProps> = ({ onSuggestionClick }) => {
+  const { suggestions, chatSettings } = useContext(ChatbotUIContext)
+
+  // فقط اگر مدل ریاضی انتخاب شده بود و پیشنهادی وجود داشت، دکمه‌ها را نمایش بده
+  if (
+    chatSettings?.model !== "math-advanced" ||
+    !suggestions ||
+    suggestions.length === 0
+  ) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-wrap justify-center gap-2 p-2">
+      {suggestions.map((text, index) => (
+        <button
+          key={index}
+          className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-800 shadow-md transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          onClick={() => onSuggestionClick(text)}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  )
+}
+// =================================================================
+
 interface ChatUIProps {}
 
 export const ChatUI: FC<ChatUIProps> = ({}) => {
@@ -37,7 +72,11 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     setChatFiles,
     setShowFilesDisplay,
     setUseRetrieval,
-    setSelectedTools
+    setSelectedTools,
+    // 👇 state های جدید را از کانتکست می‌گیریم
+    topicSummary,
+    chatSettings,
+    setUserInput
   } = useContext(ChatbotUIContext)
 
   const { handleNewChat, handleFocusChatInput } = useChatHandler()
@@ -56,6 +95,13 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
   const [loading, setLoading] = useState(true)
 
+  // 👇 تابع جدید برای مدیریت کلیک روی دکمه‌های پیشنهادی
+  const handleSuggestionClick = (suggestionText: string) => {
+    setUserInput(suggestionText)
+    // با فوکوس کردن روی اینپوت، کاربر می‌تواند بلافاصله اینتر بزند
+    handleFocusChatInput()
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       await fetchMessages()
@@ -73,9 +119,10 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     } else {
       setLoading(false)
     }
-  }, [])
+  }, [params.chatid]) // وابستگی params.chatid اضافه شد
 
   const fetchMessages = async () => {
+    if (!params.chatid) return // اضافه کردن گارد برای جلوگیری از خطا
     const fetchedMessages = await getMessagesByChatId(params.chatid as string)
 
     const imagePromises: Promise<MessageImage>[] = fetchedMessages.flatMap(
@@ -150,6 +197,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   }
 
   const fetchChat = async () => {
+    if (!params.chatid) return // اضافه کردن گارد برای جلوگیری از خطا
     const chat = await getChatById(params.chatid as string)
     if (!chat) return
 
@@ -186,6 +234,15 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
   return (
     <div className="relative flex h-screen flex-col items-center overflow-hidden">
+      {/* 👇 بخش جدید: نمایش عنوان کلاس درس */}
+      {chatSettings?.model === "math-advanced" && topicSummary && (
+        <div className="sticky top-0 z-10 w-full bg-blue-600 p-2 text-center text-white shadow-md">
+          <h2 className="text-lg font-semibold">
+            کلاس یادگیری: {topicSummary}
+          </h2>
+        </div>
+      )}
+
       <div
         className="fade-mask flex size-full flex-col overflow-auto"
         onScroll={handleScroll}
@@ -205,22 +262,21 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
         <ChatSecondaryButtons />
       </div>
 
-      {/* این div اصلی‌ترین کانتینر بخش پایین صفحه است. */}
-      <div className="absolute inset-x-0 bottom-0 w-full">
-        {/* کانتینر وسط‌چین برای ChatInput */}
+      <div className="absolute inset-x-0 bottom-0 w-full bg-transparent">
         <div
           className="
-      mx-auto min-w-[300px] bg-transparent 
-      px-2 pt-0 sm:w-[90%] md:w-[80%] 
-      lg:w-[70%] xl:w-[65%]
-    "
+          mx-auto min-w-[300px] 
+          px-2 pt-0 sm:w-[90%] md:w-[80%] 
+          lg:w-[70%] xl:w-[65%]
+        "
         >
+          {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
+          <ChatSuggestions onSuggestionClick={handleSuggestionClick} />
           <ChatInput />
         </div>
 
-        {/* متن اخطار زیر ChatInput */}
         <p className="mt-1 pb-1 text-center text-xs text-gray-500 dark:text-gray-400">
-          .امکان وجود خطا در پاسخ‌ها وجود دارد. لطفاً با دقت بررسی نمایید
+          امکان وجود خطا در پاسخ‌ها وجود دارد. لطفاً با دقت بررسی نمایید.
         </p>
       </div>
     </div>

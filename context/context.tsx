@@ -75,7 +75,7 @@ interface ChatbotUIContext {
   chatMessages: ChatMessage[]
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>
   chatSettings: ChatSettings | null
-  setChatSettings: Dispatch<SetStateAction<ChatSettings>>
+  setChatSettings: Dispatch<SetStateAction<ChatSettings | null>>
   selectedChat: Tables<"chats"> | null
   setSelectedChat: Dispatch<SetStateAction<Tables<"chats"> | null>>
   chatFileItems: Tables<"file_items">[]
@@ -138,6 +138,12 @@ interface ChatbotUIContext {
   setSelectedTools: Dispatch<SetStateAction<Tables<"tools">[]>>
   toolInUse: string
   setToolInUse: Dispatch<SetStateAction<string>>
+
+  // 👇 STATE های جدید برای کلاس درس
+  topicSummary: string
+  setTopicSummary: Dispatch<SetStateAction<string>>
+  suggestions: string[]
+  setSuggestions: Dispatch<SetStateAction<string[]>>
 }
 
 export const ChatbotUIContext = createContext<ChatbotUIContext>({
@@ -263,5 +269,11 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   selectedTools: [],
   setSelectedTools: () => {},
   toolInUse: "none",
-  setToolInUse: () => {}
+  setToolInUse: () => {},
+
+  // 👇 مقادیر پیش‌فرض برای STATE های جدید
+  topicSummary: "",
+  setTopicSummary: () => {},
+  suggestions: [],
+  setSuggestions: () => {}
 })

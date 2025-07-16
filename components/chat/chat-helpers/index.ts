@@ -175,20 +175,23 @@ export const handleLocalChat = async (
     setChatMessages
   )
 
+  // NOTE: Assuming local models don't have the special math logic for now
   return await processResponse(
     response,
     isRegeneration
       ? payload.chatMessages[payload.chatMessages.length - 1]
       : tempAssistantMessage,
     false, // isHosted
-    false, // isMathModel (مدل لوکال ریاضی نیست)
     newAbortController,
     setFirstTokenReceived,
     setChatMessages,
-    setToolInUse
+    setToolInUse,
+    () => {}, // setTopicSummary
+    () => {} // setSuggestions
   )
 }
 
+// 👇 ENTIRE `handleHostedChat` FUNCTION IS UPDATED
 export const handleHostedChat = async (
   payload: ChatPayload,
   profile: Tables<"profiles">,
@@ -201,7 +204,10 @@ export const handleHostedChat = async (
   setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>,
   setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  setToolInUse: React.Dispatch<React.SetStateAction<string>>
+  setToolInUse: React.Dispatch<React.SetStateAction<string>>,
+  // Add the new setters from context
+  setTopicSummary: (summary: string) => void,
+  setSuggestions: (suggestions: string[]) => void
 ) => {
   const provider =
     modelData.provider === "openai" && profile.use_azure_openai
@@ -225,17 +231,23 @@ export const handleHostedChat = async (
       ? "https://api.porsino.org/chat"
       : `/api/chat/${provider}`
 
-  // START: ✨ اصلاح شده
-  // این خط جا افتاده بود و باعث خطا می‌شد
-  const isMathModel = payload.chatSettings.model === "math-advanced"
-
-  const requestBody = {
-    message:
-      payload.chatMessages[payload.chatMessages.length - 1].message.content,
-    customModelId: payload.chatSettings.model,
-    isNewProblem: !isRegeneration
-  }
-  // END: ✨ اصلاح شده
+  // For our custom API, the body is different
+  const requestBody =
+    provider === "custom"
+      ? {
+          message:
+            payload.chatMessages[payload.chatMessages.length - 1].message
+              .content,
+          customModelId: payload.chatSettings.model,
+          isNewProblem: !isRegeneration // A regeneration is not a new problem
+        }
+      : {
+          // Default body for other providers
+          model: payload.chatSettings.model,
+          messages: formattedMessages,
+          temperature: payload.chatSettings.temperature
+          // ...other settings
+        }
 
   const response = await fetchChatResponse(
     apiEndpoint,
@@ -251,12 +263,14 @@ export const handleHostedChat = async (
     isRegeneration
       ? payload.chatMessages[payload.chatMessages.length - 1]
       : tempAssistantChatMessage,
-    true,
-    isMathModel, // حالا این متغیر تعریف شده و خطا نمی‌دهد
+    true, // isHosted
     newAbortController,
     setFirstTokenReceived,
     setChatMessages,
-    setToolInUse
+    setToolInUse,
+    // Pass the setters down
+    setTopicSummary,
+    setSuggestions
   )
 }
 
@@ -294,7 +308,7 @@ export const fetchChatResponse = async (
     const errorText =
       errorData?.detail && typeof errorData.detail === "string"
         ? errorData.detail
-        : "خطایی رخ داده است. لطفاً دوباره تلاش کنید."
+        : "An error has occurred. Please try again."
 
     toast.error(errorText)
 
@@ -305,95 +319,109 @@ export const fetchChatResponse = async (
   return response
 }
 
+// 👇 ENTIRE `processResponse` FUNCTION IS UPDATED
 export const processResponse = async (
   response: Response,
   lastChatMessage: ChatMessage,
   isHosted: boolean,
-  isMathModel: boolean, // 💎 این پارامتر باید در تعریف تابع وجود داشته باشد
   controller: AbortController,
   setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  setToolInUse: React.Dispatch<React.SetStateAction<string>>
+  setToolInUse: React.Dispatch<React.SetStateAction<string>>,
+  setTopicSummary: (summary: string) => void,
+  setSuggestions: (suggestions: string[]) => void
 ) => {
-  if (isMathModel) {
-    // منطق جدید برای پردازش پاسخ JSON مدل ریاضی
-    setFirstTokenReceived(true)
-    setToolInUse("none")
+  let fullText = ""
 
-    try {
-      const jsonResponse = await response.json()
-      // فرض می‌کنیم پاسخ دریافتی یک کلید به نام 'answer' دارد
-      const fullText = jsonResponse.answer || JSON.stringify(jsonResponse)
+  // The modelId is on the message object
+  const modelId = lastChatMessage.message.model
+  const isMathModel = modelId === "math-advanced"
 
-      setChatMessages(prev =>
-        prev.map(chatMessage => {
-          if (chatMessage.message.id === lastChatMessage.message.id) {
-            const updatedChatMessage: ChatMessage = {
-              message: {
-                ...chatMessage.message,
-                content: fullText
-              },
-              fileItems: chatMessage.fileItems
-            }
-            return updatedChatMessage
-          }
-          return chatMessage
-        })
-      )
-      return fullText
-    } catch (error) {
-      console.error("Error parsing math JSON response:", error)
-      throw new Error("Failed to parse math response.")
-    }
-  } else {
-    // همان منطق قبلی برای مدل‌های جریانی
-    let fullText = ""
-    let contentToAdd = ""
+  if (response.body) {
+    await consumeReadableStream(
+      response.body,
+      chunk => {
+        setFirstTokenReceived(true)
+        setToolInUse("none")
+        try {
+          fullText += chunk
+        } catch (error) {
+          console.error("Error processing stream chunk:", error)
+        }
 
-    if (response.body) {
-      await consumeReadableStream(
-        response.body,
-        chunk => {
-          setFirstTokenReceived(true)
-          setToolInUse("none")
-
-          try {
-            contentToAdd = isHosted
-              ? chunk
-              : chunk
-                  .trimEnd()
-                  .split("\n")
-                  .reduce(
-                    (acc, line) => acc + JSON.parse(line).message.content,
-                    ""
-                  )
-            fullText += contentToAdd
-          } catch (error) {
-            console.error("Error parsing JSON:", error)
-          }
-
+        // For non-math models, stream the text to the UI
+        if (!isMathModel) {
           setChatMessages(prev =>
             prev.map(chatMessage => {
               if (chatMessage.message.id === lastChatMessage.message.id) {
-                const updatedChatMessage: ChatMessage = {
+                return {
+                  ...chatMessage,
                   message: {
                     ...chatMessage.message,
                     content: fullText
-                  },
-                  fileItems: chatMessage.fileItems
+                  }
                 }
-                return updatedChatMessage
               }
               return chatMessage
             })
           )
-        },
-        controller.signal
-      )
-      return fullText
+        }
+      },
+      controller.signal
+    )
+
+    // After the stream is complete, process the full response
+    if (isMathModel) {
+      try {
+        const parsedData = JSON.parse(fullText)
+        const answer = parsedData.answer || ""
+        const topic = parsedData.topic_summary || ""
+        const suggs = parsedData.suggestions || []
+
+        // Update the UI with the final parsed data
+        setChatMessages(prev =>
+          prev.map(chatMessage => {
+            if (chatMessage.message.id === lastChatMessage.message.id) {
+              return {
+                ...chatMessage,
+                message: { ...chatMessage.message, content: answer }
+              }
+            }
+            return chatMessage
+          })
+        )
+        setTopicSummary(topic)
+        setSuggestions(suggs)
+
+        return answer // Return the final answer for db storage
+      } catch (error) {
+        console.error("Error parsing math JSON response:", error, {
+          receivedText: fullText
+        })
+        // If parsing fails, show the raw text for debugging
+        setChatMessages(prev =>
+          prev.map(chatMessage => {
+            if (chatMessage.message.id === lastChatMessage.message.id) {
+              return {
+                ...chatMessage,
+                message: { ...chatMessage.message, content: fullText }
+              }
+            }
+            return chatMessage
+          })
+        )
+        setTopicSummary("Error Parsing Response")
+        setSuggestions([])
+        return fullText
+      }
     } else {
-      throw new Error("Response body is null")
+      // For regular models, reset the topic and suggestions
+      setTopicSummary("")
+      setSuggestions([])
+      return fullText
     }
+  } else {
+    throw new Error("Response body is null")
   }
 }
 
