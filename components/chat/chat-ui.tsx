@@ -235,15 +235,6 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
   return (
     <div className="relative flex h-screen flex-col items-center overflow-hidden">
-      {/* 👇 بخش جدید: نمایش عنوان کلاس درس */}
-      {chatSettings?.model === "math-advanced" && topicSummary && (
-        <div className="sticky top-0 z-10 w-full bg-blue-600 p-2 text-center text-white shadow-md">
-          <h2 className="text-lg font-semibold">
-            کلاس یادگیری: {topicSummary}
-          </h2>
-        </div>
-      )}
-
       <div
         className="fade-mask flex size-full flex-col overflow-auto"
         onScroll={handleScroll}
