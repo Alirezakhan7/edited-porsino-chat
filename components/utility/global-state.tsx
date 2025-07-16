@@ -76,15 +76,9 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   // PASSIVE CHAT STORE
   const [userInput, setUserInput] = useState<string>("")
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [chatSettings, setChatSettings] = useState<ChatSettings>({
-    model: "gpt-4-turbo-preview",
-    prompt: "You are a helpful AI assistant.",
-    temperature: 0.5,
-    contextLength: 4000,
-    includeProfileContext: true,
-    includeWorkspaceInstructions: true,
-    embeddingsProvider: "openai"
-  })
+  const [chatSettings, setChatSettings] = useState<ChatSettings | null>(null)
+  const [topicSummary, setTopicSummary] = useState("")
+  const [suggestions, setSuggestions] = useState<string[]>([])
   const [selectedChat, setSelectedChat] = useState<Tables<"chats"> | null>(null)
   const [chatFileItems, setChatFileItems] = useState<Tables<"file_items">[]>([])
 
@@ -204,6 +198,12 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         supabase,
         profile,
         setProfile,
+
+        // CLASSROOM STATES
+        topicSummary,
+        setTopicSummary,
+        suggestions,
+        setSuggestions,
 
         // ITEMS STORE
         assistants,
