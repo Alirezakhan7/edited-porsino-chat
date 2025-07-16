@@ -42,7 +42,8 @@ const ChatSuggestions: FC<ChatSuggestionsProps> = ({ onSuggestionClick }) => {
       {suggestions.map((text, index) => (
         <button
           key={index}
-          className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-800 shadow-md transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          className="rounded-xl bg-gray-100 px-4 py-2 text-right text-sm font-semibold text-gray-800 shadow-md transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          dir="rtl" // این attribute جهت متن را درست می‌کند
           onClick={() => onSuggestionClick(text)}
         >
           {text}
@@ -276,7 +277,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
         </div>
 
         <p className="mt-1 pb-1 text-center text-xs text-gray-500 dark:text-gray-400">
-          امکان وجود خطا در پاسخ‌ها وجود دارد. لطفاً با دقت بررسی نمایید.
+          امکان وجود خطا در پاسخ‌ها وجود دارد. لطفاً با دقت بررسی نمایید
         </p>
       </div>
     </div>
