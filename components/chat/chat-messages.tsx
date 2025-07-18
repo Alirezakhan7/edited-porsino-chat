@@ -109,9 +109,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
   const messagesContainerClasses = isClassroomMode
     ? `
       relative z-10 p-4 md:p-6 lg:p-8 space-y-4
-      max-h-[80vh] overflow-y-auto
-      scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600
-      scrollbar-track-transparent
+      // خصوصیات مربوط به اسکرول حذف شدند
     `
     : "space-y-6"
 
@@ -123,7 +121,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto py-4 md:pt-6">
+    <div className="py-4 md:pt-6">
       <div className={containerClasses}>
         {/* Modern Classroom Header */}
         {isClassroomMode && (
@@ -257,10 +255,9 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
           </div>
 
           {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
-          {chatSettings?.model === "math-advanced" &&
-            chatMessages.length > 0 && (
-              <ChatSuggestions onSuggestionClick={handleSuggestionClick} />
-            )}
+          {chatSettings?.model === "math-advanced" && (
+            <ChatSuggestions onSuggestionClick={handleSuggestionClick} />
+          )}
         </div>
 
         <div ref={scrollRef} />

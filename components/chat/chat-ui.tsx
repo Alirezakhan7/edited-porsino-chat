@@ -203,11 +203,10 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   return (
     <div className="relative flex h-screen flex-col items-center overflow-hidden">
       <div
-        className="fade-mask flex size-full flex-col overflow-auto"
+        className="fade-mask flex size-full flex-col overflow-auto pb-48"
         onScroll={handleScroll}
       >
         <div ref={messagesStartRef} />
-        {/* Pass setUserInput and handleFocusChatInput to ChatMessages */}
         <ChatMessages
           setUserInput={setUserInput}
           handleFocusChatInput={handleFocusChatInput}
