@@ -268,31 +268,6 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
 
         <div ref={scrollRef} />
       </div>
-
-      {/* Floating Action Button for Mobile (Classroom Mode) */}
-      {isClassroomMode && (
-        <div
-          className="
-          fixed bottom-32 left-4 z-50
-          md:hidden
-        "
-        >
-          <button
-            className="
-            rounded-full border
-            border-emerald-500/30 bg-emerald-600/80
-            p-3 text-white
-            shadow-lg backdrop-blur-sm
-            transition-all duration-200 hover:scale-110
-            hover:bg-emerald-700/80 active:scale-95
-            dark:bg-emerald-700/80
-            dark:hover:bg-emerald-600/80
-          "
-          >
-            {getSubjectIcon()}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
