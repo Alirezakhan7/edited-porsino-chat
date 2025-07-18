@@ -91,20 +91,21 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
     }
   }
 
+  // در فایل chat-messages.tsx
   const containerClasses = isClassroomMode
     ? `
-      mx-auto max-w-5xl relative mb-40
-      bg-white dark:bg-gray-900
-      border border-gray-200 dark:border-gray-700
-      rounded-2xl shadow-xl overflow-hidden
-      transition-all duration-300 ease-in-out
-      backdrop-blur-sm
-      before:absolute before:inset-0 before:bg-gradient-to-br
-      before:from-emerald-50/30 before:to-teal-50/30
-      dark:before:from-emerald-900/10 dark:before:to-teal-900/10
-      before:pointer-events-none
-    `
-    : "mx-auto max-w-4xl space-y-6 mb-40"
+        mx-auto max-w-5xl relative /* mb-40 */
+        bg-white dark:bg-gray-900
+        border border-gray-200 dark:border-gray-700
+        rounded-2xl shadow-xl /* overflow-hidden */
+        transition-all duration-300 ease-in-out
+        backdrop-blur-sm
+        before:absolute before:inset-0 before:bg-gradient-to-br
+        before:from-emerald-50/30 before:to-teal-50/30
+        dark:before:from-emerald-900/10 dark:before:to-teal-900/10
+        before:pointer-events-none
+      `
+    : "mx-auto max-w-4xl space-y-6" // mb-40 از اینجا هم حذف شد
 
   const messagesContainerClasses = isClassroomMode
     ? `
@@ -254,7 +255,6 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
               })}
           </div>
 
-          {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
           {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
           {chatSettings?.model === "math-advanced" &&
             chatMessages.length > 0 && (
