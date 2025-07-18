@@ -224,7 +224,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
         <ChatSecondaryButtons />
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 w-full bg-transparent">
+      <div className="absolute inset-x-0 bottom-0 w-full bg-gradient-to-t from-white via-white/80 to-transparent pt-2 backdrop-blur-md dark:from-gray-900 dark:via-gray-900/80">
         <div
           className="
           mx-auto min-w-[300px]
@@ -232,7 +232,6 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
           lg:w-[70%] xl:w-[65%]
         "
         >
-          {/* 👇 ChatSuggestions component removed from here */}
           <ChatInput />
         </div>
 

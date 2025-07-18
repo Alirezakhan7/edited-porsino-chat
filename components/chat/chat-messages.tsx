@@ -134,7 +134,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
           "
             dir="rtl"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pr-16 md:pr-0">
               <div className="flex items-center space-x-3 space-x-reverse">
                 <div
                   className="
@@ -255,9 +255,15 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
           </div>
 
           {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
-          {chatSettings?.model === "math-advanced" && (
-            <ChatSuggestions onSuggestionClick={handleSuggestionClick} />
-          )}
+          {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
+          {chatSettings?.model === "math-advanced" &&
+            chatMessages.length > 0 && (
+              <div className="mt-6">
+                {" "}
+                {/* کنترل دقیق فاصله از بالا */}
+                <ChatSuggestions onSuggestionClick={handleSuggestionClick} />
+              </div>
+            )}
         </div>
 
         <div ref={scrollRef} />
