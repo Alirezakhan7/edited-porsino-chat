@@ -202,17 +202,8 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
   return (
     <div className="relative flex h-screen flex-col items-center overflow-hidden">
-      <div
-        className="fade-mask flex size-full flex-col overflow-auto pb-48"
-        onScroll={handleScroll}
-      >
-        <div ref={messagesStartRef} />
-        <ChatMessages
-          setUserInput={setUserInput}
-          handleFocusChatInput={handleFocusChatInput}
-        />
-        <div ref={messagesEndRef} />
-      </div>
+      {/* 👇 بخش ۱: افزودن هدر فقط برای موبایل */}
+      <div className="bg-background/90 absolute inset-x-0 top-0 z-20 h-16 backdrop-blur-md md:hidden"></div>
 
       <div
         className="
@@ -224,20 +215,49 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
         <ChatSecondaryButtons />
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 w-full bg-gradient-to-t from-white via-white/80 to-transparent pt-2 backdrop-blur-md dark:from-gray-900 dark:via-gray-900/80">
+      {/* 👇 بخش ۲: افزودن فاصله از بالا (padding-top) فقط برای موبایل */}
+      <div
+        className="fade-mask flex size-full flex-col overflow-auto pb-48 pt-16 md:pt-0"
+        onScroll={handleScroll}
+      >
+        <div ref={messagesStartRef} />
+        <ChatMessages
+          setUserInput={setUserInput}
+          handleFocusChatInput={handleFocusChatInput}
+        />
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* این بخش بدون تغییر باقی می‌ماند */}
+      <div className="absolute inset-x-0 bottom-0 w-full">
+        {/* 👇 این div جدید فقط برای نمایش پس‌زمینه blur است */}
         <div
           className="
-          mx-auto min-w-[300px]
-          px-2 pt-0 sm:w-[90%] md:w-[80%]
+          absolute inset-x-0 bottom-0 mx-auto h-28
+          min-w-[300px] 
+          rounded-t-2xl bg-white/10 backdrop-blur-xl sm:w-[90%] md:w-[80%]
+          
           lg:w-[70%] xl:w-[65%]
+          dark:bg-[hsl(210_3%_13%)] 
         "
-        >
-          <ChatInput />
-        </div>
+        ></div>
 
-        <p className="mt-1 pb-1 text-center text-xs text-gray-500 dark:text-gray-400">
-          امکان وجود خطا در پاسخ‌ها وجود دارد. لطفاً با دقت بررسی نمایید
-        </p>
+        {/* 👇 محتوای اصلی (ورودی متن و...) که روی پس‌زمینه blur قرار می‌گیرد */}
+        <div className="relative z-10">
+          <div
+            className="
+            mx-auto min-w-[300px]
+            
+            sm:w-[90%] md:w-[80%] lg:w-[70%] xl:w-[65%]
+          "
+          >
+            <ChatInput />
+          </div>
+
+          <p className="mt-2 pb-2 text-center text-xs text-gray-500 dark:text-gray-400">
+            امکان وجود خطا در پاسخ‌ها وجود دارد. لطفاً با دقت بررسی نمایید
+          </p>
+        </div>
       </div>
     </div>
   )
