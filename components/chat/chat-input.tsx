@@ -170,6 +170,9 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
   useHotkey("l", () => handleFocusChatInput())
   const [isTyping, setIsTyping] = useState<boolean>(false)
 
+  // 👇 ۱. افزودن استیت محلی
+  const [localUserInput, setLocalUserInput] = useState("")
+
   const {
     userInput,
     chatMessages,
@@ -201,9 +204,27 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
   const [showMathKeyboard, setShowMathKeyboard] = useState(false)
   const [activeMathTab, setActiveMathTab] = useState("basic")
 
+  // 👇 ۲. افزودن افکت هوشمند برای همگام‌سازی
+  useEffect(() => {
+    // این شرط کلیدی از رندر مجدد غیرضروری و پرش نشانگر جلوگیری می‌کند
+    if (userInput !== localUserInput) {
+      setLocalUserInput(userInput)
+    }
+  }, [userInput])
+
   useEffect(() => {
     setTimeout(() => handleFocusChatInput(), 200)
   }, [selectedPreset, selectedAssistant])
+
+  // در کامپوننت ChatInput و بعد از تعریف ref ها
+
+  useEffect(() => {
+    // بعد از اینکه کامپوننت در صفحه قرار گرفت،
+    // به صورت دستی پراپرتی dir را روی عنصر اصلی textarea تنظیم می‌کنیم.
+    if (chatInputRef.current) {
+      chatInputRef.current.dir = "rtl"
+    }
+  }, []) // [] یعنی این کد فقط یک بار بعد از اولین رندر اجرا می‌شود
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (!isTyping && event.key === "Enter" && !event.shiftKey) {
@@ -249,6 +270,12 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
         }
       }, 0)
     }
+  }
+
+  // 👇 ۳. ایجاد تابع مدیریت ورودی جدید
+  const handleLocalInputChange = (value: string) => {
+    setLocalUserInput(value)
+    setUserInput(value)
   }
 
   return (
@@ -298,12 +325,13 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
       <div className="flex w-full justify-center">
         <div className="relative  w-full max-w-6xl">
           <div className="flex flex-col rounded-2xl  bg-white/40 p-3 shadow-2xl backdrop-blur-md dark:bg-[#3c3c3c]">
+            {/* 👇 ۴. به‌روزرسانی پراپرتی‌های TextareaAutosize */}
             <TextareaAutosize
               textareaRef={chatInputRef}
               className="placeholder:text-muted-foreground rtl w-full resize-none border-none bg-transparent text-right text-base placeholder:text-gray-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:placeholder:text-[#f9f8f4]"
-              placeholder={t(`...پیام خود را بنویسید`)}
-              onValueChange={handleInputChange}
-              value={userInput}
+              placeholder={t(`پیام خود را بنویسید...`)}
+              onValueChange={handleLocalInputChange}
+              value={localUserInput}
               minRows={2}
               maxRows={8}
               onKeyDown={handleKeyDown}
@@ -337,7 +365,6 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
                 )}
               </div>
 
-              {/* ------------- تغییر جایگاه دکمه‌ها ------------- */}
               <div className="flex items-center gap-4 ">
                 <button
                   className={cn(
@@ -373,8 +400,6 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
                   <IconPaperclip size={22} />
                 </button>
               </div>
-
-              {/* ----------------------------------------------- */}
             </div>
           </div>
 
@@ -394,7 +419,6 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
               showMathKeyboard ? "mt-2 max-h-[500px]" : "max-h-0"
             )}
           >
-            {/* --- استایل ماشین‌حساب برای حالت روشن و تاریک --- */}
             <div className="rounded-xl border bg-gray-100/90 p-3 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/90">
               <div className="flex justify-around border-b border-gray-300 dark:border-gray-600">
                 {MATH_KEYBOARD_DATA.tabs.map(
