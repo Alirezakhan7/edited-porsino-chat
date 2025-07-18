@@ -14,44 +14,12 @@ import { useParams } from "next/navigation"
 import { FC, useContext, useEffect, useState } from "react"
 import { useScroll } from "./chat-hooks/use-scroll"
 import { ChatInput } from "./chat-input"
-import { ChatMessages } from "./chat-messages"
+import { ChatMessages } from "./chat-messages" // Keep this import
 import { ChatScrollButtons } from "./chat-scroll-buttons"
 import { ChatSecondaryButtons } from "./chat-secondary-buttons"
 
 // =================================================================
-// 👇 کامپوننت جدید برای دکمه‌های پیشنهادی
-// =================================================================
-interface ChatSuggestionsProps {
-  onSuggestionClick: (suggestion: string) => void
-}
-
-const ChatSuggestions: FC<ChatSuggestionsProps> = ({ onSuggestionClick }) => {
-  const { suggestions, chatSettings } = useContext(ChatbotUIContext)
-
-  // فقط اگر مدل ریاضی انتخاب شده بود و پیشنهادی وجود داشت، دکمه‌ها را نمایش بده
-  if (
-    chatSettings?.model !== "math-advanced" ||
-    !suggestions ||
-    suggestions.length === 0
-  ) {
-    return null
-  }
-
-  return (
-    <div className="flex flex-wrap justify-center gap-2 p-2">
-      {suggestions.map((text, index) => (
-        <button
-          key={index}
-          className="rounded-xl bg-gray-100 px-4 py-2 text-right text-sm font-semibold text-gray-800 shadow-md transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-          dir="rtl" // این attribute جهت متن را درست می‌کند
-          onClick={() => onSuggestionClick(text)}
-        >
-          {text}
-        </button>
-      ))}
-    </div>
-  )
-}
+// 👇 ChatSuggestions component will be moved, so it's removed from here
 // =================================================================
 
 interface ChatUIProps {}
@@ -77,7 +45,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     // 👇 state های جدید را از کانتکست می‌گیریم
     topicSummary,
     chatSettings,
-    setUserInput
+    setUserInput // Keep setUserInput from context
   } = useContext(ChatbotUIContext)
 
   const { handleNewChat, handleFocusChatInput } = useChatHandler()
@@ -96,12 +64,11 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
   const [loading, setLoading] = useState(true)
 
-  // 👇 تابع جدید برای مدیریت کلیک روی دکمه‌های پیشنهادی
-  const handleSuggestionClick = (suggestionText: string) => {
-    setUserInput(suggestionText)
-    // با فوکوس کردن روی اینپوت، کاربر می‌تواند بلافاصله اینتر بزند
-    handleFocusChatInput()
-  }
+  // 👇 handleSuggestionClick will be moved to ChatMessages
+  // const handleSuggestionClick = (suggestionText: string) => {
+  //   setUserInput(suggestionText)
+  //   handleFocusChatInput()
+  // }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -240,7 +207,11 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
         onScroll={handleScroll}
       >
         <div ref={messagesStartRef} />
-        <ChatMessages />
+        {/* Pass setUserInput and handleFocusChatInput to ChatMessages */}
+        <ChatMessages
+          setUserInput={setUserInput}
+          handleFocusChatInput={handleFocusChatInput}
+        />
         <div ref={messagesEndRef} />
       </div>
 
@@ -257,13 +228,12 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       <div className="absolute inset-x-0 bottom-0 w-full bg-transparent">
         <div
           className="
-          mx-auto min-w-[300px] 
-          px-2 pt-0 sm:w-[90%] md:w-[80%] 
+          mx-auto min-w-[300px]
+          px-2 pt-0 sm:w-[90%] md:w-[80%]
           lg:w-[70%] xl:w-[65%]
         "
         >
-          {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
-          <ChatSuggestions onSuggestionClick={handleSuggestionClick} />
+          {/* 👇 ChatSuggestions component removed from here */}
           <ChatInput />
         </div>
 

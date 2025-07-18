@@ -5,11 +5,58 @@ import { FC, useContext, useEffect, useRef, useState } from "react"
 import { Message } from "../messages/message"
 import { BookOpen, Calculator, Atom, ChevronRight } from "lucide-react"
 
-interface ChatMessagesProps {}
+// =================================================================
+// 👇 کامپوننت جدید برای دکمه‌های پیشنهادی (انتقال داده شده)
+// =================================================================
+interface ChatSuggestionsProps {
+  onSuggestionClick: (suggestion: string) => void
+}
 
-export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
-  const { chatMessages, chatFileItems, chatSettings, topicSummary } =
-    useContext(ChatbotUIContext)
+const ChatSuggestions: FC<ChatSuggestionsProps> = ({ onSuggestionClick }) => {
+  const { suggestions, chatSettings } = useContext(ChatbotUIContext)
+
+  // فقط اگر مدل ریاضی انتخاب شده بود و پیشنهادی وجود داشت، دکمه‌ها را نمایش بده
+  if (
+    chatSettings?.model !== "math-advanced" ||
+    !suggestions ||
+    suggestions.length === 0
+  ) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-wrap justify-center gap-2 p-2">
+      {suggestions.map((text, index) => (
+        <button
+          key={index}
+          className="rounded-xl bg-gray-100 px-4 py-2 text-right text-sm font-semibold text-gray-800 shadow-md transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          dir="rtl" // این attribute جهت متن را درست می‌کند
+          onClick={() => onSuggestionClick(text)}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  )
+}
+// =================================================================
+
+interface ChatMessagesProps {
+  setUserInput: (input: string) => void
+  handleFocusChatInput: () => void
+}
+
+export const ChatMessages: FC<ChatMessagesProps> = ({
+  setUserInput,
+  handleFocusChatInput
+}) => {
+  const {
+    chatMessages,
+    chatFileItems,
+    chatSettings,
+    topicSummary,
+    suggestions
+  } = useContext(ChatbotUIContext)
   const { handleSendEdit } = useChatHandler()
   const [editingMessage, setEditingMessage] = useState<Tables<"messages">>()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -18,7 +65,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [chatMessages])
+  }, [chatMessages, suggestions]) // Add suggestions to dependency array
 
   const isClassroomMode = ["math-advanced", "physics-advanced"].includes(
     chatSettings?.model || ""
@@ -52,8 +99,8 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
       rounded-2xl shadow-xl overflow-hidden
       transition-all duration-300 ease-in-out
       backdrop-blur-sm
-      before:absolute before:inset-0 before:bg-gradient-to-br 
-      before:from-emerald-50/30 before:to-teal-50/30 
+      before:absolute before:inset-0 before:bg-gradient-to-br
+      before:from-emerald-50/30 before:to-teal-50/30
       dark:before:from-emerald-900/10 dark:before:to-teal-900/10
       before:pointer-events-none
     `
@@ -67,6 +114,13 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
       scrollbar-track-transparent
     `
     : "space-y-6"
+
+  // 👇 تابع جدید برای مدیریت کلیک روی دکمه‌های پیشنهادی
+  const handleSuggestionClick = (suggestionText: string) => {
+    setUserInput(suggestionText)
+    // با فوکوس کردن روی اینپوت، کاربر می‌تواند بلافاصله اینتر بزند
+    handleFocusChatInput()
+  }
 
   return (
     <div className="flex-1 overflow-y-auto py-4 md:pt-6">
@@ -86,7 +140,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
               <div className="flex items-center space-x-3 space-x-reverse">
                 <div
                   className="
-                  rounded-full border 
+                  rounded-full border
                   border-white/20 bg-white/10
                   p-2 backdrop-blur-sm
                 "
@@ -110,7 +164,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
                 <ChevronRight className="size-4 rotate-180" />
                 <span
                   className="
-                  rounded-full border border-white/20 
+                  rounded-full border border-white/20
                   bg-white/10 px-3
                   py-1 font-medium
                   backdrop-blur-sm
@@ -140,7 +194,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
             >
               <div
                 className="
-                mb-4 inline-flex rounded-full 
+                mb-4 inline-flex rounded-full
                 border border-emerald-200/50
                 bg-emerald-100/70 p-3
                 text-emerald-600
@@ -201,6 +255,12 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
                 )
               })}
           </div>
+
+          {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
+          {chatSettings?.model === "math-advanced" &&
+            chatMessages.length > 0 && (
+              <ChatSuggestions onSuggestionClick={handleSuggestionClick} />
+            )}
         </div>
 
         <div ref={scrollRef} />
