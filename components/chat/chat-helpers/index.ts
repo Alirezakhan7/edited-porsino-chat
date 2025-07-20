@@ -335,7 +335,9 @@ export const processResponse = async (
 
   // The modelId is on the message object
   const modelId = lastChatMessage.message.model
-  const isMathModel = modelId === "math-advanced"
+  const isClassroomModel = ["math-advanced", "physics-advanced"].includes(
+    modelId
+  )
 
   if (response.body) {
     await consumeReadableStream(
@@ -350,7 +352,7 @@ export const processResponse = async (
         }
 
         // For non-math models, stream the text to the UI
-        if (!isMathModel) {
+        if (!isClassroomModel) {
           setChatMessages(prev =>
             prev.map(chatMessage => {
               if (chatMessage.message.id === lastChatMessage.message.id) {
@@ -371,7 +373,7 @@ export const processResponse = async (
     )
 
     // After the stream is complete, process the full response
-    if (isMathModel) {
+    if (isClassroomModel) {
       try {
         const parsedData = JSON.parse(fullText)
         const answer = parsedData.answer || ""

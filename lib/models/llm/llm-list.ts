@@ -31,6 +31,22 @@ export const LLM_LIST: LLM[] = [
     platformLink: "",
     imageInput: false
   },
+  {
+    modelId: "phys-simple",
+    modelName: "Phys simple",
+    provider: "custom",
+    hostedId: "phys-simple",
+    platformLink: "",
+    imageInput: false
+  },
+  {
+    modelId: "phys-advanced",
+    modelName: "Phys advanced",
+    provider: "custom",
+    hostedId: "phys-advanced",
+    platformLink: "",
+    imageInput: false
+  },
   ...OPENAI_LLM_LIST,
   ...GOOGLE_LLM_LIST,
   ...MISTRAL_LLM_LIST,

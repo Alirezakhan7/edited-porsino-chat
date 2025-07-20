@@ -8,19 +8,50 @@ import useHotkey from "@/lib/hooks/use-hotkey"
 import { useMediaQuery } from "@/lib/hooks/use-media-query"
 import { cn } from "@/lib/utils"
 import { ContentType } from "@/types"
-// IconMenu2 را برای دکمه همبرگری اضافه کنید
-import { IconChevronCompactRight, IconMenu2 } from "@tabler/icons-react"
+import { IconChevronCompactRight } from "@tabler/icons-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { FC, useEffect, useState } from "react"
 import { useSelectFileHandler } from "../chat/chat-hooks/use-select-file-handler"
 import { CommandK } from "../utility/command-k"
 
-export const SIDEBAR_WIDTH = 300 // عرض سایدبار در موبایل
+export const SIDEBAR_WIDTH = 300
 export const SIDEBAR_DESKTOP_WIDTH = 350
 export const SIDEBAR_SWITCHER_WIDTH = 60
 
 interface DashboardProps {
   children: React.ReactNode
+}
+
+// Modern Hamburger Menu Component
+const ModernHamburgerButton: FC<{
+  isOpen: boolean
+  onClick: () => void
+  className?: string
+}> = ({ isOpen, onClick, className }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "relative size-10 rounded-lg transition-all duration-150 ease-out",
+        "border border-white/20 bg-white/90 shadow-lg backdrop-blur-md",
+        "hover:scale-105 hover:bg-white hover:shadow-xl",
+        "dark:border-gray-700/50 dark:bg-gray-900/90 dark:hover:bg-gray-800",
+        "focus:outline-none focus:ring-2 focus:ring-blue-500/30 active:scale-95",
+        "transform-gpu",
+        isOpen && "pointer-events-none opacity-0", // 👈 محو کامل وقتی بازه
+        className
+      )}
+      aria-label={isOpen ? "Close menu" : "Open menu"}
+    >
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative h-4 w-5">
+          <span className="absolute left-0 top-0.5 block h-0.5 w-5 rounded-full bg-gray-700 dark:bg-gray-200" />
+          <span className="absolute left-0 top-2 block h-0.5 w-5 rounded-full bg-gray-700 dark:bg-gray-200" />
+          <span className="absolute left-0 top-3.5 block h-0.5 w-5 rounded-full bg-gray-700 dark:bg-gray-200" />
+        </div>
+      </div>
+    </button>
+  )
 }
 
 export const Dashboard: FC<DashboardProps> = ({ children }) => {
@@ -52,7 +83,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
     }
   }, [isMobile])
 
-  // ... (توابع درگ و دراپ بدون تغییر) ...
   const onFileDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     const files = event.dataTransfer.files
@@ -60,14 +90,17 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
     handleSelectDeviceFile(file)
     setIsDragging(false)
   }
+
   const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     setIsDragging(true)
   }
+
   const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     setIsDragging(false)
   }
+
   const onDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
   }
@@ -90,34 +123,40 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
     <div className="flex size-full">
       <CommandK />
 
-      {/* ******************** دکمه همبرگری شناور (فقط موبایل) ******************** */}
+      {/* ******************** Modern Floating Hamburger Button (Mobile Only) ******************** */}
       {isMobile && (
         <div
-          className="fixed top-4 z-30 flex items-center space-x-2 transition-all duration-300"
+          className="fixed top-4 z-30 flex items-center space-x-4 transition-all duration-300 ease-out"
           style={{
-            left: showSidebar ? `${SIDEBAR_WIDTH + 16}px` : "16px" // ← حرکت همراه با سایدبار
+            left: showSidebar ? `${SIDEBAR_WIDTH + 20}px` : "20px"
           }}
         >
-          <Button
-            className="rounded-md border border-gray-300 bg-white p-2 text-black shadow-lg hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
-            size="icon"
+          <ModernHamburgerButton
+            isOpen={showSidebar}
             onClick={handleToggleSidebar}
+          />
+          <div
+            className={cn(
+              "transition-all duration-300",
+              showSidebar
+                ? "translate-x-2 opacity-0"
+                : "translate-x-0 opacity-100"
+            )}
           >
-            <IconMenu2 size={24} />
-          </Button>
-          <span className="text-muted-foreground text-base font-semibold">
-            Porsino
-          </span>
+            <span className="text-lg font-bold text-gray-800 drop-shadow-sm dark:text-white">
+              Porsino AI
+            </span>
+          </div>
         </div>
       )}
 
-      {/* ******************** بخش سایدبار ******************** */}
+      {/* ******************** Sidebar Section ******************** */}
       {isMobile ? (
-        // چیدمان موبایل: سایدبار به صورت کشویی (Drawer)
+        // Mobile Layout: Sidebar as Drawer
         <>
           <div
             className={cn(
-              "bg-background absolute left-0 top-0 z-20 h-full shadow-lg transition-transform duration-300 ease-in-out",
+              "bg-background absolute left-0 top-0 z-20 h-full shadow-2xl transition-transform duration-300 ease-in-out",
               showSidebar ? "translate-x-0" : "-translate-x-full"
             )}
             style={{ width: `${SIDEBAR_WIDTH}px` }}
@@ -141,12 +180,12 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
           {showSidebar && (
             <div
               onClick={handleToggleSidebar}
-              className="absolute inset-0 z-10 bg-black/50"
+              className="absolute inset-0 z-10 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
             />
           )}
         </>
       ) : (
-        // چیدمان دسکتاپ
+        // Desktop Layout
         <Tabs
           className="flex"
           value={contentType}
@@ -174,7 +213,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         </Tabs>
       )}
 
-      {/* ******************** بخش محتوای اصلی ******************** */}
+      {/* ******************** Main Content Section ******************** */}
       <div
         className="relative flex w-full grow flex-col"
         onDrop={onFileDrop}
@@ -182,7 +221,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
       >
-        {/* MobileHeader به طور کامل حذف شد */}
         <main className="size-full grow">
           {isDragging ? (
             <div className="flex h-full items-center justify-center bg-black/50 text-2xl text-white">
@@ -193,7 +231,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
           )}
         </main>
 
-        {/* دکمه باز/بسته کردن فقط در دسکتاپ */}
+        {/* Desktop Toggle Button */}
         {!isMobile && (
           <Button
             className={cn(

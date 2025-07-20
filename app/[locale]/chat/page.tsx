@@ -31,24 +31,25 @@ export default function ChatPage() {
     <>
       {chatMessages.length === 0 ? (
         <div className="relative flex h-full flex-col items-center">
-          {/* START: Top-left header change */}
-          <div className="absolute left-4 top-2 flex items-center gap-2">
-            <ProfileSettings />
-            <span className="hidden translate-y-2 text-lg font-bold sm:inline-block">
+          {/* START: Top-left header */}
+          <div className="absolute left-4 top-3 flex items-center gap-2">
+            <div className="hidden md:block">
+              <ProfileSettings />
+            </div>
+            <span className="mt-[6px] hidden text-lg font-bold sm:inline-block">
               Porsino AI
             </span>
           </div>
 
-          {/* END: Top-left header change */}
+          {/* END: Top-left header */}
 
-          <div className="absolute right-2 top-2 flex items-center gap-1">
+          <div className="absolute right-2 top-3 flex items-start gap-1">
             <Announcements />
             <ChatSettings />
           </div>
 
           {/* Section 1: Main Title */}
-          {/* START: Main heading change */}
-          <div className="-mt-20 flex flex-1 items-center justify-center">
+          <div className="mt-20 flex flex-1 flex-col items-center justify-center">
             <div className="text-center">
               <h1 className="text-4xl font-light tracking-tight md:text-5xl">
                 <span className="text-5xl font-black md:text-6xl">
@@ -63,22 +64,26 @@ export default function ChatPage() {
                 </span>
               </h2>
             </div>
-          </div>
 
-          {/* END: Main heading change */}
-
-          {/* Section 2: Bottom content (kept separate for layout) */}
-          <div className="w-full min-w-[300px] items-end px-2 pb-3 pt-0 sm:w-[600px] sm:pb-8 sm:pt-5 md:w-[700px] lg:w-[700px] xl:w-[800px]">
-            <div className="mb-4 flex justify-center">
+            {/* 👇 فقط در موبایل نمایش داده شود */}
+            <div className="mt-6 flex justify-center md:hidden">
               <SampleQuestions onQuestionClick={handleSampleQuestionClick} />
             </div>
+          </div>
+
+          {/* Section 2: Bottom content */}
+          <div className="w-full min-w-[300px] items-end px-2 pb-3 pt-0 sm:w-[600px] sm:pb-8 sm:pt-5 md:w-[700px] lg:w-[700px] xl:w-[800px]">
+            {/* 👇 فقط در دسکتاپ نمایش داده شود */}
+            <div className="mb-4 hidden justify-center md:flex">
+              <SampleQuestions onQuestionClick={handleSampleQuestionClick} />
+            </div>
+
             <ChatInput />
           </div>
         </div>
       ) : (
         <ChatUI />
       )}
-      {/* Dialogs should be managed by the Announcements component now */}
     </>
   )
 }

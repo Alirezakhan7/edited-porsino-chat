@@ -206,7 +206,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       <div className="absolute inset-x-0 top-0 z-10 h-16 bg-white/30 backdrop-blur-xl md:hidden dark:bg-black/20"></div>
       <div
         className="
-        absolute right-4 top-2 z-30 flex items-center space-x-2
+        absolute right-4 top-4 z-30 flex items-center space-x-2
         rounded-xl bg-white/30 px-2 py-1
         shadow-md backdrop-blur-md dark:bg-[#222]/30
       "
@@ -216,7 +216,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
       {/* 👇 بخش ۲: افزودن فاصله از بالا (padding-top) فقط برای موبایل */}
       <div
-        className="fade-mask flex size-full flex-col overflow-auto pb-20 pt-16 md:pt-0"
+        className="fade-mask flex size-full flex-col overflow-auto pb-24 pt-16 md:pt-0"
         onScroll={handleScroll}
       >
         <div ref={messagesStartRef} />
