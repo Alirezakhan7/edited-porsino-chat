@@ -341,16 +341,12 @@ export const useChatHandler = () => {
       }
 
       await handleCreateMessages(
-        isRegeneration
-          ? chatMessages
-          : [
-              ...chatMessages,
-              { message: tempUserChatMessage.message, fileItems: [] }
-            ],
+        // ✅ ما آبجکت کامل پیام‌های موقت را به این تابع می‌دهیم
+        isRegeneration ? chatMessages : [...chatMessages, tempUserChatMessage],
         currentChat!,
         profile!,
         modelData!,
-        messageContent,
+        // messageContent و generatedText دیگر لازم نیستند چون در آبجکت‌ها هستند
         generatedText,
         newMessageImages,
         isRegeneration,

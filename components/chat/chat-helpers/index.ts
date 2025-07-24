@@ -215,13 +215,13 @@ export const handleHostedChat = async (
 
   const apiEndpoint = "https://api.porsino.org/chat"
 
+  const lastUserMessage = payload.chatMessages[payload.chatMessages.length - 1] // آخرین پیام را بگیر
   // بدنه درخواست همیشه شامل chatId خواهد بود (که در ابتدا می‌تواند خالی باشد)
   const requestBody = {
-    message:
-      payload.chatMessages[payload.chatMessages.length - 1].message.content,
+    message: lastUserMessage.message.content,
     customModelId: payload.chatSettings.model,
-    isNewProblem: !isRegeneration, // بازسازی یک مسئله، مسئله جدیدی نیست
-    chatId: payload.chatMessages[0].message.chat_id
+    isNewProblem: !isRegeneration,
+    chatId: lastUserMessage.message.chat_id // ✅ از chatId آخرین پیام استفاده کن
   }
 
   const response = await fetchChatResponse(
@@ -415,12 +415,11 @@ export const handleCreateChat = async (
 }
 
 export const handleCreateMessages = async (
-  chatMessages: ChatMessage[],
+  chatMessages: ChatMessage[], // ✅ ورودی اصلی ما این است
   currentChat: Tables<"chats">,
   profile: Tables<"profiles">,
   modelData: LLM,
-  messageContent: string,
-  generatedText: string,
+  generatedText: string, // ✅ این را هنوز لازم داریم
   newMessageImages: MessageImage[],
   isRegeneration: boolean,
   retrievedFileItems: Tables<"file_items">[],
@@ -431,29 +430,23 @@ export const handleCreateMessages = async (
   setChatImages: React.Dispatch<React.SetStateAction<MessageImage[]>>,
   selectedAssistant: Tables<"assistants"> | null
 ) => {
-  const lastMessageIndex = chatMessages.length - (isRegeneration ? 1 : 2)
-  const sequenceNumber =
-    chatMessages[lastMessageIndex]?.message.sequence_number ?? 0
+  // ✅ به جای ساختن پیام از اول، پیام کاربر را از آرایه ورودی می‌خوانیم
+  const userMessageToSave = chatMessages[chatMessages.length - 1].message
 
   const finalUserMessage: TablesInsert<"messages"> = {
-    chat_id: currentChat.id,
-    assistant_id: null,
-    user_id: profile.user_id,
-    content: messageContent,
-    model: modelData.modelId,
-    role: "user",
-    sequence_number: sequenceNumber + 1,
-    image_paths: []
+    // ✅ تمام مقادیر را از آبجکت پیام می‌خوانیم و فقط chat_id را اصلاح می‌کنیم
+    ...userMessageToSave,
+    chat_id: currentChat.id
   }
 
   const finalAssistantMessage: TablesInsert<"messages"> = {
     chat_id: currentChat.id,
     assistant_id: selectedAssistant?.id || null,
     user_id: profile.user_id,
-    content: generatedText,
+    content: generatedText, // پاسخ نهایی مدل
     model: modelData.modelId,
     role: "assistant",
-    sequence_number: sequenceNumber + 2,
+    sequence_number: userMessageToSave.sequence_number + 1,
     image_paths: []
   }
 
