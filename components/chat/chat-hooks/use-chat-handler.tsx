@@ -5,7 +5,6 @@ import { getAssistantToolsByAssistantId } from "@/db/assistant-tools"
 import { updateChat } from "@/db/chats"
 import { getCollectionFilesByCollectionId } from "@/db/collection-files"
 import { deleteMessagesIncludingAndAfter } from "@/db/messages"
-import { buildFinalMessages } from "@/lib/build-prompt"
 import { Tables } from "@/supabase/types"
 import { ChatMessage, ChatPayload, LLMID, ModelProvider } from "@/types"
 import { useRouter } from "next/navigation"
@@ -13,7 +12,6 @@ import { useContext, useEffect, useRef } from "react"
 import { LLM_LIST } from "../../../lib/models/llm/llm-list"
 import {
   createTempMessages,
-  handleCreateChat,
   handleCreateMessages,
   handleHostedChat,
   handleLocalChat,
@@ -66,7 +64,6 @@ export const useChatHandler = () => {
     isPromptPickerOpen,
     isFilePickerOpen,
     isToolPickerOpen,
-    // 👇 state های جدید را از کانتکست می‌گیریم
     setTopicSummary,
     setSuggestions
   } = useContext(ChatbotUIContext)
@@ -101,7 +98,6 @@ export const useChatHandler = () => {
     setSelectedTools([])
     setToolInUse("none")
 
-    // 👇 وقتی چت جدید شروع می‌شود، عنوان و پیشنهادات را پاک می‌کنیم
     setTopicSummary("")
     setSuggestions([])
 
@@ -163,7 +159,6 @@ export const useChatHandler = () => {
           | "local"
       })
     }
-    // Note: Removed the default workspace settings block to align with user's code.
 
     return router.push(`/chat`)
   }
@@ -178,21 +173,19 @@ export const useChatHandler = () => {
     }
   }
 
+  // ✅ تابع handleSendMessage به طور کامل بازنویسی شده است
   const handleSendMessage = async (
     messageContent: string,
     chatMessages: ChatMessage[],
     isRegeneration: boolean
   ) => {
     const startingInput = messageContent
-    console.log("🎯 selectedChat در شروع:", selectedChat)
     try {
       setUserInput("")
       setIsGenerating(true)
       setIsPromptPickerOpen(false)
       setIsFilePickerOpen(false)
       setNewMessageImages([])
-
-      // 👇 وقتی پیام جدید ارسال می‌شود، پیشنهادات قبلی را پاک می‌کنیم
       setSuggestions([])
 
       const newAbortController = new AbortController()
@@ -221,9 +214,7 @@ export const useChatHandler = () => {
       )
 
       let currentChat = selectedChat ? { ...selectedChat } : null
-
       const b64Images = newMessageImages.map(image => image.base64)
-
       let retrievedFileItems: Tables<"file_items">[] = []
 
       if (
@@ -231,7 +222,6 @@ export const useChatHandler = () => {
         useRetrieval
       ) {
         setToolInUse("retrieval")
-
         retrievedFileItems = await handleRetrieval(
           userInput,
           newMessageFiles,
@@ -252,6 +242,12 @@ export const useChatHandler = () => {
           selectedAssistant
         )
 
+      // chatId را در پیام موقت هم قرار می‌دهیم تا به helper برسد
+      // اگر چت موجود باشد، از selectedChat.id استفاده می‌شود، در غیر این صورت یک رشته خالی است
+      const chatIdToSend = selectedChat?.id || ""
+      tempUserChatMessage.message.chat_id = chatIdToSend
+      tempAssistantChatMessage.message.chat_id = chatIdToSend
+
       let payload: ChatPayload = {
         chatSettings: chatSettings!,
         workspaceInstructions: selectedWorkspace!.instructions || "",
@@ -263,103 +259,95 @@ export const useChatHandler = () => {
         chatFileItems: chatFileItems
       }
 
-      let generatedText = ""
-
-      if (selectedTools.length > 0) {
-        setToolInUse("Tools")
-
-        const formattedMessages = await buildFinalMessages(
-          payload,
-          profile!,
-          chatImages
-        )
-
-        const response = await fetch("/api/chat/tools", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            chatSettings: payload.chatSettings,
-            messages: formattedMessages,
-            selectedTools
-          })
-        })
-
-        setToolInUse("none")
-
-        // This part is likely not hit for the math model, but good practice to keep signatures aligned.
-        // The processResponse function is not used here in the original code, so we leave it as is.
-        // A full implementation would likely call processResponse here too.
-        // For now, we assume this path is for non-math tool usage.
-        const responseData = await response.text()
-        generatedText = responseData
-      } else {
-        if (modelData!.provider === "ollama") {
-          generatedText = await handleLocalChat(
-            payload,
-            profile!,
-            chatSettings!,
-            tempAssistantChatMessage,
-            isRegeneration,
-            newAbortController,
-            setIsGenerating,
-            setFirstTokenReceived,
-            setChatMessages,
-            setToolInUse
-          )
-        } else {
-          // 👇 اینجاست که آرگومان‌های جدید را پاس می‌دهیم
-          generatedText = await handleHostedChat(
-            payload,
-            profile!,
-            modelData!,
-            tempAssistantChatMessage,
-            isRegeneration,
-            newAbortController,
-            newMessageImages,
-            chatImages,
-            setIsGenerating,
-            setFirstTokenReceived,
-            setChatMessages,
-            setToolInUse,
-            setTopicSummary,
-            setSuggestions
-          )
-        }
+      let responsePayload = {
+        generatedText: "",
+        newChatId: null as string | null
       }
 
-      if (!currentChat) {
-        currentChat = await handleCreateChat(
-          chatSettings!,
+      if (modelData!.provider === "ollama") {
+        // ✅ خروجی handleLocalChat را مستقیماً در responsePayload ذخیره می‌کنیم
+        responsePayload = await handleLocalChat(
+          payload,
           profile!,
-          selectedWorkspace!,
-          messageContent,
-          selectedAssistant!,
-          newMessageFiles,
-          setSelectedChat,
-          setChats,
-          setChatFiles
+          chatSettings!,
+          tempAssistantChatMessage,
+          isRegeneration,
+          newAbortController,
+          setIsGenerating,
+          setFirstTokenReceived,
+          setChatMessages,
+          setToolInUse
         )
-        console.log("✅ chatId تازه ساخته‌شده از Supabase:", currentChat.id)
-        router.push(`/chat/${currentChat.id}`)
       } else {
+        responsePayload = await handleHostedChat(
+          payload,
+          profile!,
+          modelData!,
+          tempAssistantChatMessage,
+          isRegeneration,
+          newAbortController,
+          newMessageImages,
+          chatImages,
+          setIsGenerating,
+          setFirstTokenReceived,
+          setChatMessages,
+          setToolInUse,
+          setTopicSummary,
+          setSuggestions
+        )
+      }
+
+      const { generatedText, newChatId } = responsePayload
+
+      if (!currentChat && newChatId) {
+        // این حالت یعنی اولین پیام یک چت جدید با موفقیت ارسال و در بک‌اند ساخته شده
+        console.log(
+          "✅ Chat created on backend, updating frontend state with new chatId:",
+          newChatId
+        )
+
+        const newlyCreatedChat: Tables<"chats"> = {
+          id: newChatId,
+          user_id: profile!.user_id,
+          workspace_id: selectedWorkspace!.id,
+          assistant_id: selectedAssistant?.id || null,
+          context_length: chatSettings!.contextLength,
+          include_profile_context: chatSettings!.includeProfileContext,
+          include_workspace_instructions:
+            chatSettings!.includeWorkspaceInstructions,
+          model: chatSettings!.model,
+          name: messageContent.substring(0, 100),
+          prompt: chatSettings!.prompt,
+          temperature: chatSettings!.temperature,
+          embeddings_provider: chatSettings!.embeddingsProvider,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          folder_id: null,
+          sharing: "private"
+        }
+
+        setSelectedChat(newlyCreatedChat)
+        setChats(chats => [newlyCreatedChat, ...chats])
+        currentChat = newlyCreatedChat // currentChat را برای مرحله بعد آپدیت می‌کنیم
+      } else if (currentChat) {
         const updatedChat = await updateChat(currentChat.id, {
           updated_at: new Date().toISOString()
         })
-
-        setChats(prevChats => {
-          const updatedChats = prevChats.map(prevChat =>
+        setChats(prevChats =>
+          prevChats.map(prevChat =>
             prevChat.id === updatedChat.id ? updatedChat : prevChat
           )
-
-          return updatedChats
-        })
+        )
       }
 
       await handleCreateMessages(
-        chatMessages,
-        currentChat,
+        isRegeneration
+          ? chatMessages
+          : [
+              ...chatMessages,
+              { message: tempUserChatMessage.message, fileItems: [] }
+            ],
+        currentChat!,
         profile!,
         modelData!,
         messageContent,
@@ -376,6 +364,7 @@ export const useChatHandler = () => {
       setIsGenerating(false)
       setFirstTokenReceived(false)
     } catch (error) {
+      console.error(error)
       setIsGenerating(false)
       setFirstTokenReceived(false)
       setUserInput(startingInput)
@@ -405,8 +394,6 @@ export const useChatHandler = () => {
 
   return {
     chatInputRef,
-    // prompt isn't defined in the scope, assuming it's a typo from a merge.
-    // prompt,
     handleNewChat,
     handleSendMessage,
     handleFocusChatInput,

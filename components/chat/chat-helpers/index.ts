@@ -159,7 +159,6 @@ export const handleLocalChat = async (
 ) => {
   const formattedMessages = await buildFinalMessages(payload, profile, [])
 
-  // Ollama API: https://github.com/jmorganca/ollama/blob/main/docs/api.md
   const response = await fetchChatResponse(
     process.env.NEXT_PUBLIC_OLLAMA_URL + "/api/chat",
     {
@@ -169,7 +168,6 @@ export const handleLocalChat = async (
         temperature: payload.chatSettings.temperature
       }
     },
-    false,
     newAbortController,
     setIsGenerating,
     setChatMessages
@@ -181,7 +179,6 @@ export const handleLocalChat = async (
     isRegeneration
       ? payload.chatMessages[payload.chatMessages.length - 1]
       : tempAssistantMessage,
-    false, // isHosted
     newAbortController,
     setFirstTokenReceived,
     setChatMessages,
@@ -191,7 +188,7 @@ export const handleLocalChat = async (
   )
 }
 
-// 👇 ENTIRE `handleHostedChat` FUNCTION IS UPDATED
+// ✅ تابع handleHostedChat برای هماهنگی با بک‌اند جدید اصلاح شده است
 export const handleHostedChat = async (
   payload: ChatPayload,
   profile: Tables<"profiles">,
@@ -205,54 +202,31 @@ export const handleHostedChat = async (
   setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
   setToolInUse: React.Dispatch<React.SetStateAction<string>>,
-  // Add the new setters from context
   setTopicSummary: (summary: string) => void,
   setSuggestions: (suggestions: string[]) => void
 ) => {
-  const provider =
-    modelData.provider === "openai" && profile.use_azure_openai
-      ? "azure"
-      : modelData.provider
+  const provider = modelData.provider
 
-  let draftMessages = await buildFinalMessages(payload, profile, chatImages)
-
-  let formattedMessages: any[] = []
-  if (provider === "google") {
-    formattedMessages = await adaptMessagesForGoogleGemini(
-      payload,
-      draftMessages
-    )
-  } else {
-    formattedMessages = draftMessages
+  // ما فقط برای provider کاستوم خودمان منطق ویژه داریم
+  if (provider !== "custom") {
+    // در اینجا می‌توانید منطق سایر provider ها را در آینده قرار دهید
+    throw new Error(`Provider "${provider}" is not supported for hosted chat.`)
   }
 
-  const apiEndpoint =
-    provider === "custom"
-      ? "https://api.porsino.org/chat"
-      : `/api/chat/${provider}`
+  const apiEndpoint = "https://api.porsino.org/chat"
 
-  // For our custom API, the body is different
-  const requestBody =
-    provider === "custom"
-      ? {
-          message:
-            payload.chatMessages[payload.chatMessages.length - 1].message
-              .content,
-          customModelId: payload.chatSettings.model,
-          isNewProblem: !isRegeneration // A regeneration is not a new problem
-        }
-      : {
-          // Default body for other providers
-          model: payload.chatSettings.model,
-          messages: formattedMessages,
-          temperature: payload.chatSettings.temperature
-          // ...other settings
-        }
+  // بدنه درخواست همیشه شامل chatId خواهد بود (که در ابتدا می‌تواند خالی باشد)
+  const requestBody = {
+    message:
+      payload.chatMessages[payload.chatMessages.length - 1].message.content,
+    customModelId: payload.chatSettings.model,
+    isNewProblem: !isRegeneration, // بازسازی یک مسئله، مسئله جدیدی نیست
+    chatId: payload.chatMessages[0].message.chat_id
+  }
 
   const response = await fetchChatResponse(
     apiEndpoint,
     requestBody,
-    true,
     newAbortController,
     setIsGenerating,
     setChatMessages
@@ -263,12 +237,10 @@ export const handleHostedChat = async (
     isRegeneration
       ? payload.chatMessages[payload.chatMessages.length - 1]
       : tempAssistantChatMessage,
-    true, // isHosted
     newAbortController,
     setFirstTokenReceived,
     setChatMessages,
     setToolInUse,
-    // Pass the setters down
     setTopicSummary,
     setSuggestions
   )
@@ -277,7 +249,6 @@ export const handleHostedChat = async (
 export const fetchChatResponse = async (
   url: string,
   body: object,
-  isHosted: boolean,
   controller: AbortController,
   setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
@@ -297,21 +268,15 @@ export const fetchChatResponse = async (
   })
 
   if (!response.ok) {
-    if (response.status === 404 && !isHosted) {
-      toast.error(
-        "Model not found. Make sure you have it downloaded via Ollama."
-      )
-    }
-
-    const errorData = await response.json()
-
+    const errorData = await response
+      .json()
+      .catch(() => ({ detail: "An unknown error occurred." }))
     const errorText =
       errorData?.detail && typeof errorData.detail === "string"
         ? errorData.detail
         : "An error has occurred. Please try again."
 
     toast.error(errorText)
-
     setIsGenerating(false)
     setChatMessages(prevMessages => prevMessages.slice(0, -2))
   }
@@ -319,11 +284,10 @@ export const fetchChatResponse = async (
   return response
 }
 
-// 👇 ENTIRE `processResponse` FUNCTION IS UPDATED
+// ✅ تابع processResponse برای پردازش پاسخ‌های JSON استاندارد شده بازنویسی شده است
 export const processResponse = async (
   response: Response,
   lastChatMessage: ChatMessage,
-  isHosted: boolean,
   controller: AbortController,
   setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
@@ -333,94 +297,72 @@ export const processResponse = async (
 ) => {
   let fullText = ""
 
-  // The modelId is on the message object
-  const modelId = lastChatMessage.message.model
-  const isClassroomModel = ["math-advanced", "physics-advanced"].includes(
-    modelId
-  )
-
   if (response.body) {
+    // مرحله ۱: کل استریم را در متغیر fullText جمع‌آوری کن
     await consumeReadableStream(
       response.body,
       chunk => {
         setFirstTokenReceived(true)
         setToolInUse("none")
-        try {
-          fullText += chunk
-        } catch (error) {
-          console.error("Error processing stream chunk:", error)
-        }
-
-        // For non-math models, stream the text to the UI
-        if (!isClassroomModel) {
-          setChatMessages(prev =>
-            prev.map(chatMessage => {
-              if (chatMessage.message.id === lastChatMessage.message.id) {
-                return {
-                  ...chatMessage,
-                  message: {
-                    ...chatMessage.message,
-                    content: fullText
-                  }
-                }
-              }
-              return chatMessage
-            })
-          )
-        }
+        fullText += chunk
       },
       controller.signal
     )
 
-    // After the stream is complete, process the full response
-    if (isClassroomModel) {
-      try {
-        const parsedData = JSON.parse(fullText)
-        const answer = parsedData.answer || ""
-        const topic = parsedData.topic_summary || ""
-        const suggs = parsedData.suggestions || []
-
-        // Update the UI with the final parsed data
-        setChatMessages(prev =>
-          prev.map(chatMessage => {
-            if (chatMessage.message.id === lastChatMessage.message.id) {
-              return {
-                ...chatMessage,
-                message: { ...chatMessage.message, content: answer }
-              }
-            }
-            return chatMessage
-          })
-        )
-        setTopicSummary(topic)
-        setSuggestions(suggs)
-
-        return answer // Return the final answer for db storage
-      } catch (error) {
-        console.error("Error parsing math JSON response:", error, {
-          receivedText: fullText
-        })
-        // If parsing fails, show the raw text for debugging
-        setChatMessages(prev =>
-          prev.map(chatMessage => {
-            if (chatMessage.message.id === lastChatMessage.message.id) {
-              return {
-                ...chatMessage,
-                message: { ...chatMessage.message, content: fullText }
-              }
-            }
-            return chatMessage
-          })
-        )
-        setTopicSummary("Error Parsing Response")
-        setSuggestions([])
-        return fullText
+    // مرحله ۲: پس از اتمام استریم، رشته کامل JSON را تجزیه کن
+    try {
+      if (!fullText) {
+        throw new Error("Received empty response from server.")
       }
-    } else {
-      // For regular models, reset the topic and suggestions
-      setTopicSummary("")
+      const parsedData = JSON.parse(fullText)
+
+      const answer = parsedData.answer || ""
+      const topic = parsedData.topic_summary || ""
+      const suggs = parsedData.suggestions || []
+      const newChatId = parsedData.chatId || null
+
+      // مرحله ۳: UI را با داده‌های نهایی آپدیت کن
+      setChatMessages(prev =>
+        prev.map(chatMessage => {
+          if (chatMessage.message.id === lastChatMessage.message.id) {
+            return {
+              ...chatMessage,
+              message: {
+                ...chatMessage.message,
+                content: answer,
+                chat_id: newChatId || lastChatMessage.message.chat_id
+              }
+            }
+          }
+          return chatMessage
+        })
+      )
+      setTopicSummary(topic)
+      setSuggestions(suggs)
+
+      // مرحله ۴: آبجکتی شامل متن پاسخ و chatId جدید را برگردان
+      return { generatedText: answer, newChatId: newChatId }
+    } catch (error) {
+      console.error("Error parsing JSON response:", error, {
+        receivedText: fullText
+      })
+
+      const errorMessage = `Error processing response: ${fullText || (error as Error).message}`
+      setChatMessages(prev =>
+        prev.map(chatMessage => {
+          if (chatMessage.message.id === lastChatMessage.message.id) {
+            return {
+              ...chatMessage,
+              message: { ...chatMessage.message, content: errorMessage }
+            }
+          }
+          return chatMessage
+        })
+      )
+      setTopicSummary("Error Parsing Response")
       setSuggestions([])
-      return fullText
+
+      return { generatedText: errorMessage, newChatId: null }
     }
   } else {
     throw new Error("Response body is null")
@@ -455,15 +397,16 @@ export const handleCreateChat = async (
   setSelectedChat(createdChat)
   setChats(chats => [createdChat, ...chats])
 
-  await createChatFiles(
-    newMessageFiles.map(file => ({
-      user_id: profile.user_id,
-      chat_id: createdChat.id,
-      file_id: file.id
-    }))
-  )
-
-  setChatFiles(prev => [...prev, ...newMessageFiles])
+  if (newMessageFiles.length > 0) {
+    await createChatFiles(
+      newMessageFiles.map(file => ({
+        user_id: profile.user_id,
+        chat_id: createdChat.id,
+        file_id: file.id
+      }))
+    )
+    setChatFiles(prev => [...prev, ...newMessageFiles])
+  }
 
   return createdChat
 }
@@ -485,6 +428,10 @@ export const handleCreateMessages = async (
   setChatImages: React.Dispatch<React.SetStateAction<MessageImage[]>>,
   selectedAssistant: Tables<"assistants"> | null
 ) => {
+  const lastMessageIndex = chatMessages.length - (isRegeneration ? 1 : 2)
+  const sequenceNumber =
+    chatMessages[lastMessageIndex]?.message.sequence_number ?? 0
+
   const finalUserMessage: TablesInsert<"messages"> = {
     chat_id: currentChat.id,
     assistant_id: null,
@@ -492,7 +439,7 @@ export const handleCreateMessages = async (
     content: messageContent,
     model: modelData.modelId,
     role: "user",
-    sequence_number: chatMessages.length,
+    sequence_number: sequenceNumber + 1,
     image_paths: []
   }
 
@@ -503,93 +450,88 @@ export const handleCreateMessages = async (
     content: generatedText,
     model: modelData.modelId,
     role: "assistant",
-    sequence_number: chatMessages.length + 1,
+    sequence_number: sequenceNumber + 2,
     image_paths: []
   }
 
-  let finalChatMessages: ChatMessage[] = []
-
   if (isRegeneration) {
-    const lastStartingMessage = chatMessages[chatMessages.length - 1].message
-
-    const updatedMessage = await updateMessage(lastStartingMessage.id, {
-      ...lastStartingMessage,
+    const lastMessage = chatMessages[chatMessages.length - 1].message
+    const updatedMessage = await updateMessage(lastMessage.id, {
+      ...lastMessage,
       content: generatedText
     })
 
-    chatMessages[chatMessages.length - 1].message = updatedMessage
-
-    finalChatMessages = [...chatMessages]
-
-    setChatMessages(finalChatMessages)
+    setChatMessages(prev =>
+      prev.map(chatMessage =>
+        chatMessage.message.id === updatedMessage.id
+          ? { ...chatMessage, message: updatedMessage }
+          : chatMessage
+      )
+    )
   } else {
-    const createdMessages = await createMessages([
+    const [userMessage, assistantMessage] = await createMessages([
       finalUserMessage,
       finalAssistantMessage
     ])
 
-    // Upload each image (stored in newMessageImages) for the user message to message_images bucket
-    const uploadPromises = newMessageImages
-      .filter(obj => obj.file !== null)
-      .map(obj => {
-        let filePath = `${profile.user_id}/${currentChat.id}/${
-          createdMessages[0].id
-        }/${uuidv4()}`
+    if (newMessageImages.length > 0) {
+      const uploadPromises = newMessageImages.map(obj => {
+        const filePath = `${profile.user_id}/${currentChat.id}/${userMessage.id}/${uuidv4()}`
+        return uploadMessageImage(filePath, obj.file as File)
+      })
+      const paths = await Promise.all(uploadPromises)
 
-        return uploadMessageImage(filePath, obj.file as File).catch(error => {
-          console.error(`Failed to upload image at ${filePath}:`, error)
-          return null
-        })
+      const updatedUserMessage = await updateMessage(userMessage.id, {
+        image_paths: paths.filter(Boolean) as string[]
       })
 
-    const paths = (await Promise.all(uploadPromises)).filter(
-      Boolean
-    ) as string[]
+      setChatImages(prev => [
+        ...prev,
+        ...newMessageImages.map((img, index) => ({
+          ...img,
+          messageId: userMessage.id,
+          path: paths[index] || ""
+        }))
+      ])
 
-    setChatImages(prevImages => [
-      ...prevImages,
-      ...newMessageImages.map((obj, index) => ({
-        ...obj,
-        messageId: createdMessages[0].id,
-        path: paths[index]
-      }))
-    ])
-
-    const updatedMessage = await updateMessage(createdMessages[0].id, {
-      ...createdMessages[0],
-      image_paths: paths
-    })
-
-    const createdMessageFileItems = await createMessageFileItems(
-      retrievedFileItems.map(fileItem => {
-        return {
-          user_id: profile.user_id,
-          message_id: createdMessages[1].id,
-          file_item_id: fileItem.id
-        }
-      })
-    )
-
-    finalChatMessages = [
-      ...chatMessages,
-      {
-        message: updatedMessage,
-        fileItems: []
-      },
-      {
-        message: createdMessages[1],
-        fileItems: retrievedFileItems.map(fileItem => fileItem.id)
-      }
-    ]
-
-    setChatFileItems(prevFileItems => {
-      const newFileItems = retrievedFileItems.filter(
-        fileItem => !prevFileItems.some(prevItem => prevItem.id === fileItem.id)
+      setChatMessages(prev =>
+        prev.map(chatMsg =>
+          chatMsg.message.id === userMessage.id
+            ? { ...chatMsg, message: updatedUserMessage }
+            : chatMsg.message.id === assistantMessage.id
+              ? {
+                  ...chatMsg,
+                  message: assistantMessage,
+                  fileItems: retrievedFileItems.map(item => item.id)
+                }
+              : chatMsg
+        )
       )
+    } else {
+      setChatMessages(prev =>
+        prev.map(chatMsg =>
+          chatMsg.message.id === userMessage.id
+            ? { ...chatMsg, message: userMessage }
+            : chatMsg.message.id === assistantMessage.id
+              ? {
+                  ...chatMsg,
+                  message: assistantMessage,
+                  fileItems: retrievedFileItems.map(item => item.id)
+                }
+              : chatMsg
+        )
+      )
+    }
 
-      return [...prevFileItems, ...newFileItems]
-    })
-
-    setChatMessages(finalChatMessages)
+    if (retrievedFileItems.length > 0) {
+      await createMessageFileItems(
+        retrievedFileItems.map(fileItem => ({
+          user_id: profile.user_id,
+          message_id: assistantMessage.id,
+          file_item_id: fileItem.id
+        }))
+      )
+      setChatFileItems(prev => [...prev, ...retrievedFileItems])
+    }
   }
 }
