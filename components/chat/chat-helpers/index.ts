@@ -215,13 +215,16 @@ export const handleHostedChat = async (
 
   const apiEndpoint = "https://api.porsino.org/chat"
 
-  const lastUserMessage = payload.chatMessages[payload.chatMessages.length - 1] // آخرین پیام را بگیر
   // بدنه درخواست همیشه شامل chatId خواهد بود (که در ابتدا می‌تواند خالی باشد)
+  const lastUserMessage = payload.chatMessages[payload.chatMessages.length - 1]
+  const chatIdToSend = lastUserMessage.message.chat_id
+
   const requestBody = {
     message: lastUserMessage.message.content,
     customModelId: payload.chatSettings.model,
-    isNewProblem: !isRegeneration,
-    chatId: lastUserMessage.message.chat_id // ✅ از chatId آخرین پیام استفاده کن
+    // ✅ منطق صحیح: اگر chatId وجود نداشت، یعنی مسئله جدید است
+    isNewProblem: !chatIdToSend,
+    chatId: chatIdToSend
   }
 
   const response = await fetchChatResponse(
