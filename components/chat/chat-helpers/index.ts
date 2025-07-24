@@ -279,6 +279,9 @@ export const fetchChatResponse = async (
     toast.error(errorText)
     setIsGenerating(false)
     setChatMessages(prevMessages => prevMessages.slice(0, -2))
+
+    // ✅ مهم: بعد از مدیریت خطا، یک Exception ایجاد می‌کنیم تا ادامه عملیات متوقف شود
+    throw new Error(errorText)
   }
 
   return response
