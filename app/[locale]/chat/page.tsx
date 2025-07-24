@@ -37,7 +37,7 @@ export default function ChatPage() {
               <ProfileSettings />
             </div>
             <span className="mt-[6px] hidden text-lg font-bold sm:inline-block">
-              Porsino AI1
+              Porsino AI
             </span>
           </div>
 

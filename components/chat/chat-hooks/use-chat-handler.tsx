@@ -184,7 +184,7 @@ export const useChatHandler = () => {
     isRegeneration: boolean
   ) => {
     const startingInput = messageContent
-
+    console.log("🎯 selectedChat در شروع:", selectedChat)
     try {
       setUserInput("")
       setIsGenerating(true)
@@ -341,6 +341,8 @@ export const useChatHandler = () => {
           setChats,
           setChatFiles
         )
+        console.log("✅ chatId تازه ساخته‌شده از Supabase:", currentChat.id)
+        router.push(`/chat/${currentChat.id}`)
       } else {
         const updatedChat = await updateChat(currentChat.id, {
           updated_at: new Date().toISOString()
