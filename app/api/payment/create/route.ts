@@ -1,101 +1,105 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { createClient } from "@/lib/supabase/server" // مسیر را متناسب با پروژه خود تنظیم کنید
+import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
 
-const PAYSTAR_API_BASE_URL = "https://core.paystar.ir/api/pardakht"
+const url = "https://core.paystar.ir/api/pardakht/verify"
 
 export async function POST(request: Request) {
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
 
   try {
-    // ۱. دریافت کاربر لاگین کرده از سوپابیس
-    const {
-      data: { user }
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json(
-        { message: "دسترسی غیرمجاز. لطفا ابتدا وارد شوید." },
-        { status: 401 }
-      )
+    const { ref_num, order_id, card_number, tracking_code } =
+      await request.json()
+
+    const getTrx = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("order_id", order_id)
+      .single()
+
+    if (getTrx.error || !getTrx.data) {
+      throw new Error(`تراکنش با شناسه ${order_id} پیدا نشد.`)
     }
 
-    const { amount, order_id } = await request.json()
+    const amount = getTrx.data.amount
 
-    // ۲. ایجاد رکورد تراکنش اولیه در دیتابیس با وضعیت 'pending'
-    const { error: dbError } = await supabase.from("transactions").insert({
-      user_id: user.id,
-      order_id: order_id,
-      amount: amount,
-      status: "pending"
-    })
+    const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
+    const sign_key = process.env.PAYSTAR_SECRET_KEY!
 
-    if (dbError) {
-      console.error("Supabase insert error:", dbError)
-      throw new Error("خطا در ثبت اولیه تراکنش در دیتابیس.")
-    }
-
-    // ۳. آماده‌سازی و ارسال درخواست به پی‌استار برای ایجاد تراکنش
-    const gatewayId = process.env.PAYSTAR_GATEWAY_ID!
-    const secretKey = process.env.PAYSTAR_SECRET_KEY!
-    const callbackUrl = "https://porsino.org"
-
-    const signString = `${amount}#${order_id}#${callbackUrl}`
+    const sign_data = `${amount}#${ref_num}#${card_number}#${tracking_code}`
     const sign = crypto
-      .createHmac("sha512", secretKey)
-      .update(signString)
+      .createHmac("sha512", sign_key)
+      .update(sign_data)
       .digest("hex")
 
-    // 🔍 لاگ‌های تستی برای دیباگ
-    console.log("📌 gatewayId:", gatewayId)
-    console.log("📌 signString:", signString)
-    console.log("📌 sign:", sign)
-    console.log("📌 callbackUrl:", callbackUrl)
-    console.log("📌 amount:", amount)
-    console.log("📌 order_id:", order_id)
+    const header = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + gateway_id
+    }
 
-    const response = await fetch(`${PAYSTAR_API_BASE_URL}/create`, {
+    const data = {
+      amount,
+      ref_num,
+      sign
+    }
+
+    const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${gatewayId}`
-      },
-      body: JSON.stringify({
-        amount: Number(amount),
-        order_id,
-        callback: callbackUrl,
-        sign
-      })
+      headers: header,
+      body: JSON.stringify(data)
     })
 
-    const data = await response.json()
-    console.log("Paystar response:", data)
-    // ۴. مدیریت پاسخ پی‌استار
-    if (data.status !== 1) {
-      // اگر پی‌استار خطا داد، وضعیت تراکنش را در دیتابیس خودمان 'failed' می‌کنیم
+    const result = await response.json()
+    console.log("Paystar Verify Response:", result)
+
+    if (result.status !== 1) {
       await supabase
         .from("transactions")
         .update({ status: "failed" })
-        .eq("order_id", order_id)
+        .eq("id", getTrx.data.id)
+
       return NextResponse.json(
-        { message: `خطای درگاه: ${data.message}` },
+        { message: `تراکنش تایید نشد: ${result.message}` },
         { status: 400 }
       )
     }
 
-    // ۵. ذخیره توکن دریافتی در دیتابیس و ارسال URL به کلاینت
+    const expires_at = new Date()
+    expires_at.setDate(expires_at.getDate() + 30)
+
+    const updateProfile = await supabase
+      .from("profiles")
+      .update({
+        subscription_status: "active",
+        subscription_expires_at: expires_at.toISOString()
+      })
+      .eq("user_id", getTrx.data.user_id)
+
+    if (updateProfile.error) {
+      console.error("[CRITICAL_PROFILE_UPDATE_ERROR]", updateProfile.error)
+      throw new Error(
+        "اشکال در فعال‌سازی اشتراک. لطفاً با پشتیبانی تماس بگیرید."
+      )
+    }
+
     await supabase
       .from("transactions")
-      .update({ ref_num: data.data.token })
-      .eq("order_id", order_id)
+      .update({
+        status: "success",
+        verified_at: new Date().toISOString()
+      })
+      .eq("id", getTrx.data.id)
 
-    const paymentUrl = `${PAYSTAR_API_BASE_URL}/payment?token=${data.data.token}`
-    return NextResponse.json({ payment_url: paymentUrl })
+    return NextResponse.json({
+      message: "پرداخت تایید و اشتراک با موفقیت فعال شد."
+    })
   } catch (error: any) {
-    console.error("[PAYMENT_CREATE_ERROR]", error)
+    console.error("[VERIFY_ERROR]", error)
     return NextResponse.json(
-      { message: error.message || "خطای داخلی سرور" },
+      { message: error.message || "خطای داخلی سرور در تأیید تراکنش" },
       { status: 500 }
     )
   }
