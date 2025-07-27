@@ -1,113 +1,118 @@
+// =============================
+// 1) app/api/payment/verify/route.ts
+// =============================
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { createClient } from "@/lib/supabase/server" // مسیر را متناسب با پروژه خود تنظیم کنید
+import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
+import { PAYSTAR_BASE_URL } from "@/lib/paystar"
 
-const PAYSTAR_API_BASE_URL = "https://core.paystar.ir/api/pardakht"
+const VERIFY_URL = `${PAYSTAR_BASE_URL}/verify`
 
 export async function POST(request: Request) {
+  // نخست: فقط یک بار بدنهٔ درخواست را بخوانید
   const body = await request.json()
+  const { ref_num, order_id, card_number, tracking_code } = body
 
-  console.log("🔵 [VERIFY] order_id:", body.order_id)
-  console.log("🔵 [VERIFY] ref_num:", body.ref_num)
-  console.log("🔵 [VERIFY] card_number:", body.card_number)
-  console.log("🔵 [VERIFY] tracking_code:", body.tracking_code)
+  // بررسی کامل بودن اطلاعات لازم برای امضا
+  if (!ref_num || !card_number || !tracking_code) {
+    return NextResponse.json(
+      { message: "پارامترهای لازم برای ساخت امضا ناقص است." },
+      { status: 400 }
+    )
+  }
 
+  // دیتابیس سوپابیس
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
 
-  try {
-    const { ref_num, order_id, card_number, tracking_code } =
-      await request.json()
+  // واکشی تراکنش مربوطه
+  const { data: transaction, error: trxError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("order_id", order_id)
+    .single()
 
-    // ۱. پیدا کردن تراکنش در دیتابیس بر اساس order_id
-    const { data: transaction, error: findError } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("order_id", order_id)
-      .single()
-
-    if (findError || !transaction) {
-      throw new Error(`تراکنش با شناسه سفارش ${order_id} در سیستم یافت نشد.`)
-    }
-
-    // اگر تراکنش قبلا موفق بوده، دوباره کاری نمی‌کنیم
-    if (transaction.status === "success") {
-      return NextResponse.json({
-        message: "این تراکنش قبلا با موفقیت تایید شده است."
-      })
-    }
-
-    // ۲. آماده‌سازی و ارسال درخواست تایید به پی‌استار
-    const amount = transaction.amount
-    const gatewayId = process.env.PAYSTAR_GATEWAY_ID!
-    const secretKey = process.env.PAYSTAR_SECRET_KEY!
-    const signString = `${amount}#${ref_num}#${card_number}#${tracking_code}`
-    const sign = crypto
-      .createHmac("sha512", secretKey)
-      .update(signString)
-      .digest("hex")
-
-    const response = await fetch(`${PAYSTAR_API_BASE_URL}/verify`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${gatewayId}`
-      },
-      body: JSON.stringify({ ref_num, amount, sign })
-    })
-    console.log("🔵 [VERIFY] sign:", sign)
-    const data = await response.json()
-
-    // ۳. مدیریت پاسخ پی‌استار
-    if (data.status !== 1) {
-      // اگر تایید ناموفق بود، وضعیت را در دیتابیس 'failed' می‌کنیم
-      await supabase
-        .from("transactions")
-        .update({ status: "failed" })
-        .eq("id", transaction.id)
-      return NextResponse.json(
-        { message: `تراکنش توسط درگاه تایید نشد: ${data.message}` },
-        { status: 400 }
-      )
-    }
-
-    // <<موفقیت آمیز>>
-    // ۴. به‌روزرسانی دیتابیس پس از تایید نهایی
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 30) // افزودن 30 روز اشتراک
-
-    // ۴.۱: آپدیت جدول profiles کاربر
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        subscription_status: "active",
-        subscription_expires_at: expiresAt.toISOString()
-      })
-      .eq("user_id", transaction.user_id)
-
-    if (profileError) {
-      // این یک خطای حیاتی است. پول گرفته شده ولی اشتراک فعال نشده
-      console.error("[CRITICAL_PROFILE_UPDATE_ERROR]", profileError)
-      throw new Error(
-        "خطا در فعال‌سازی اشتراک کاربر. لطفا به پشتیبانی اطلاع دهید."
-      )
-    }
-
-    // ۴.۲: آپدیت نهایی جدول transactions
-    await supabase
-      .from("transactions")
-      .update({ status: "success", verified_at: new Date().toISOString() })
-      .eq("id", transaction.id)
-
-    return NextResponse.json({
-      message: "پرداخت شما با موفقیت تایید و اشتراک شما فعال شد."
-    })
-  } catch (error: any) {
-    console.error("[PAYMENT_VERIFY_ERROR]", error)
+  if (trxError || !transaction) {
     return NextResponse.json(
-      { message: error.message || "خطای داخلی سرور در تایید تراکنش" },
-      { status: 500 }
+      { message: `تراکنش با شناسه ${order_id} پیدا نشد.` },
+      { status: 404 }
     )
   }
+
+  // اگر قبلاً تأیید شده باشد تکرار نمی‌کنیم
+  if (transaction.status === "success") {
+    return NextResponse.json({ message: "این تراکنش قبلاً تایید شده است." })
+  }
+
+  const amount = transaction.amount
+  const gatewayId = process.env.PAYSTAR_GATEWAY_ID!
+  const secretKey = process.env.PAYSTAR_SECRET_KEY!
+
+  // ساخت رشتهٔ امضا دقیقاً طبق مستند
+  const signString = `${amount}#${ref_num}#${card_number}#${tracking_code}`
+  const sign = crypto
+    .createHmac("sha512", secretKey)
+    .update(signString)
+    .digest("hex")
+
+  const headers = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${gatewayId}`
+  }
+
+  const verifyBody = JSON.stringify({ amount, ref_num, sign })
+
+  // Timeout ده‌ثانیه‌ای طبق توصیهٔ پی‌استار
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10_000)
+
+  let paystarResponse
+  try {
+    paystarResponse = await fetch(VERIFY_URL, {
+      method: "POST",
+      headers,
+      body: verifyBody,
+      signal: controller.signal
+    })
+  } finally {
+    clearTimeout(timer)
+  }
+
+  const verifyResult = await paystarResponse.json()
+
+  if (verifyResult.status !== 1) {
+    // عدم تأیید → به‌روزرسانی دیتابیس
+    await supabase
+      .from("transactions")
+      .update({ status: "failed" })
+      .eq("id", transaction.id)
+
+    return NextResponse.json(
+      { message: `تراکنش تایید نشد: ${verifyResult.message}` },
+      { status: 400 }
+    )
+  }
+
+  // موفقیت → فعال‌سازی اشتراک کاربر
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + 30)
+
+  await supabase
+    .from("profiles")
+    .update({
+      subscription_status: "active",
+      subscription_expires_at: expiresAt.toISOString()
+    })
+    .eq("user_id", transaction.user_id)
+
+  await supabase
+    .from("transactions")
+    .update({ status: "success", verified_at: new Date().toISOString() })
+    .eq("id", transaction.id)
+
+  return NextResponse.json({
+    message: "پرداخت تایید شد و اشتراک فعال گردید."
+  })
 }
