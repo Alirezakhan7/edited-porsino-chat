@@ -47,6 +47,14 @@ export async function POST(request: Request) {
       .update(signString)
       .digest("hex")
 
+    // 🔍 لاگ‌های تستی برای دیباگ
+    console.log("📌 gatewayId:", gatewayId)
+    console.log("📌 signString:", signString)
+    console.log("📌 sign:", sign)
+    console.log("📌 callbackUrl:", callbackUrl)
+    console.log("📌 amount:", amount)
+    console.log("📌 order_id:", order_id)
+
     const response = await fetch(`${PAYSTAR_API_BASE_URL}/create`, {
       method: "POST",
       headers: {
