@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     // ۳. آماده‌سازی و ارسال درخواست به پی‌استار برای ایجاد تراکنش
     const gatewayId = process.env.PAYSTAR_GATEWAY_ID!
     const secretKey = process.env.PAYSTAR_SECRET_KEY!
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/payment/callback`
+    const callbackUrl = "https://porsino.org/payment/callback"
 
     const signString = `${amount}#${order_id}#${callbackUrl}`
     const sign = crypto
