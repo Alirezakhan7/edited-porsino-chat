@@ -6,6 +6,13 @@ import crypto from "crypto"
 const PAYSTAR_API_BASE_URL = "https://core.paystar.ir/api/pardakht"
 
 export async function POST(request: Request) {
+  const body = await request.json()
+
+  console.log("🔵 [VERIFY] order_id:", body.order_id)
+  console.log("🔵 [VERIFY] ref_num:", body.ref_num)
+  console.log("🔵 [VERIFY] card_number:", body.card_number)
+  console.log("🔵 [VERIFY] tracking_code:", body.tracking_code)
+
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
 
@@ -49,7 +56,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({ ref_num, amount, sign })
     })
-
+    console.log("🔵 [VERIFY] sign:", sign)
     const data = await response.json()
 
     // ۳. مدیریت پاسخ پی‌استار

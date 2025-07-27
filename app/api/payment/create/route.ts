@@ -10,9 +10,15 @@ export async function POST(request: Request) {
   const supabase = createClient(cookieStore)
 
   try {
+    // 🟡 دریافت پارامترهای ورودی از callback
     const { ref_num, order_id, card_number, tracking_code } =
       await request.json()
+    console.log("🟡 [INPUT] ref_num:", ref_num)
+    console.log("🟡 [INPUT] order_id:", order_id)
+    console.log("🟡 [INPUT] card_number:", card_number)
+    console.log("🟡 [INPUT] tracking_code:", tracking_code)
 
+    // 🔍 واکشی اطلاعات تراکنش از دیتابیس
     const getTrx = await supabase
       .from("transactions")
       .select("*")
@@ -20,20 +26,30 @@ export async function POST(request: Request) {
       .single()
 
     if (getTrx.error || !getTrx.data) {
+      console.error("🔴 [DB] Transaction not found:", order_id)
       throw new Error(`تراکنش با شناسه ${order_id} پیدا نشد.`)
     }
 
     const amount = getTrx.data.amount
+    console.log("🧾 [DB] Transaction amount:", amount)
 
+    // 🔐 آماده‌سازی مقادیر رمزنگاری و امضای تراکنش
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
+    console.log("🔑 [CONFIG] Gateway ID:", gateway_id)
+    console.log("🔑 [CONFIG] Sign Key Length:", sign_key.length)
 
     const sign_data = `${amount}#${ref_num}#${card_number}#${tracking_code}`
+    console.log("✍️ [SIGN] sign_data string:", sign_data)
+
     const sign = crypto
       .createHmac("sha512", sign_key)
       .update(sign_data)
       .digest("hex")
 
+    console.log("🧾 [SIGN] Final HMAC Sign:", sign)
+
+    // 📤 آماده‌سازی داده‌های ارسال به پی‌استار
     const header = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -46,6 +62,10 @@ export async function POST(request: Request) {
       sign
     }
 
+    console.log("📦 [VERIFY_REQUEST] Body:", data)
+    console.log("📦 [VERIFY_REQUEST] Headers:", header)
+
+    // ⏳ ارسال درخواست تأیید به پی‌استار
     const response = await fetch(url, {
       method: "POST",
       headers: header,
@@ -53,9 +73,11 @@ export async function POST(request: Request) {
     })
 
     const result = await response.json()
-    console.log("Paystar Verify Response:", result)
+    console.log("✅ [VERIFY_RESPONSE] Paystar Response:", result)
 
+    // ❌ بررسی خطا در پاسخ پی‌استار
     if (result.status !== 1) {
+      console.warn("⚠️ [VERIFY_FAIL] Paystar error:", result.message)
       await supabase
         .from("transactions")
         .update({ status: "failed" })
@@ -67,6 +89,7 @@ export async function POST(request: Request) {
       )
     }
 
+    // 🟢 بروزرسانی اطلاعات اشتراک کاربر
     const expires_at = new Date()
     expires_at.setDate(expires_at.getDate() + 30)
 
@@ -85,6 +108,9 @@ export async function POST(request: Request) {
       )
     }
 
+    console.log("🎉 [PROFILE] اشتراک کاربر با موفقیت فعال شد")
+
+    // ✅ ثبت نهایی تأیید تراکنش
     await supabase
       .from("transactions")
       .update({
@@ -93,11 +119,13 @@ export async function POST(request: Request) {
       })
       .eq("id", getTrx.data.id)
 
+    console.log("🏁 [TRANSACTION] تراکنش نهایی شد")
+
     return NextResponse.json({
       message: "پرداخت تایید و اشتراک با موفقیت فعال شد."
     })
   } catch (error: any) {
-    console.error("[VERIFY_ERROR]", error)
+    console.error("💥 [VERIFY_ERROR]", error)
     return NextResponse.json(
       { message: error.message || "خطای داخلی سرور در تأیید تراکنش" },
       { status: 500 }
