@@ -1,5 +1,3 @@
-// app/[locale]/paystar/test/page.tsx
-
 "use client"
 import { useState } from "react"
 
@@ -22,7 +20,8 @@ export default function PaystarTest() {
         body: JSON.stringify({
           amount: 590_000, // مبلغ به ریال (۵۹۰ هزار تومان)
           order_id: makeOrderId(),
-          callback: `${window.location.origin}/api/paystar/callback`,
+          // 👇 این خط را اصلاح کردم:
+          callback: "https://porsino.org/api/paystar/callback",
           name: "خریدار تستی",
           phone: "09120000000"
         })
