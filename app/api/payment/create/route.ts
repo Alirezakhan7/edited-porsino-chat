@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     // ۳. آماده‌سازی و ارسال درخواست به پی‌استار برای ایجاد تراکنش
     const gatewayId = process.env.PAYSTAR_GATEWAY_ID!
     const secretKey = process.env.PAYSTAR_SECRET_KEY!
-    const callbackUrl = "https://porsino.org/payment/callback"
+    const callbackUrl = "https://porsino.org"
 
     const signString = `${amount}#${order_id}#${callbackUrl}`
     const sign = crypto
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     })
 
     const data = await response.json()
-
+    console.log("Paystar response:", data)
     // ۴. مدیریت پاسخ پی‌استار
     if (data.status !== 1) {
       // اگر پی‌استار خطا داد، وضعیت تراکنش را در دیتابیس خودمان 'failed' می‌کنیم
