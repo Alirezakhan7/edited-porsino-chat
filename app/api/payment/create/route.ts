@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { createClient } from "@/lib/supabase/server" // مسیر را چک کنید
+import { createClient } from "@/lib/supabase/server" // مسیر را متناسب با پروژه خود تنظیم کنید
 import crypto from "crypto"
 
 const PAYSTAR_API_BASE_URL = "https://core.paystar.ir/api/pardakht"
@@ -10,19 +10,20 @@ export async function POST(request: Request) {
   const supabase = createClient(cookieStore)
 
   try {
+    // ۱. دریافت کاربر لاگین کرده از سوپابیس
     const {
       data: { user }
     } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json(
-        { message: "کاربر شناسایی نشد." },
+        { message: "دسترسی غیرمجاز. لطفا ابتدا وارد شوید." },
         { status: 401 }
       )
     }
 
     const { amount, order_id } = await request.json()
 
-    // ۱. ایجاد رکورد تراکنش در دیتابیس
+    // ۲. ایجاد رکورد تراکنش اولیه در دیتابیس با وضعیت 'pending'
     const { error: dbError } = await supabase.from("transactions").insert({
       user_id: user.id,
       order_id: order_id,
@@ -30,9 +31,12 @@ export async function POST(request: Request) {
       status: "pending"
     })
 
-    if (dbError) throw new Error(`Supabase Error: ${dbError.message}`)
+    if (dbError) {
+      console.error("Supabase insert error:", dbError)
+      throw new Error("خطا در ثبت اولیه تراکنش در دیتابیس.")
+    }
 
-    // ۲. ارتباط با پی‌استار
+    // ۳. آماده‌سازی و ارسال درخواست به پی‌استار برای ایجاد تراکنش
     const gatewayId = process.env.PAYSTAR_GATEWAY_ID!
     const secretKey = process.env.PAYSTAR_SECRET_KEY!
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/payment/callback`
@@ -49,19 +53,30 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${gatewayId}`
       },
-      body: JSON.stringify({ amount, order_id, callback: callbackUrl, sign })
+      body: JSON.stringify({
+        amount: Number(amount),
+        order_id,
+        callback: callbackUrl,
+        sign
+      })
     })
 
     const data = await response.json()
+
+    // ۴. مدیریت پاسخ پی‌استار
     if (data.status !== 1) {
+      // اگر پی‌استار خطا داد، وضعیت تراکنش را در دیتابیس خودمان 'failed' می‌کنیم
       await supabase
         .from("transactions")
         .update({ status: "failed" })
         .eq("order_id", order_id)
-      return NextResponse.json({ message: data.message }, { status: 400 })
+      return NextResponse.json(
+        { message: `خطای درگاه: ${data.message}` },
+        { status: 400 }
+      )
     }
 
-    // ۳. ذخیره ref_num و بازگرداندن URL درگاه
+    // ۵. ذخیره توکن دریافتی در دیتابیس و ارسال URL به کلاینت
     await supabase
       .from("transactions")
       .update({ ref_num: data.data.token })
@@ -70,7 +85,10 @@ export async function POST(request: Request) {
     const paymentUrl = `${PAYSTAR_API_BASE_URL}/payment?token=${data.data.token}`
     return NextResponse.json({ payment_url: paymentUrl })
   } catch (error: any) {
-    console.error("Create Payment Error:", error)
-    return NextResponse.json({ message: error.message }, { status: 500 })
+    console.error("[PAYMENT_CREATE_ERROR]", error)
+    return NextResponse.json(
+      { message: error.message || "خطای داخلی سرور" },
+      { status: 500 }
+    )
   }
 }
