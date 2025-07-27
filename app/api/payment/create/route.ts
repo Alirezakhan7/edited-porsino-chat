@@ -6,11 +6,10 @@ export async function POST(req: Request) {
   try {
     const { amount, order_id, callback_method = 1 } = await req.json()
 
-    const signKey = process.env.PAYSTAR_SIGN_KEY as string
-    const signData = `${amount}#${order_id}#${CALLBACK_URL}`
+    // --- HMAC sign ---
     const sign = crypto
-      .createHmac("sha512", signKey)
-      .update(signData)
+      .createHmac("sha512", process.env.PAYSTAR_SIGN_KEY as string)
+      .update(`${amount}#${order_id}#${CALLBACK_URL}`)
       .digest("hex")
 
     const res = await fetch(`${PAYSTAR_BASE_URL}/create`, {

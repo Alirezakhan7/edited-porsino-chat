@@ -14,16 +14,13 @@ export default function PaymentPage() {
   }, [supabase])
 
   const handlePayment = async () => {
-    if (!user) {
-      setError("لطفاً وارد شوید")
-      return
-    }
-
+    if (!user) return setError("لطفاً وارد شوید")
     setLoading(true)
     setError(null)
     try {
       const amount = 500_000 // ریال
       const order_id = crypto.randomUUID?.() ?? `${Date.now()}`
+
       const res = await fetch("/api/payment/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -33,13 +30,17 @@ export default function PaymentPage() {
       const data = await res.json()
       res.ok
         ? (window.location.href = data.payment_url)
-        : setError(data.message || "خطای ایجاد تراکنش")
-    } catch (e) {
-      setError("خطای شبکه/timeout")
+        : setError(data.message || "خطای درگاه")
+    } catch {
+      setError("خطای شبکه/Timeout")
     } finally {
       setLoading(false)
     }
   }
 
-  /* JSX همان نسخهٔ Canvas */
+  return (
+    <button onClick={handlePayment} disabled={loading}>
+      پرداخت
+    </button>
+  )
 }

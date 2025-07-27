@@ -1,118 +1,63 @@
-// =============================
-// 1) app/api/payment/verify/route.ts
-// =============================
 import { NextResponse } from "next/server"
+import crypto from "crypto"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
-import crypto from "crypto"
 import { PAYSTAR_BASE_URL } from "@/lib/paystar"
 
 const VERIFY_URL = `${PAYSTAR_BASE_URL}/verify`
 
 export async function POST(request: Request) {
-  // نخست: فقط یک بار بدنهٔ درخواست را بخوانید
   const body = await request.json()
   const { ref_num, order_id, card_number, tracking_code } = body
-
-  // بررسی کامل بودن اطلاعات لازم برای امضا
-  if (!ref_num || !card_number || !tracking_code) {
+  if (!ref_num || !card_number || !tracking_code)
     return NextResponse.json(
-      { message: "پارامترهای لازم برای ساخت امضا ناقص است." },
+      { message: "پارامترهای لازم ناقص است." },
       { status: 400 }
     )
-  }
 
-  // دیتابیس سوپابیس
+  // --- fetch transaction from Supabase (اختیاری) ---
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
-
-  // واکشی تراکنش مربوطه
-  const { data: transaction, error: trxError } = await supabase
+  const { data: trx } = await supabase
     .from("transactions")
     .select("*")
     .eq("order_id", order_id)
     .single()
 
-  if (trxError || !transaction) {
-    return NextResponse.json(
-      { message: `تراکنش با شناسه ${order_id} پیدا نشد.` },
-      { status: 404 }
-    )
-  }
+  const amount = trx?.amount || 0 // یا از body دریافت کنید
 
-  // اگر قبلاً تأیید شده باشد تکرار نمی‌کنیم
-  if (transaction.status === "success") {
-    return NextResponse.json({ message: "این تراکنش قبلاً تایید شده است." })
-  }
-
-  const amount = transaction.amount
-  const gatewayId = process.env.PAYSTAR_GATEWAY_ID!
-  const secretKey = process.env.PAYSTAR_SECRET_KEY!
-
-  // ساخت رشتهٔ امضا دقیقاً طبق مستند
-  const signString = `${amount}#${ref_num}#${card_number}#${tracking_code}`
+  // --- HMAC sign ---
   const sign = crypto
-    .createHmac("sha512", secretKey)
-    .update(signString)
+    .createHmac("sha512", process.env.PAYSTAR_SIGN_KEY as string)
+    .update(`${amount}#${ref_num}#${card_number}#${tracking_code}`)
     .digest("hex")
 
-  const headers = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${gatewayId}`
-  }
-
-  const verifyBody = JSON.stringify({ amount, ref_num, sign })
-
-  // Timeout ده‌ثانیه‌ای طبق توصیهٔ پی‌استار
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 10_000)
+  const t = setTimeout(() => controller.abort(), 10_000)
+  const res = await fetch(VERIFY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${process.env.PAYSTAR_GATEWAY_ID}`
+    },
+    body: JSON.stringify({ amount, ref_num, sign }),
+    signal: controller.signal
+  })
+  clearTimeout(t)
 
-  let paystarResponse
-  try {
-    paystarResponse = await fetch(VERIFY_URL, {
-      method: "POST",
-      headers,
-      body: verifyBody,
-      signal: controller.signal
-    })
-  } finally {
-    clearTimeout(timer)
-  }
+  const data = await res.json()
+  const ok = data.status === 1
 
-  const verifyResult = await paystarResponse.json()
-
-  if (verifyResult.status !== 1) {
-    // عدم تأیید → به‌روزرسانی دیتابیس
+  // --- update DB یا منطق دلخواه ---
+  if (trx)
     await supabase
       .from("transactions")
-      .update({ status: "failed" })
-      .eq("id", transaction.id)
+      .update({ status: ok ? "success" : "failed" })
+      .eq("id", trx.id)
 
-    return NextResponse.json(
-      { message: `تراکنش تایید نشد: ${verifyResult.message}` },
-      { status: 400 }
-    )
-  }
-
-  // موفقیت → فعال‌سازی اشتراک کاربر
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 30)
-
-  await supabase
-    .from("profiles")
-    .update({
-      subscription_status: "active",
-      subscription_expires_at: expiresAt.toISOString()
-    })
-    .eq("user_id", transaction.user_id)
-
-  await supabase
-    .from("transactions")
-    .update({ status: "success", verified_at: new Date().toISOString() })
-    .eq("id", transaction.id)
-
-  return NextResponse.json({
-    message: "پرداخت تایید شد و اشتراک فعال گردید."
-  })
+  return NextResponse.json(
+    { message: data.message },
+    { status: ok ? 200 : 400 }
+  )
 }
