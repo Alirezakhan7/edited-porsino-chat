@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { CheckCircle } from "lucide-react" // یک کتابخانه آیکون زیبا
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { CheckCircle, Loader2 } from "lucide-react"
 
-// تعریف اطلاعات پلن‌ها برای نمایش در صفحه
+// اطلاعات پلن‌ها برای نمایش در صفحه
 const displayPlans = [
   {
     id: "monthly",
@@ -34,37 +36,66 @@ const displayPlans = [
 ]
 
 export default function PaymentPage() {
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [discountCode, setDiscountCode] = useState("")
   const [error, setError] = useState<string | null>(null)
 
-  // [اصلاح] این تابع دیگر مبلغ را به عنوان ورودی نمی‌گیرد
+  const supabase = createClientComponentClient()
+  const router = useRouter()
+
+  // ۱. بررسی وضعیت لاگین کاربر
+  useEffect(() => {
+    const checkUser = async () => {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+      if (!session) {
+        // اگر کاربر لاگین نکرده، به صفحه ورود هدایت کن
+        // آدرس صفحه لاگین خود را اینجا قرار دهید
+        router.push("/login")
+      } else {
+        setUser(session.user)
+        setLoading(false)
+      }
+    }
+    checkUser()
+  }, [supabase, router])
+
+  // ۲. تابع ارسال درخواست پرداخت
   const handlePayment = async (planId: string) => {
     setLoadingPlan(planId)
     setError(null)
 
     try {
-      // [اصلاح] در بدنه درخواست، فقط شناسه پلن ارسال می‌شود
       const response = await fetch("/api/paystar/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: planId })
+        // ارسال شناسه پلن و کد تخفیف به سرور
+        body: JSON.stringify({ planId, discountCode })
       })
 
       const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.message || "خطا در ایجاد تراکنش")
-      }
-
-      if (result.payment_url) {
-        window.location.href = result.payment_url
-      } else {
-        throw new Error("لینک پرداخت دریافت نشد.")
-      }
+      if (!response.ok) throw new Error(result.message || "خطا در ایجاد تراکنش")
+      if (result.payment_url) window.location.href = result.payment_url
+      else throw new Error("لینک پرداخت دریافت نشد.")
     } catch (err: any) {
       setError(err.message)
       setLoadingPlan(null)
     }
+  }
+
+  // نمایش حالت لودینگ تا زمان بررسی وضعیت لاگین
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="size-12 animate-spin text-purple-500" />
+        <p className="mr-4 text-lg text-gray-700 dark:text-gray-300">
+          در حال بررسی اطلاعات کاربر...
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -85,7 +116,7 @@ export default function PaymentPage() {
             key={plan.id}
             className={`relative flex flex-col rounded-2xl border bg-white shadow-xl dark:bg-gray-800 ${
               plan.isPopular
-                ? "border-purple-500"
+                ? "border-purple-500 ring-2 ring-purple-500"
                 : "border-gray-200 dark:border-gray-700"
             }`}
           >
@@ -96,21 +127,19 @@ export default function PaymentPage() {
                 </span>
               </div>
             )}
-
-            <div className="p-8 text-right">
+            <div className="grow p-8 text-right">
               <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
                 {plan.name}
               </h3>
-              <p className="mt-4 text-gray-500 dark:text-gray-400">
-                {plan.description}
-              </p>
               <div className="mt-6 flex items-baseline text-gray-900 dark:text-white">
                 <span className="text-5xl font-extrabold tracking-tight">
                   {plan.priceToman}
                 </span>
-                <span className="ml-1 text-xl font-semibold">هزار تومان</span>
+                <span className="mr-2 text-xl font-semibold">هزار تومان</span>
               </div>
-
+              <p className="mt-4 text-gray-500 dark:text-gray-400">
+                {plan.description}
+              </p>
               <ul role="list" className="mt-8 space-y-4">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start">
@@ -120,16 +149,14 @@ export default function PaymentPage() {
                         aria-hidden="true"
                       />
                     </div>
-                    <p className="ml-3 text-base text-gray-700 dark:text-gray-300">
+                    <p className="mr-3 text-base text-gray-700 dark:text-gray-300">
                       {feature}
                     </p>
                   </li>
                 ))}
               </ul>
             </div>
-
-            <div className="mt-auto p-8">
-              {/* [اصلاح] onClick فقط شناسه پلن را ارسال می‌کند */}
+            <div className="mt-auto rounded-b-2xl bg-gray-50 p-8 dark:bg-gray-800/50">
               <button
                 onClick={() => handlePayment(plan.id)}
                 disabled={loadingPlan === plan.id}
@@ -146,6 +173,28 @@ export default function PaymentPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mx-auto mt-10 max-w-md">
+        <label
+          htmlFor="discount-code"
+          className="mb-2 block text-right text-sm font-medium text-gray-900 dark:text-gray-300"
+        >
+          کد تخفیف دارید؟
+        </label>
+        <div className="flex rounded-lg shadow-sm">
+          <input
+            type="text"
+            id="discount-code"
+            value={discountCode}
+            onChange={e => setDiscountCode(e.target.value.toUpperCase())}
+            className="block w-full min-w-0 flex-1 rounded-r-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-purple-500 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400"
+            placeholder="کد تخفیف خود را وارد کنید"
+          />
+          <span className="inline-flex items-center rounded-l-lg border border-l-0 border-gray-300 bg-gray-100 px-3 text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-600 dark:text-gray-400">
+            کد
+          </span>
+        </div>
       </div>
 
       {error && (
