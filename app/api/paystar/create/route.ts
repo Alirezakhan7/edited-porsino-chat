@@ -1,15 +1,21 @@
 // File: app/api/paystar/create/route.ts
-// [مهم] این کد امن شده و قیمت را از منبع داخلی سرور می‌خواند
+// [مهم] این کد برای پشتیبانی از کدهای تخفیف امن شده است
 
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
 
-// [اصلاح] تعریف پلن‌ها و قیمت‌ها در سمت سرور به عنوان منبع امن حقیقت
+// [اصلاح] تعریف پلن‌ها و قیمت‌ها در سمت سرور
 const serverPlans = {
   monthly: { priceRial: 6400000, name: "اشتراک یک ماهه" },
   "9-month": { priceRial: 40300000, name: "اشتراک ۹ ماهه" }
+}
+
+// [اصلاح] تعریف کدهای تخفیف معتبر در سمت سرور
+const serverDiscountCodes = {
+  SALE30: { discountPercent: 30 }, // 30 درصد تخفیف
+  SPECIAL100: { discountAmountRial: 1000000 } // ۱۰۰ هزار تومان تخفیف
 }
 
 const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"
@@ -19,7 +25,7 @@ export async function POST(req: Request) {
   const supabase = createClient(cookieStore)
 
   try {
-    // ۱. دریافت اطلاعات کاربر و شناسه پلن از کلاینت
+    // ۱. دریافت اطلاعات کاربر، شناسه پلن و کد تخفیف
     const {
       data: { user }
     } = await supabase.auth.getUser()
@@ -30,8 +36,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // به جای مبلغ، شناسه پلن را از کلاینت می‌گیریم
-    const { planId } = await req.json()
+    const { planId, discountCode } = await req.json()
     if (!planId || !(planId in serverPlans)) {
       return NextResponse.json(
         { message: "پلن اشتراک نامعتبر است." },
@@ -39,33 +44,47 @@ export async function POST(req: Request) {
       )
     }
 
-    // [اصلاح] دریافت مبلغ و نام پلن از منبع امن سرور
+    // ۲. محاسبه قیمت نهایی با اعمال کد تخفیف (در صورت وجود و اعتبار)
     const selectedPlan = serverPlans[planId as keyof typeof serverPlans]
-    const amount = selectedPlan.priceRial
-    const description = `خرید ${selectedPlan.name}`
+    let amount = selectedPlan.priceRial
+    let appliedDiscountCode = null
 
-    // ۲. آماده‌سازی پارامترهای پرداخت
+    if (discountCode && discountCode in serverDiscountCodes) {
+      appliedDiscountCode = discountCode
+      const codeDetails =
+        serverDiscountCodes[discountCode as keyof typeof serverDiscountCodes]
+      if (codeDetails.discountPercent) {
+        amount = amount * (1 - codeDetails.discountPercent / 100)
+      } else if (codeDetails.discountAmountRial) {
+        amount = Math.max(5000, amount - codeDetails.discountAmountRial) // حداقل مبلغ باید ۵۰۰۰ ریال باشد
+      }
+    }
+    amount = Math.round(amount) // رند کردن مبلغ نهایی
+
+    const description = `خرید ${selectedPlan.name}${appliedDiscountCode ? ` (با کد تخفیف: ${appliedDiscountCode})` : ""}`
+
+    // ۳. آماده‌سازی پارامترهای پرداخت
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
     const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
     const callback = "https://chat.porsino.org/api/paystar/callback"
 
-    // ۳. ثبت اولیه تراکنش در دیتابیس با مبلغ امن
+    // ۴. ثبت اولیه تراکنش در دیتابیس با مبلغ امن و کد تخفیف
     await supabase.from("transactions").insert({
       user_id: user.id,
       order_id: order_id,
-      amount: amount, // استفاده از مبلغ امن
-      status: "pending"
+      amount: amount,
+      status: "pending",
+      discount_code: appliedDiscountCode // ذخیره کد تخفیف استفاده شده
     })
 
-    // ۴. ساخت امضا برای ارسال به پی‌استار
+    // ۵. ساخت امضا و ارسال درخواست به پی‌استار
     const sign_data = `${amount}#${order_id}#${callback}`
     const sign = crypto
       .createHmac("sha512", sign_key)
       .update(sign_data)
       .digest("hex")
 
-    // ۵. ارسال درخواست به پی‌استار
     const response = await fetch(PAYSTAR_API_URL, {
       method: "POST",
       headers: {
