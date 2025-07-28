@@ -1,98 +1,93 @@
-import { NextRequest, NextResponse } from "next/server"
+// File: app/api/paystar/create/route.ts
+// وظیفه: ساخت تراکنش در دیتابیس محلی و دریافت لینک پرداخت از پی‌استار
+
+import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server" // فرض شده از سوپابیس استفاده می‌کنید
 import crypto from "crypto"
 
-export async function POST(req: NextRequest) {
-  // 1. گرفتن اطلاعات تراکنش از body
-  const body = await req.json()
-  console.log("[paystar-create] body received:", body)
+const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"
 
-  const {
-    amount,
-    order_id,
-    callback,
-    name,
-    phone,
-    mail,
-    description,
-    wallet_hashid,
-    national_code,
-    card_number
-  } = body
+export async function POST(req: Request) {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
 
-  // 2. گرفتن کلیدها از env
-  const gateway_id = process.env.PAYSTAR_GATEWAY_ID
-  const sign_key = process.env.PAYSTAR_SECRET_KEY
-  console.log("[paystar-create] env loaded:", {
-    gateway_idExists: !!gateway_id,
-    sign_keyExists: !!sign_key,
-    gateway_idFirst6: gateway_id?.slice(0, 6) || null,
-    sign_keyLength: sign_key?.length || null
-  })
-
-  // 3. ساخت امضا (sign)
-  const sign_data = `${amount}#${order_id}#${callback}`
-  const sign = sign_key
-    ? crypto.createHmac("sha512", sign_key).update(sign_data).digest("hex")
-    : null
-  console.log("[paystar-create] sign_data:", sign_data)
-  console.log("[paystar-create] sign:", sign)
-
-  // 4. ساخت دیتای نهایی
-  const data: any = {
-    amount,
-    order_id,
-    callback,
-    sign
-  }
-  if (name) data.name = name
-  if (phone) data.phone = phone
-  if (mail) data.mail = mail
-  if (description) data.description = description
-  if (wallet_hashid) data.wallet_hashid = wallet_hashid
-  if (national_code) data.national_code = national_code
-  if (card_number) data.card_number = card_number
-  console.log("[paystar-create] data to send:", data)
-
-  // 5. ساخت هدر
-  const headers = {
-    Accept: "application/json",
-    Authorization: "Bearer " + gateway_id,
-    "Content-Type": "application/json"
-  }
-  console.log("[paystar-create] headers to send:", headers)
-
-  // 6. ارسال درخواست به پی‌استار
   try {
-    const resp = await fetch("https://api.paystar.shop/api/pardakht/create", {
+    // ۱. دریافت اطلاعات کاربر و مبلغ
+    const {
+      data: { user }
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json(
+        { message: "کاربر شناسایی نشد." },
+        { status: 401 }
+      )
+    }
+    const { amount, description = "خرید اشتراک" } = await req.json()
+    if (!amount || amount < 5000) {
+      return NextResponse.json(
+        { message: "مبلغ نامعتبر است." },
+        { status: 400 }
+      )
+    }
+
+    // ۲. آماده‌سازی پارامترهای پرداخت
+    const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
+    const sign_key = process.env.PAYSTAR_SECRET_KEY!
+    const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
+    const callback = `${process.env.NEXT_PUBLIC_APP_URL}/api/paystar/callback` // آدرس بازگشت
+
+    // ۳. ثبت اولیه تراکنش در دیتابیس شما با وضعیت 'pending'
+    const { error: dbError } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      order_id: order_id,
+      amount: amount,
+      status: "pending",
+      description: description
+    })
+
+    if (dbError) {
+      console.error("[DB_ERROR]", dbError)
+      throw new Error("خطا در ثبت اولیه تراکنش در پایگاه داده.")
+    }
+
+    // ۴. ساخت امضا برای ارسال به پی‌استار
+    const sign_data = `${amount}#${order_id}#${callback}`
+    const sign = crypto
+      .createHmac("sha512", sign_key)
+      .update(sign_data)
+      .digest("hex")
+
+    // ۵. ارسال درخواست به پی‌استار
+    const response = await fetch(PAYSTAR_API_URL, {
       method: "POST",
-      headers,
-      body: JSON.stringify(data),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${gateway_id}`
+      },
+      body: JSON.stringify({
+        amount,
+        order_id,
+        callback,
+        sign,
+        mail: user.email,
+        description
+      }),
       cache: "no-store"
     })
 
-    // کد و متن اولیه پاسخ
-    console.log(
-      "[paystar-create] paystar status:",
-      resp.status,
-      resp.statusText
-    )
-
-    let text = await resp.text()
-    try {
-      const json = JSON.parse(text)
-      console.log("[paystar-create] paystar json:", json)
-      return NextResponse.json(json)
-    } catch (e) {
-      console.log("[paystar-create] paystar non-json response:", text)
-      return NextResponse.json(
-        { error: "Paystar response is not JSON", text },
-        { status: 500 }
-      )
+    const result = await response.json()
+    if (result.status !== 1) {
+      throw new Error(`پی‌استار خطا داد: ${result.message}`)
     }
-  } catch (err) {
-    console.log("[paystar-create] error:", err)
+
+    // ۶. برگرداندن لینک پرداخت به کلاینت
+    const paymentUrl = `https://api.paystar.shop/api/pardakht/payment?token=${result.data.token}`
+    return NextResponse.json({ payment_url: paymentUrl })
+  } catch (error: any) {
+    console.error("[CREATE_ERROR]", error)
     return NextResponse.json(
-      { error: "Failed to create transaction", detail: err },
+      { message: error.message || "خطای داخلی سرور" },
       { status: 500 }
     )
   }
