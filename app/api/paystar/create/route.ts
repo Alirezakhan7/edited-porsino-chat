@@ -53,10 +53,11 @@ export async function POST(req: Request) {
       appliedDiscountCode = discountCode
       const codeDetails =
         serverDiscountCodes[discountCode as keyof typeof serverDiscountCodes]
-      if (codeDetails.discountPercent) {
+
+      if ("discountPercent" in codeDetails) {
         amount = amount * (1 - codeDetails.discountPercent / 100)
-      } else if (codeDetails.discountAmountRial) {
-        amount = Math.max(5000, amount - codeDetails.discountAmountRial) // حداقل مبلغ باید ۵۰۰۰ ریال باشد
+      } else if ("discountAmountRial" in codeDetails) {
+        amount = Math.max(5000, amount - codeDetails.discountAmountRial)
       }
     }
     amount = Math.round(amount) // رند کردن مبلغ نهایی
