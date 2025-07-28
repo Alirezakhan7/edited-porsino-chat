@@ -14,15 +14,15 @@ export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
 
-  // ۱. خواندن پارامترهای بازگشتی از URL
-  const status = searchParams.get("status")
   const order_id = searchParams.get("order_id")
-  const ref_num = searchParams.get("ref_num")
-  const card_number = searchParams.get("card_number")
-  const tracking_code = searchParams.get("tracking_code")
 
   try {
-    // ۲. بررسی وضعیت اولیه و پارامترهای ضروری
+    // ۱. خواندن پارامترهای بازگشتی از URL
+    const status = searchParams.get("status")
+    const ref_num = searchParams.get("ref_num")
+    const card_number = searchParams.get("card_number")
+    const tracking_code = searchParams.get("tracking_code")
+
     if (!order_id) throw new Error("شناسه سفارش یافت نشد.")
     if (status !== "1") {
       await supabase
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       throw new Error("اطلاعات بازگشتی از درگاه ناقص است.")
     }
 
-    // ۳. پیدا کردن تراکنش 'pending' در دیتابیس برای دریافت مبلغ امن
+    // ۲. پیدا کردن تراکنش در دیتابیس
     const { data: transaction, error: findError } = await supabase
       .from("transactions")
       .select("*")
@@ -52,9 +52,8 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    // ۳. ارسال درخواست تایید نهایی به پی‌استار
     const amount = transaction.amount
-
-    // ۴. ساخت امضا و ارسال درخواست تایید نهایی به پی‌استار (سرور به سرور)
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
     const sign_data = `${amount}#${ref_num}#${card_number}#${tracking_code}`
     const sign = crypto
@@ -77,7 +76,7 @@ export async function GET(req: NextRequest) {
       throw new Error(`تایید تراکنش ناموفق بود: ${result.message}`)
     }
 
-    // ۵. تراکنش موفق! آپدیت دیتابیس و فعال‌سازی اشتراک
+    // ۴. تراکنش موفق! آپدیت دیتابیس
     await supabase
       .from("transactions")
       .update({
@@ -87,19 +86,17 @@ export async function GET(req: NextRequest) {
       })
       .eq("order_id", order_id)
 
-    // (اختیاری) فعال کردن اشتراک کاربر در جدول profiles
-    // await supabase.from("profiles").update({ subscription_status: "active" }).eq("id", transaction.user_id);
-
-    // ۶. هدایت کاربر به صفحه اعلام نتیجه موفق
+    // ۵. هدایت کاربر به صفحه اعلام نتیجه موفق
     return NextResponse.redirect(
       `${appUrl}/payment-result?status=success&order_id=${order_id}`
     )
   } catch (error: any) {
     console.error("[CALLBACK_ERROR]", error)
     if (order_id) {
+      // آپدیت وضعیت به failed بدون فیلد description
       await supabase
         .from("transactions")
-        .update({ status: "failed", description: error.message })
+        .update({ status: "failed" })
         .eq("order_id", order_id)
     }
     return NextResponse.redirect(

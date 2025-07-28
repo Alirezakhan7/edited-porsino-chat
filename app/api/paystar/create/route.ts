@@ -3,7 +3,7 @@
 
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { createClient } from "@/lib/supabase/server" // فرض شده از سوپابیس استفاده می‌کنید
+import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
 
 const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"
@@ -35,15 +35,14 @@ export async function POST(req: Request) {
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
     const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
-    const callback = `${process.env.NEXT_PUBLIC_APP_URL}/api/paystar/callback` // آدرس بازگشت
+    const callback = `${process.env.NEXT_PUBLIC_APP_URL}/api/paystar/callback`
 
-    // ۳. ثبت اولیه تراکنش در دیتابیس شما با وضعیت 'pending'
+    // ۳. ثبت اولیه تراکنش در دیتابیس (بدون فیلد description)
     const { error: dbError } = await supabase.from("transactions").insert({
       user_id: user.id,
       order_id: order_id,
       amount: amount,
-      status: "pending",
-      description: description
+      status: "pending"
     })
 
     if (dbError) {
