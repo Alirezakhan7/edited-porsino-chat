@@ -33,12 +33,15 @@ export async function POST(req: NextRequest) {
 
   try {
     // ارسال درخواست به پی‌استار
-    const response = await fetch("https://api.paystar.shop/pardakht/verify", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(data),
-      cache: "no-store"
-    })
+    const response = await fetch(
+      "https://api.paystar.shop/api/pardakht/verify",
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data),
+        cache: "no-store"
+      }
+    )
     const result = await response.json()
 
     // خروجی دقیقاً مثل پایتون

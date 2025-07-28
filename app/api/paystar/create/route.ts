@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   // 6. ارسال درخواست به پی‌استار
   try {
-    const resp = await fetch("https://api.paystar.shop/pardakht/create", {
+    const resp = await fetch("https://api.paystar.shop/api/pardakht/create", {
       method: "POST",
       headers,
       body: JSON.stringify(data),

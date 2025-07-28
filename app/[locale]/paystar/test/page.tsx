@@ -29,7 +29,7 @@ export default function PaystarTest() {
       const result = await resp.json()
       if (result.status === 1 && result.data && result.data.token) {
         // ریدایرکت به درگاه پی‌استار با توکن دریافتی
-        window.location.href = `https://api.paystar.shop/pardakht/payment?token=${result.data.token}`
+        window.location.href = `https://api.paystar.shop/api/pardakht/payment?token=${result.data.token}`
       } else {
         setError(result.message || "خطا در ایجاد تراکنش!")
         setLoading(false)
