@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
 
     // [اصلاح] آدرس بازگشت به صورت دستی تنظیم شده است
-    const callback = "https://porsino.org/api/paystar/callback"
+    const callback = "https://chat.porsino.org/api/paystar/callback"
 
     // ۳. ثبت اولیه تراکنش در دیتابیس (بدون فیلد description)
     const { error: dbError } = await supabase.from("transactions").insert({
