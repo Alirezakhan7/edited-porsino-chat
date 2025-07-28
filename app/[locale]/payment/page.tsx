@@ -3,13 +3,12 @@
 import { useState } from "react"
 import { CheckCircle } from "lucide-react" // یک کتابخانه آیکون زیبا
 
-// تعریف اطلاعات پلن‌ها برای مدیریت آسان‌تر
-const plans = [
+// تعریف اطلاعات پلن‌ها برای نمایش در صفحه
+const displayPlans = [
   {
     id: "monthly",
     name: "اشتراک یک ماهه",
-    priceToman: "۶۴۰", // قیمت به هزار تومان
-    priceRial: 6400000,
+    priceToman: "۶۴۰",
     description: "ایده‌آل برای شروع و پروژه‌های کوتاه‌مدت.",
     features: [
       "پروژه‌های عمومی و خصوصی",
@@ -22,8 +21,7 @@ const plans = [
   {
     id: "9-month",
     name: "اشتراک ۹ ماهه",
-    priceToman: "۴,۰۳۰", // قیمت به هزار تومان
-    priceRial: 40300000,
+    priceToman: "۴,۰۳۰",
     description: "بهترین انتخاب برای کاربران حرفه‌ای با ۳۰٪ تخفیف.",
     features: [
       "پروژه‌های عمومی و خصوصی",
@@ -39,18 +37,17 @@ export default function PaymentPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handlePayment = async (amountRial: number, planId: string) => {
+  // [اصلاح] این تابع دیگر مبلغ را به عنوان ورودی نمی‌گیرد
+  const handlePayment = async (planId: string) => {
     setLoadingPlan(planId)
     setError(null)
 
     try {
+      // [اصلاح] در بدنه درخواست، فقط شناسه پلن ارسال می‌شود
       const response = await fetch("/api/paystar/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: amountRial,
-          description: `خرید ${plans.find(p => p.id === planId)?.name}`
-        })
+        body: JSON.stringify({ planId: planId })
       })
 
       const result = await response.json()
@@ -83,7 +80,7 @@ export default function PaymentPage() {
       </div>
 
       <div className="mt-12 space-y-8 lg:grid lg:grid-cols-2 lg:gap-x-8 lg:space-y-0">
-        {plans.map(plan => (
+        {displayPlans.map(plan => (
           <div
             key={plan.id}
             className={`relative flex flex-col rounded-2xl border bg-white shadow-xl dark:bg-gray-800 ${
@@ -132,8 +129,9 @@ export default function PaymentPage() {
             </div>
 
             <div className="mt-auto p-8">
+              {/* [اصلاح] onClick فقط شناسه پلن را ارسال می‌کند */}
               <button
-                onClick={() => handlePayment(plan.priceRial, plan.id)}
+                onClick={() => handlePayment(plan.id)}
                 disabled={loadingPlan === plan.id}
                 className={`w-full rounded-lg px-6 py-3 text-center text-lg font-semibold text-white transition-colors duration-200 ${
                   plan.isPopular

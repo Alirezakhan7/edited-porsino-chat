@@ -1,10 +1,16 @@
 // File: app/api/paystar/create/route.ts
-// وظیفه: ساخت تراکنش در دیتابیس محلی و دریافت لینک پرداخت از پی‌استار
+// [مهم] این کد امن شده و قیمت را از منبع داخلی سرور می‌خواند
 
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
+
+// [اصلاح] تعریف پلن‌ها و قیمت‌ها در سمت سرور به عنوان منبع امن حقیقت
+const serverPlans = {
+  monthly: { priceRial: 6400000, name: "اشتراک یک ماهه" },
+  "9-month": { priceRial: 40300000, name: "اشتراک ۹ ماهه" }
+}
 
 const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"
 
@@ -13,7 +19,7 @@ export async function POST(req: Request) {
   const supabase = createClient(cookieStore)
 
   try {
-    // ۱. دریافت اطلاعات کاربر و مبلغ
+    // ۱. دریافت اطلاعات کاربر و شناسه پلن از کلاینت
     const {
       data: { user }
     } = await supabase.auth.getUser()
@@ -23,34 +29,34 @@ export async function POST(req: Request) {
         { status: 401 }
       )
     }
-    const { amount, description = "خرید اشتراک" } = await req.json()
-    if (!amount || amount < 5000) {
+
+    // به جای مبلغ، شناسه پلن را از کلاینت می‌گیریم
+    const { planId } = await req.json()
+    if (!planId || !(planId in serverPlans)) {
       return NextResponse.json(
-        { message: "مبلغ نامعتبر است." },
+        { message: "پلن اشتراک نامعتبر است." },
         { status: 400 }
       )
     }
+
+    // [اصلاح] دریافت مبلغ و نام پلن از منبع امن سرور
+    const selectedPlan = serverPlans[planId as keyof typeof serverPlans]
+    const amount = selectedPlan.priceRial
+    const description = `خرید ${selectedPlan.name}`
 
     // ۲. آماده‌سازی پارامترهای پرداخت
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
     const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
-
-    // [اصلاح] آدرس بازگشت به صورت دستی تنظیم شده است
     const callback = "https://chat.porsino.org/api/paystar/callback"
 
-    // ۳. ثبت اولیه تراکنش در دیتابیس (بدون فیلد description)
-    const { error: dbError } = await supabase.from("transactions").insert({
+    // ۳. ثبت اولیه تراکنش در دیتابیس با مبلغ امن
+    await supabase.from("transactions").insert({
       user_id: user.id,
       order_id: order_id,
-      amount: amount,
+      amount: amount, // استفاده از مبلغ امن
       status: "pending"
     })
-
-    if (dbError) {
-      console.error("[DB_ERROR]", dbError)
-      throw new Error("خطا در ثبت اولیه تراکنش در پایگاه داده.")
-    }
 
     // ۴. ساخت امضا برای ارسال به پی‌استار
     const sign_data = `${amount}#${order_id}#${callback}`
