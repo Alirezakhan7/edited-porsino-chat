@@ -27,6 +27,19 @@ const serverDiscountCodes: Record<string, DiscountDetail> = {
   SALE30: { discountPercent: 30 },
   SPECIAL100: { discountAmountRial: 1_000_000 }
 }
+const featuresMonthly = [
+  "دسترسی به دروس ریاضی ، فیزیک و زیست شناسی",
+  "دسترسی به تمام کنکورها",
+  "دسترسی به تمام امتحانات نهایی",
+  "یک میلیون توکن پرسینو برای هر کاربر در ماه"
+]
+
+const featuresYearly = [
+  "تمام امکانات پلن ماهانه",
+  "سی درصد تخفیف نسبت به خرید ماهانه",
+  "مجموع ۱۲۰ میلیون توکن در سال (هر ماه ۱۰ میلیون)",
+  "انتقال توکن‌های استفاده‌ نشده هر ماه به ماه بعد"
+]
 
 /* ------------------------------------------------------------------ */
 /* ۲. توابع کمکی برای قالب‌بندی عدد و تبدیل به ارقام فارسی             */
@@ -161,7 +174,7 @@ export default function PaymentPage() {
           </h1>
           <p className="mx-auto max-w-3xl text-xl leading-relaxed text-gray-600 dark:text-gray-300">
             بهترین گزینه را برای نیازهای خود انتخاب کرده و به امکانات ویژه
-            دسترسی پیدا کنید.
+            دسترسی پیدا کنید
           </p>
         </header>
 
@@ -223,13 +236,11 @@ export default function PaymentPage() {
                         {plan.name}
                       </h3>
                     </div>
-                    <div className="mb-2 text-xs text-gray-400 md:text-sm">
-                      قیمت به ازای هر ماه
-                    </div>
+
                     <p className="text-base text-gray-600 md:text-lg dark:text-gray-400">
                       {planId === "monthly"
-                        ? "ایده‌آل برای شروع و پروژه‌های کوتاه‌مدت"
-                        : "بهترین انتخاب برای کاربران حرفه‌ای"}
+                        ? "مناسب برای شروع مسیر موفقیت"
+                        : "بهترین و به صرفه ترین انتخاب"}
                     </p>
                   </div>
 
@@ -277,12 +288,10 @@ export default function PaymentPage() {
 
                   {/* Features */}
                   <ul className="space-y-4 text-right">
-                    {[
-                      "پروژه‌های عمومی و خصوصی",
-                      "شروع با ۱۰ میلیون توکن در ماه",
-                      "بدون محدودیت توکن روزانه",
-                      "توکن‌های استفاده نشده به ماه بعد منتقل می‌شود"
-                    ].map((feature, idx) => (
+                    {(planId === "monthly"
+                      ? featuresMonthly
+                      : featuresYearly
+                    ).map((feature, idx) => (
                       <motion.li
                         key={idx}
                         initial={{ opacity: 0, x: 20 }}
@@ -296,15 +305,24 @@ export default function PaymentPage() {
                     ))}
                   </ul>
 
-                  {/* Payment Button */}
                   <button
                     onClick={() => handlePayment(planId)}
                     disabled={loadingPlan === planId}
-                    className={`w-full rounded-2xl px-8 py-6 text-xl font-bold shadow-xl transition-all duration-300 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50${
-                      isPopular
-                        ? "bg-gradient-to-r from-blue-500 to-emerald-500 text-white shadow-blue-500/30 hover:from-blue-600 hover:to-emerald-600"
-                        : "bg-gradient-to-r from-gray-800 to-gray-900 text-white hover:from-gray-700 hover:to-gray-800 dark:from-white dark:to-gray-100 dark:text-gray-900 dark:hover:from-gray-100 dark:hover:to-white"
-                    }`}
+                    className={`
+                        w-full rounded-2xl border-2 border-white/70 px-8 py-6
+                        text-xl
+                        font-bold shadow-xl
+                        drop-shadow-[0_2px_16px_rgba(16,185,129,0.25)]
+                        transition-all duration-300
+                        hover:scale-[1.02]
+                        disabled:cursor-not-allowed disabled:opacity-50
+                        dark:border-emerald-300/60
+                        ${
+                          isPopular
+                            ? "bg-gradient-to-r from-blue-500 to-emerald-500 text-white shadow-blue-500/30 hover:from-blue-600 hover:to-emerald-600"
+                            : "bg-gradient-to-r from-gray-800 to-gray-900 text-white hover:from-gray-700 hover:to-gray-800 dark:from-emerald-300 dark:to-blue-200 dark:text-gray-900 dark:hover:from-blue-200 dark:hover:to-emerald-300"
+                        }
+                      `}
                   >
                     {loadingPlan === planId ? (
                       <span className="flex items-center justify-center gap-3">
@@ -331,7 +349,7 @@ export default function PaymentPage() {
               </h3>
               <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300">
                 برای استفاده از کد تخفیف، ابتدا ثبت‌نام کنید، سپس دکمه‌ی کنار را
-                بزنید و کد خود را وارد کنید.
+                بزنید و کد خود را وارد کنید
               </p>
             </div>
 
