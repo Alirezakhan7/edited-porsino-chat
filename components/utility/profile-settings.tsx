@@ -2,9 +2,9 @@
 // 1) The 'API Keys' tab is completely removed.
 // 2) The 'Profile' tab is renamed to 'مشخصات کاربر'.
 // 3) The appearance is updated to a more modern style.
-//    - Smoother background, minor hover effects, etc.
-// 4) The "Profile Instructions" (توضیحات برای هوش مصنوعی) section is removed.
+// 4) The "Profile Instructions" section is removed.
 // 5) The sheet animation is made faster to open instantly.
+// 6) A dynamic subscription button is added that checks the user's status.
 
 "use client"
 
@@ -18,8 +18,10 @@ import { updateProfile } from "@/db/profile"
 import { uploadProfileImage } from "@/db/storage/profile-images"
 import { supabase } from "@/lib/supabase/browser-client"
 import {
+  IconCalendarStats, // آیکون جدید برای نمایش وضعیت
   IconCircleCheckFilled,
   IconCircleXFilled,
+  IconCrown,
   IconLoader2,
   IconLogout,
   IconUser
@@ -142,6 +144,21 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
 
   if (!profile) return null
 
+  // [جدید] منطق بررسی وضعیت اشتراک
+  const expiresAt = profile.subscription_expires_at
+    ? new Date(profile.subscription_expires_at)
+    : null
+  const isSubscribed =
+    profile.subscription_status === "active" &&
+    expiresAt &&
+    expiresAt > new Date()
+  let remainingDays = 0
+  if (isSubscribed && expiresAt) {
+    const today = new Date()
+    const timeDiff = expiresAt.getTime() - today.getTime()
+    remainingDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24))
+  }
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
@@ -183,6 +200,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
           </SheetHeader>
 
           <div className="space-y-4">
+            {/* Form fields for username, profile image, display name */}
             <div className="space-y-1">
               <Label className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                 نام کاربری
@@ -239,6 +257,30 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
               />
             </div>
           </div>
+        </div>
+
+        {/* [بخش آپدیت شده] نمایش وضعیت اشتراک یا دکمه خرید */}
+        <div className="border-t border-gray-200 p-4 dark:border-gray-700">
+          {isSubscribed ? (
+            <div className="flex w-full cursor-default items-center justify-center space-x-2 space-x-reverse rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-md">
+              <IconCalendarStats size={20} />
+              <span>
+                {remainingDays > 0
+                  ? `${remainingDays} روز از اشتراک شما باقی مانده`
+                  : "اشتراک شما امروز به پایان می‌رسد"}
+              </span>
+            </div>
+          ) : (
+            <a
+              href="https://chat.porsino.org/payment"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="items-right flex w-full justify-center space-x-2 space-x-reverse rounded-lg bg-gradient-to-r from-yellow-400 to-orange-500 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-yellow-500 hover:to-orange-600 hover:shadow-lg"
+            >
+              <IconCrown size={20} className="text-white" />
+              <span> Porsino Pro خرید اشتراک </span>
+            </a>
+          )}
         </div>
 
         <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 dark:border-gray-700">

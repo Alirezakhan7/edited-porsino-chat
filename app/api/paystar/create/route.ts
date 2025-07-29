@@ -1,21 +1,24 @@
 // File: app/api/paystar/create/route.ts
-// [مهم] این کد برای پشتیبانی از کدهای تخفیف امن شده است
 
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
 
-// [اصلاح] تعریف پلن‌ها و قیمت‌ها در سمت سرور
+// [اصلاح شده ✅] تعریف پلن‌ها و قیمت‌ها در سمت سرور
+// قیمت‌ها باید مبلغ کل پرداختی برای هر پلن باشند
 const serverPlans = {
-  monthly: { priceRial: 6400000, name: "اشتراک یک ماهه" },
-  "9-month": { priceRial: 40300000, name: "اشتراک ۹ ماهه" }
+  monthly: { priceRial: 8_400_000, name: "اشتراک ماهانه" },
+  yearly: { priceRial: 70_560_000, name: "اشتراک سالانه" } // 7,056,000 تومان
 }
 
-// [اصلاح] تعریف کدهای تخفیف معتبر در سمت سرور
-const serverDiscountCodes = {
+// [اصلاح شده ✅] کدهای تخفیف معتبر در سمت سرور
+const serverDiscountCodes: Record<
+  string,
+  { discountPercent: number } | { discountAmountRial: number }
+> = {
   SALE30: { discountPercent: 30 }, // 30 درصد تخفیف
-  SPECIAL100: { discountAmountRial: 1000000 } // ۱۰۰ هزار تومان تخفیف
+  SPECIAL100: { discountAmountRial: 1_000_000 } // ۱۰۰ هزار تومان تخفیف
 }
 
 const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"

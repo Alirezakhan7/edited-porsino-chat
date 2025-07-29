@@ -992,6 +992,8 @@ export type Database = {
           full_name: string
           user_profile: string
           user_grade: string
+          subscription_status: string | null //  این خط را اضافه کنید
+          subscription_expires_at: string | null // این خط را اضافه کنید
 
         }
         Insert: {
@@ -1024,6 +1026,8 @@ export type Database = {
           full_name: string
           user_profile: string
           user_grade: string
+          subscription_status?: string | null //  این خط را اضافه کنید
+          subscription_expires_at?: string | null // این خط را اضافه کنید
 
         }
         Update: {
@@ -1056,6 +1060,8 @@ export type Database = {
           full_name?: string | null
           user_profile?: string | null
           user_grade?: string | null
+          subscription_status?: string | null //  این خط را اضافه کنید
+          subscription_expires_at?: string | null // این خط را اضافه کنید
 
         }
         Relationships: []
