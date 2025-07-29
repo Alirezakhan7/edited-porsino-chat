@@ -10,7 +10,6 @@ import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
 
 // ۱. تعریف پلن‌ها و کدهای تخفیف در سمت سرور برای امنیت
-// این مقادیر باید با مقادیر کلاینت هماهنگ باشند.
 const serverPlans = {
   monthly: { priceRial: 8_400_000, name: "اشتراک ماهانه" },
   yearly: { priceRial: 70_560_000, name: "اشتراک سالانه" }
@@ -25,7 +24,6 @@ const serverDiscountCodes: Record<
   SUMMER25: { discountPercent: 99 }
 }
 
-// آدرس پایه صحیح برای API پی‌استار
 const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"
 
 export async function POST(req: Request) {
@@ -70,16 +68,28 @@ export async function POST(req: Request) {
         finalAmount = Math.max(
           5000,
           finalAmount - codeDetails.discountAmountRial
-        ) // حداقل مبلغ تراکنش طبق مستندات
+        )
       }
     }
     finalAmount = Math.round(finalAmount)
 
-    // ۵. آماده‌سازی پارامترها برای ارسال به پی‌استار
-    const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
-    const sign_key = process.env.PAYSTAR_SECRET_KEY!
+    // ✅ ۵. آماده‌سازی پارامترها با آدرس دستی
+    const gateway_id = process.env.PAYSTAR_GATEWAY_ID
+    const sign_key = process.env.PAYSTAR_SECRET_KEY
+
+    // 🔴 مهم: آدرس کامل و صحیح سایت خود را در اینجا وارد کنید
+    const app_url = "https://chat.porsino.org"
+
+    // بررسی وجود متغیرهای حیاتی
+    if (!gateway_id || !sign_key) {
+      console.error(
+        "Server configuration error: PAYSTAR_GATEWAY_ID or PAYSTAR_SECRET_KEY is missing."
+      )
+      throw new Error("پیکربندی سرور ناقص است. لطفاً با پشتیبانی تماس بگیرید.")
+    }
+
     const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
-    const callback_url = `${process.env.NEXT_PUBLIC_APP_URL}/api/paystar/callback`
+    const callback_url = `${app_url}/api/paystar/callback`
     const description = `خرید ${selectedPlan.name}${appliedDiscountCode ? ` (کد تخفیف: ${appliedDiscountCode})` : ""}`
 
     // ۶. ساخت امضای دیجیتال
@@ -113,7 +123,7 @@ export async function POST(req: Request) {
       throw new Error(`خطا در ارتباط با درگاه پرداخت: ${result.message}`)
     }
 
-    // ۸. ثبت اولیه تراکنش در دیتابیس با تمام جزئیات لازم
+    // ۸. ثبت اولیه تراکنش در دیتابیس
     const { error: dbError } = await supabase.from("transactions").insert({
       user_id: user.id,
       order_id: order_id,
@@ -129,7 +139,7 @@ export async function POST(req: Request) {
       throw new Error("خطا در ثبت اطلاعات تراکنش در دیتابیس.")
     }
 
-    // ۹. ارسال لینک پرداخت به کلاینت برای هدایت کاربر
+    // ۹. ارسال لینک پرداخت به کلاینت
     const paymentUrl = `https://api.paystar.shop/api/pardakht/payment?token=${result.data.token}`
     return NextResponse.json({ payment_url: paymentUrl })
   } catch (error: any) {

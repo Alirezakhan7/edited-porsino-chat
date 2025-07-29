@@ -37,7 +37,7 @@ export default function PaymentResultPage() {
           title: "پرداخت موفق",
           description:
             message ||
-            "اشتراک شما با موفقیت فعال شد. تا چند لحظه دیگر به صفحه چت منتقل می‌شوید.",
+            "اشتراک شما با موفقیت فعال شد. تا چند لحظه دیگر به صفحه چت منتقل می‌شوید",
           button: null,
           bgColor: "bg-green-50 dark:bg-green-900/20",
           borderColor: "border-green-200 dark:border-green-700",
@@ -48,8 +48,7 @@ export default function PaymentResultPage() {
           icon: <XCircle className="size-16 text-red-500" />,
           title: "تراکنش ناموفق",
           description:
-            message ||
-            "متاسفانه پرداخت شما ناموفق بود. لطفاً دوباره تلاش کنید.",
+            message || "متاسفانه پرداخت شما ناموفق بود. لطفاً دوباره تلاش کنید",
           button: { text: "بازگشت به صفحه پرداخت", path: "/payment" },
           bgColor: "bg-red-50 dark:bg-red-900/20",
           borderColor: "border-red-200 dark:border-red-700",
@@ -61,7 +60,7 @@ export default function PaymentResultPage() {
           title: "خطا در پرداخت",
           description:
             message ||
-            "یک خطای پیش‌بینی نشده رخ داد. لطفاً با پشتیبانی تماس بگیرید.",
+            "یک خطای پیش‌بینی نشده رخ داد. لطفاً با پشتیبانی تماس بگیرید",
           button: { text: "بازگشت به صفحه پرداخت", path: "/payment" },
           bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
           borderColor: "border-yellow-200 dark:border-yellow-700",
@@ -91,7 +90,7 @@ export default function PaymentResultPage() {
 
         {orderId && (
           <div className="mb-8 rounded-lg bg-gray-200/50 p-3 text-sm text-gray-500 dark:bg-gray-700/50 dark:text-gray-400">
-            <span className="font-semibold">شماره سفارش:</span>
+            <span className="font-semibold">شماره سفارش</span>
             <span className="select-all font-mono" dir="ltr">
               {orderId}
             </span>
