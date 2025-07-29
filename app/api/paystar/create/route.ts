@@ -1,26 +1,31 @@
-// File: app/api/paystar/create/route.ts
-
+/* --------------------------------------------------------------------------
+   File: app/api/paystar/create/route.ts
+   Description: Creates a payment transaction by calculating the final price
+                on the server, registering it with Paystar, and saving the
+                initial transaction details to Supabase.
+   -------------------------------------------------------------------------- */
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
 
-// [اصلاح شده ✅] تعریف پلن‌ها و قیمت‌ها در سمت سرور
-// قیمت‌ها باید مبلغ کل پرداختی برای هر پلن باشند
+// ۱. تعریف پلن‌ها و کدهای تخفیف در سمت سرور برای امنیت
+// این مقادیر باید با مقادیر کلاینت هماهنگ باشند.
 const serverPlans = {
   monthly: { priceRial: 8_400_000, name: "اشتراک ماهانه" },
-  yearly: { priceRial: 70_560_000, name: "اشتراک سالانه" } // 7,056,000 تومان
+  yearly: { priceRial: 70_560_000, name: "اشتراک سالانه" }
 }
 
-// [اصلاح شده ✅] کدهای تخفیف معتبر در سمت سرور
 const serverDiscountCodes: Record<
   string,
   { discountPercent: number } | { discountAmountRial: number }
 > = {
-  SALE30: { discountPercent: 30 }, // 30 درصد تخفیف
-  SPECIAL100: { discountAmountRial: 1_000_000 } // ۱۰۰ هزار تومان تخفیف
+  SALE30: { discountPercent: 30 },
+  SPECIAL100: { discountAmountRial: 1_000_000 },
+  SUMMER25: { discountPercent: 95 }
 }
 
+// آدرس پایه صحیح برای API پی‌استار
 const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"
 
 export async function POST(req: Request) {
@@ -28,18 +33,20 @@ export async function POST(req: Request) {
   const supabase = createClient(cookieStore)
 
   try {
-    // ۱. دریافت اطلاعات کاربر، شناسه پلن و کد تخفیف
+    // ۲. اعتبارسنجی کاربر
     const {
       data: { user }
     } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json(
-        { message: "کاربر شناسایی نشد." },
+        { message: "کاربر شناسایی نشد. لطفاً ابتدا وارد شوید." },
         { status: 401 }
       )
     }
 
     const { planId, discountCode } = await req.json()
+
+    // ۳. اعتبارسنجی پلن ورودی
     if (!planId || !(planId in serverPlans)) {
       return NextResponse.json(
         { message: "پلن اشتراک نامعتبر است." },
@@ -47,9 +54,9 @@ export async function POST(req: Request) {
       )
     }
 
-    // ۲. محاسبه قیمت نهایی با اعمال کد تخفیف (در صورت وجود و اعتبار)
+    // ۴. محاسبه امن قیمت نهایی در سرور
     const selectedPlan = serverPlans[planId as keyof typeof serverPlans]
-    let amount = selectedPlan.priceRial
+    let finalAmount = selectedPlan.priceRial
     let appliedDiscountCode = null
 
     if (discountCode && discountCode in serverDiscountCodes) {
@@ -58,37 +65,31 @@ export async function POST(req: Request) {
         serverDiscountCodes[discountCode as keyof typeof serverDiscountCodes]
 
       if ("discountPercent" in codeDetails) {
-        amount = amount * (1 - codeDetails.discountPercent / 100)
+        finalAmount *= 1 - codeDetails.discountPercent / 100
       } else if ("discountAmountRial" in codeDetails) {
-        amount = Math.max(5000, amount - codeDetails.discountAmountRial)
+        finalAmount = Math.max(
+          5000,
+          finalAmount - codeDetails.discountAmountRial
+        ) // حداقل مبلغ تراکنش طبق مستندات
       }
     }
-    amount = Math.round(amount) // رند کردن مبلغ نهایی
+    finalAmount = Math.round(finalAmount)
 
-    const description = `خرید ${selectedPlan.name}${appliedDiscountCode ? ` (با کد تخفیف: ${appliedDiscountCode})` : ""}`
-
-    // ۳. آماده‌سازی پارامترهای پرداخت
+    // ۵. آماده‌سازی پارامترها برای ارسال به پی‌استار
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
     const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
-    const callback = "https://chat.porsino.org/api/paystar/callback"
+    const callback_url = `${process.env.NEXT_PUBLIC_APP_URL}/api/paystar/callback`
+    const description = `خرید ${selectedPlan.name}${appliedDiscountCode ? ` (کد تخفیف: ${appliedDiscountCode})` : ""}`
 
-    // ۴. ثبت اولیه تراکنش در دیتابیس با مبلغ امن و کد تخفیف
-    await supabase.from("transactions").insert({
-      user_id: user.id,
-      order_id: order_id,
-      amount: amount,
-      status: "pending",
-      discount_code: appliedDiscountCode // ذخیره کد تخفیف استفاده شده
-    })
-
-    // ۵. ساخت امضا و ارسال درخواست به پی‌استار
-    const sign_data = `${amount}#${order_id}#${callback}`
+    // ۶. ساخت امضای دیجیتال
+    const sign_data = `${finalAmount}#${order_id}#${callback_url}`
     const sign = crypto
       .createHmac("sha512", sign_key)
       .update(sign_data)
       .digest("hex")
 
+    // ۷. ارسال درخواست به درگاه پرداخت
     const response = await fetch(PAYSTAR_API_URL, {
       method: "POST",
       headers: {
@@ -96,9 +97,9 @@ export async function POST(req: Request) {
         Authorization: `Bearer ${gateway_id}`
       },
       body: JSON.stringify({
-        amount,
+        amount: finalAmount,
         order_id,
-        callback,
+        callback: callback_url,
         sign,
         mail: user.email,
         description
@@ -108,16 +109,33 @@ export async function POST(req: Request) {
 
     const result = await response.json()
     if (result.status !== 1) {
-      throw new Error(`پی‌استار خطا داد: ${result.message}`)
+      console.error("Paystar Error:", result.message)
+      throw new Error(`خطا در ارتباط با درگاه پرداخت: ${result.message}`)
     }
 
-    // ۶. برگرداندن لینک پرداخت به کلاینت
+    // ۸. ثبت اولیه تراکنش در دیتابیس با تمام جزئیات لازم
+    const { error: dbError } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      order_id: order_id,
+      ref_num: result.data.ref_num,
+      plan_id: planId,
+      amount: finalAmount,
+      status: "pending",
+      discount_code: appliedDiscountCode
+    })
+
+    if (dbError) {
+      console.error("Supabase Insert Error:", dbError)
+      throw new Error("خطا در ثبت اطلاعات تراکنش در دیتابیس.")
+    }
+
+    // ۹. ارسال لینک پرداخت به کلاینت برای هدایت کاربر
     const paymentUrl = `https://api.paystar.shop/api/pardakht/payment?token=${result.data.token}`
     return NextResponse.json({ payment_url: paymentUrl })
   } catch (error: any) {
-    console.error("[CREATE_ERROR]", error)
+    console.error("[PAYMENT_CREATE_ERROR]", error)
     return NextResponse.json(
-      { message: error.message || "خطای داخلی سرور" },
+      { message: error.message || "یک خطای پیش‌بینی‌نشده در سرور رخ داد." },
       { status: 500 }
     )
   }

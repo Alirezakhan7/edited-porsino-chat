@@ -25,7 +25,8 @@ const serverPlans = {
 
 const serverDiscountCodes: Record<string, DiscountDetail> = {
   SALE30: { discountPercent: 30 },
-  SPECIAL100: { discountAmountRial: 1_000_000 }
+  SPECIAL100: { discountAmountRial: 1_000_000 },
+  SUMMER25: { discountPercent: 90 }
 }
 const featuresMonthly = [
   "دسترسی به دروس ریاضی ، فیزیک و زیست شناسی",

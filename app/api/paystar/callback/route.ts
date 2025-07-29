@@ -1,81 +1,128 @@
-// File: app/api/paystar/create/route.ts
-// [مهم] این فایل اکنون پس از پرداخت، پروفایل و سقف توکن کاربر را آپدیت می‌کند
-
+/* --------------------------------------------------------------------------
+   File: app/api/paystar/callback/route.ts
+   Description: Handles the callback from the Paystar payment gateway. It
+                verifies the transaction, and upon success, updates the user's
+                subscription status and token limits in Supabase.
+   -------------------------------------------------------------------------- */
 import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import crypto from "crypto"
 
-// تعریف مقادیر پلن‌ها در سمت سرور برای امنیت
-const serverPlans = {
-  6400000: { tokens: 1000000, durationDays: 30, name: "monthly" },
-  40300000: { tokens: 9000000, durationDays: 270, name: "9-month" }
-}
-
+// آدرس پایه صحیح برای API تایید تراکنش پی‌استار
 const PAYSTAR_VERIFY_URL = "https://api.paystar.shop/api/pardakht/verify"
 
-export async function GET(req: NextRequest) {
+// مقادیر پلن‌ها برای آپدیت پروفایل کاربر پس از پرداخت موفق
+// این مقادیر باید با منطق کلی برنامه شما یکسان باشند.
+const serverPlans = {
+  monthly: { tokens: 1_000_000, durationDays: 30 },
+  yearly: { tokens: 10_000_000, durationDays: 365 }
+}
+
+export async function POST(req: NextRequest) {
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
-  const searchParams = req.nextUrl.searchParams
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
-  const order_id = searchParams.get("order_id")
+  let order_id_for_redirect: string | null = null
 
   try {
-    // ... (بخش ۱ و ۲: بررسی پارامترها و وضعیت بازگشتی) ...
-    const status = searchParams.get("status")
-    if (!order_id) throw new Error("شناسه سفارش یافت نشد.")
-    if (status !== "1") {
-      /* ... مدیریت تراکنش ناموفق ... */
+    // ۱. دریافت داده‌های بازگشتی از درگاه (ارسال شده به صورت form-data)
+    const formData = await req.formData()
+    const status = formData.get("status") as string
+    const order_id = formData.get("order_id") as string
+    const ref_num = formData.get("ref_num") as string
+    const card_number = formData.get("card_number") as string // برای ساخت امضای وریفای لازم است
+    const tracking_code = formData.get("tracking_code") as string // برای ساخت امضای وریفای لازم است
+
+    order_id_for_redirect = order_id
+
+    // ۲. بررسی پارامترهای ضروری بازگشتی
+    if (!order_id || !ref_num) {
+      throw new Error("اطلاعات بازگشتی از درگاه پرداخت ناقص است.")
     }
 
-    // ۳. پیدا کردن تراکنش و اطلاعات کاربر
+    if (status !== "1") {
+      // اگر تراکنش ناموفق بود، وضعیت آن را در دیتابیس بروز کنید
+      await supabase
+        .from("transactions")
+        .update({ status: "failed" })
+        .eq("order_id", order_id)
+      return NextResponse.redirect(
+        `${appUrl}/payment-result?status=failed&message=تراکنش توسط شما لغو شد یا ناموفق بود.`
+      )
+    }
+
+    // ۳. پیدا کردن تراکنش در دیتابیس
     const { data: transaction, error: findError } = await supabase
       .from("transactions")
       .select("*")
       .eq("order_id", order_id)
       .single()
-    if (findError || !transaction)
-      throw new Error(`تراکنش ${order_id} یافت نشد.`)
-    if (transaction.status !== "pending")
+
+    if (findError || !transaction) {
+      throw new Error(`تراکنش با شناسه سفارش ${order_id} یافت نشد.`)
+    }
+    if (transaction.status !== "pending") {
+      // اگر تراکنش قبلاً پردازش شده، کاربر را به صفحه نتیجه هدایت کنید
       return NextResponse.redirect(
-        `${appUrl}/payment-result?status=success&message=تراکنش قبلا پردازش شده`
+        `${appUrl}/payment-result?status=success&message=این تراکنش قبلاً با موفقیت پردازش شده است.`
       )
+    }
 
-    // ... (بخش ۴: تایید با پی‌استار) ...
-    // فرض می‌شود تایید با پی‌استار موفقیت‌آمیز بوده است
+    // ۴. تایید نهایی تراکنش با سرویس Verify پی‌استار
+    const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
+    const sign_key = process.env.PAYSTAR_SECRET_KEY!
 
-    // ۵. [بخش کلیدی جدید] آپدیت پروفایل و توکن‌های کاربر
-    const amount = transaction.amount
-    const planDetails = serverPlans[amount as keyof typeof serverPlans]
-    if (!planDetails)
-      throw new Error(`پلن پرداختی با مبلغ ${amount} تعریف نشده است.`)
+    // امضای وریفای ساختار متفاوتی دارد
+    const verify_sign_data = `${transaction.amount}#${ref_num}#${card_number}#${tracking_code}`
+    const sign = crypto
+      .createHmac("sha512", sign_key)
+      .update(verify_sign_data)
+      .digest("hex")
 
-    // دریافت ایمیل کاربر برای آپدیت جدول token_usage
+    const verifyResponse = await fetch(PAYSTAR_VERIFY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${gateway_id}`
+      },
+      body: JSON.stringify({ ref_num, amount: transaction.amount, sign }),
+      cache: "no-store"
+    })
+
+    const verifyResult = await verifyResponse.json()
+    if (verifyResult.status !== 1) {
+      throw new Error(`خطا در تایید نهایی تراکنش: ${verifyResult.message}`)
+    }
+
+    // ۵. فعال‌سازی اشتراک کاربر پس از تایید نهایی
+    const planId = transaction.plan_id
+    const planDetails = serverPlans[planId as keyof typeof serverPlans]
+    if (!planDetails) {
+      throw new Error(
+        `جزئیات پلن برای شناسه '${planId}' در سرور تعریف نشده است.`
+      )
+    }
+
+    // دریافت ایمیل کاربر برای آپدیت جدول توکن
     const {
-      data: { user },
-      error: userError
+      data: { user }
     } = await supabase.auth.admin.getUserById(transaction.user_id)
-    if (userError || !user?.email)
-      throw new Error("ایمیل کاربر برای آپدیت توکن یافت نشد.")
-    const user_email = user.email
+    if (!user?.email)
+      throw new Error("ایمیل کاربر برای به‌روزرسانی سهمیه توکن یافت نشد.")
 
-    // آپدیت جدول token_usage: تنظیم سقف جدید و ریست کردن مصرف
-    const { error: tokenUsageError } = await supabase
-      .from("token_usage")
-      .upsert(
-        {
-          user_email: user_email,
-          limit_tokens: planDetails.tokens,
-          used_tokens: 0, // ریست کردن مصرف برای دوره جدید
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: "user_email" }
-      )
+    // آپدیت یا ایجاد رکورد در جدول token_usage
+    await supabase.from("token_usage").upsert(
+      {
+        user_email: user.email,
+        limit_tokens: planDetails.tokens,
+        used_tokens: 0, // ریست کردن توکن‌های مصرفی
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "user_email" }
+    )
 
-    if (tokenUsageError) throw new Error("خطا در آپدیت سقف توکن کاربر.")
-
-    // آپدیت جدول profiles: فعال‌سازی اشتراک و تاریخ انقضا
+    // آپدیت جدول profiles
     const expires_at = new Date()
     expires_at.setDate(expires_at.getDate() + planDetails.durationDays)
     await supabase
@@ -86,25 +133,30 @@ export async function GET(req: NextRequest) {
       })
       .eq("user_id", transaction.user_id)
 
-    // آپدیت نهایی جدول تراکنش
+    // ۶. آپدیت نهایی وضعیت تراکنش در دیتابیس
     await supabase
       .from("transactions")
       .update({
         status: "success",
-        ref_num: searchParams.get("ref_num"),
-        verified_at: new Date().toISOString()
+        verified_at: new Date().toISOString(),
+        ref_num: ref_num // شما می‌توانید شماره کارت و کد رهگیری را نیز اینجا ذخیره کنید
       })
       .eq("order_id", order_id)
 
-    // ۶. هدایت کاربر به صفحه اعلام نتیجه موفق
+    // ۷. هدایت کاربر به صفحه اعلام نتیجه موفق
     return NextResponse.redirect(
       `${appUrl}/payment-result?status=success&order_id=${order_id}`
     )
   } catch (error: any) {
-    console.error("[CREATE_ERROR]", error)
-    return NextResponse.json(
-      { message: error.message || "خطای داخلی سرور" },
-      { status: 500 }
-    )
+    console.error("[PAYMENT_CALLBACK_ERROR]", error)
+    // در صورت بروز هرگونه خطا، کاربر را به صفحه نتیجه با پیام خطا هدایت کنید
+    const query = new URLSearchParams({
+      status: "error",
+      message: error.message || "یک خطای پیش‌بینی‌نشده رخ داد."
+    })
+    if (order_id_for_redirect) {
+      query.set("order_id", order_id_for_redirect)
+    }
+    return NextResponse.redirect(`${appUrl}/payment-result?${query.toString()}`)
   }
 }
