@@ -22,7 +22,7 @@ const serverDiscountCodes: Record<
 > = {
   SALE30: { discountPercent: 30 },
   SPECIAL100: { discountAmountRial: 1_000_000 },
-  SUMMER25: { discountPercent: 95 }
+  SUMMER25: { discountPercent: 99 }
 }
 
 // آدرس پایه صحیح برای API پی‌استار
