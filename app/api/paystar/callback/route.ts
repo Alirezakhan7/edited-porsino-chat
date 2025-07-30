@@ -1,8 +1,8 @@
 /* --------------------------------------------------------------------------
    File: app/api/paystar/callback/route.ts
    Description: Handles the callback from the Paystar payment gateway.
-                This version is production-ready and redirects to an
-                intermediary page to prevent cross-origin errors.
+                This final version returns a minimal HTML page that performs
+                a client-side redirect to avoid cross-origin errors.
    -------------------------------------------------------------------------- */
 import { NextRequest, NextResponse } from "next/server"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
@@ -15,6 +15,22 @@ const PAYSTAR_VERIFY_URL = "https://api.paystar.shop/api/pardakht/verify"
 const serverPlans = {
   monthly: { tokens: 1_000_000, durationDays: 30 },
   yearly: { tokens: 10_000_000, durationDays: 365 }
+}
+
+// Helper function to create the client-side redirect response
+function createRedirectResponse(appUrl: string, query: URLSearchParams) {
+  const redirectUrl = `${appUrl}/payment-result?${query.toString()}`
+  return new NextResponse(
+    `<!DOCTYPE html>
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="0; url=${redirectUrl}" />
+        <script>window.location.href = "${redirectUrl}";</script>
+      </head>
+      <body><p>در حال انتقال...</p></body>
+    </html>`,
+    { headers: { "Content-Type": "text/html" } }
+  )
 }
 
 async function handleCallback(req: NextRequest) {
@@ -68,17 +84,19 @@ async function handleCallback(req: NextRequest) {
         .from("transactions")
         .update({ status: "failed" })
         .eq("order_id", order_id)
-      // ✅ هدایت به صفحه واسط
-      return NextResponse.redirect(
-        `${appUrl}/payment/redirect?status=failed&message=تراکنش توسط شما لغو شد یا ناموفق بود.`
-      )
+      const query = new URLSearchParams({
+        status: "failed",
+        message: "تراکنش توسط شما لغو شد یا ناموفق بود."
+      })
+      return createRedirectResponse(appUrl, query)
     }
 
     if (transaction.status !== "pending") {
-      // ✅ هدایت به صفحه واسط
-      return NextResponse.redirect(
-        `${appUrl}/payment/redirect?status=success&message=این تراکنش قبلاً با موفقیت پردازش شده است.`
-      )
+      const query = new URLSearchParams({
+        status: "success",
+        message: "این تراکنش قبلاً با موفقیت پردازش شده است."
+      })
+      return createRedirectResponse(appUrl, query)
     }
 
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
@@ -166,10 +184,8 @@ async function handleCallback(req: NextRequest) {
         `خطا در آپدیت نهایی تراکنش: ${transactionUpdateError.message}`
       )
 
-    // ✅ هدایت به صفحه واسط
-    return NextResponse.redirect(
-      `${appUrl}/payment/redirect?status=success&order_id=${order_id}`
-    )
+    const query = new URLSearchParams({ status: "success", order_id: order_id })
+    return createRedirectResponse(appUrl, query)
   } catch (error: any) {
     console.error("[PAYMENT_CALLBACK_ERROR]", error)
     const query = new URLSearchParams({
@@ -179,10 +195,7 @@ async function handleCallback(req: NextRequest) {
     if (order_id_for_redirect) {
       query.set("order_id", order_id_for_redirect)
     }
-    // ✅ هدایت به صفحه واسط
-    return NextResponse.redirect(
-      `${appUrl}/payment/redirect?${query.toString()}`
-    )
+    return createRedirectResponse(appUrl, query)
   }
 }
 
