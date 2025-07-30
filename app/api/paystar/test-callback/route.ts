@@ -1,96 +1,135 @@
 /* --------------------------------------------------------------------------
-   File: app/api/paystar/test-callback/route.ts
-   Description: A test endpoint with extensive logging to debug subscription
-                activation issues.
+   File: app/api/paystar/callback/route.ts
+   Description: Handles the callback from the Paystar payment gateway.
+                This version is production-ready and uses a dedicated admin
+                client to securely fetch user data and activate subscriptions.
    -------------------------------------------------------------------------- */
 import { NextRequest, NextResponse } from "next/server"
+// ✅ برای جلوگیری از تداخل نام، برای هر دو تابع از نام‌های مستعار و واضح استفاده می‌کنیم
 import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { createClient as createServerClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
+import crypto from "crypto"
 
-// مقادیر پلن‌ها را اینجا نیز تعریف می‌کنیم
+const PAYSTAR_VERIFY_URL = "https://api.paystar.shop/api/pardakht/verify"
+
 const serverPlans = {
   monthly: { tokens: 1_000_000, durationDays: 30 },
   yearly: { tokens: 10_000_000, durationDays: 365 }
 }
 
-export async function GET(req: NextRequest) {
-  console.log("[TEST_LOG] Test callback endpoint initiated.")
+// این تابع در هر دو حالت GET و POST استفاده خواهد شد
+async function handleCallback(req: NextRequest) {
+  const cookieStore = cookies()
+  const supabase = createServerClient(cookieStore)
   const appUrl = "https://chat.porsino.org"
+  let order_id_for_redirect: string | null = null
 
   try {
-    /*
-    // ✅ این بخش امنیتی به صورت موقت غیرفعال شده است تا بتوانید مشکل اصلی را تست کنید
-    // برای امنیت، می‌توانید یک کلید مخفی در Vercel تعریف کنید تا این API عمومی نباشد
-    const secret = req.nextUrl.searchParams.get("secret");
-    if (process.env.NODE_ENV === 'production' && secret !== process.env.TEST_CALLBACK_SECRET) {
-        console.warn("[TEST_LOG] Unauthorized access attempt blocked.");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    let status: string | null
+    let order_id: string | null
+    let ref_num: string | null
+    let card_number: string | null
+    let tracking_code: string | null
+
+    if (req.method === "POST") {
+      const formData = await req.formData()
+      status = formData.get("status") as string
+      order_id = formData.get("order_id") as string
+      ref_num = formData.get("ref_num") as string
+      card_number = formData.get("card_number") as string
+      tracking_code = formData.get("tracking_code") as string
+    } else {
+      // Handle GET request
+      const searchParams = req.nextUrl.searchParams
+      status = searchParams.get("status")
+      order_id = searchParams.get("order_id")
+      ref_num = searchParams.get("ref_num")
+      card_number = searchParams.get("card_number")
+      tracking_code = searchParams.get("tracking_code")
     }
-    */
 
-    const userId = req.nextUrl.searchParams.get("userId")
-    const planId = req.nextUrl.searchParams.get(
-      "planId"
-    ) as keyof typeof serverPlans
-    console.log(`[TEST_LOG] Parsed Params: userId=${userId}, planId=${planId}`)
+    order_id_for_redirect = order_id
 
-    if (!userId || !planId || !(planId in serverPlans)) {
+    if (!order_id || !ref_num) {
+      throw new Error("اطلاعات بازگشتی از درگاه پرداخت ناقص است.")
+    }
+
+    const { data: transaction, error: findError } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("order_id", order_id)
+      .single()
+
+    if (findError || !transaction) {
+      throw new Error(`تراکنش با شناسه سفارش ${order_id} یافت نشد.`)
+    }
+
+    if (status !== "1") {
+      // ✅ این آپدیت می‌تواند با کلاینت معمولی انجام شود چون کاربر مالک تراکنش است
+      await supabase
+        .from("transactions")
+        .update({ status: "failed" })
+        .eq("order_id", order_id)
+      return NextResponse.redirect(
+        `${appUrl}/payment-result?status=failed&message=تراکنش توسط شما لغو شد یا ناموفق بود.`
+      )
+    }
+
+    if (transaction.status !== "pending") {
+      return NextResponse.redirect(
+        `${appUrl}/payment-result?status=success&message=این تراکنش قبلاً با موفقیت پردازش شده است.`
+      )
+    }
+
+    const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
+    const sign_key = process.env.PAYSTAR_SECRET_KEY!
+    const verify_sign_data = `${transaction.amount}#${ref_num}#${card_number || ""}#${tracking_code || ""}`
+    const sign = crypto
+      .createHmac("sha512", sign_key)
+      .update(verify_sign_data)
+      .digest("hex")
+
+    const verifyResponse = await fetch(PAYSTAR_VERIFY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${gateway_id}`
+      },
+      body: JSON.stringify({ ref_num, amount: transaction.amount, sign }),
+      cache: "no-store"
+    })
+
+    const verifyResult = await verifyResponse.json()
+    if (verifyResult.status !== 1) {
+      throw new Error(`خطا در تایید نهایی تراکنش: ${verifyResult.message}`)
+    }
+
+    const planId = transaction.plan_id
+    const planDetails = serverPlans[planId as keyof typeof serverPlans]
+    if (!planDetails) {
       throw new Error(
-        "پارامترهای ورودی نامعتبر است. لطفاً 'userId' و یک 'planId' معتبر (monthly یا yearly) را وارد کنید."
+        `جزئیات پلن برای شناسه '${planId}' در سرور تعریف نشده است.`
       )
     }
 
-    const planDetails = serverPlans[planId]
-    console.log(`[TEST_LOG] Plan details found for '${planId}'.`)
+    // ساخت کلاینت ادمین با منطق صحیح
+    const supabaseAdmin = createAdminClient(
+      "https://fgxgwcagpbnlwbsmpdvh.supabase.co",
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    // بررسی وجود متغیرهای محیطی قبل از استفاده
-    const supabaseUrl = "https://fgxgwcagpbnlwbsmpdvh.supabase.co"
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (!serviceRoleKey) {
-      console.error(
-        "[TEST_LOG] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is not defined in environment variables."
-      )
-      throw new Error("پیکربندی سرور ناقص است: کلید امنیتی Supabase یافت نشد.")
-    }
-    console.log("[TEST_LOG] SUPABASE_SERVICE_ROLE_KEY is present.")
-
-    // ساخت کلاینت ادمین برای دسترسی به دیتابیس
-    console.log("[TEST_LOG] Creating Supabase admin client...")
-    const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey)
-    console.log("[TEST_LOG] Supabase admin client created successfully.")
-
-    // ۱. پیدا کردن ایمیل کاربر
-    console.log(`[TEST_LOG] Step 1: Fetching user with ID: ${userId}`)
     const {
       data: { user },
       error: adminError
-    } = await supabaseAdmin.auth.admin.getUserById(userId)
-
-    if (adminError) {
-      console.error(
-        `[TEST_LOG] Supabase admin error while fetching user:`,
-        adminError
-      )
-    }
-    if (!user) {
-      console.error(
-        `[TEST_LOG] User object is null or undefined for ID: ${userId}`
-      )
-    }
+    } = await supabaseAdmin.auth.admin.getUserById(transaction.user_id)
 
     if (adminError || !user?.email) {
-      throw new Error(`کاربری با شناسه ${userId} یافت نشد یا ایمیل ندارد.`)
+      console.error("[ADMIN_ERROR] Supabase admin error:", adminError)
+      throw new Error("ایمیل کاربر برای به‌روزرسانی سهمیه توکن یافت نشد.")
     }
-    console.log(
-      `[TEST_LOG] Step 1 successful. Found user with email: ${user.email}`
-    )
 
-    // ۲. فعال‌سازی مستقیم اشتراک
-    console.log(
-      `[TEST_LOG] Step 2: Activating subscription for user: ${user.email}`
-    )
-
-    console.log("[TEST_LOG] Updating 'token_usage' table...")
+    // ✅ فعال‌سازی اشتراک با استفاده از کلاینت ادمین
     const { error: tokenUsageError } = await supabaseAdmin
       .from("token_usage")
       .upsert(
@@ -104,9 +143,7 @@ export async function GET(req: NextRequest) {
       )
     if (tokenUsageError)
       throw new Error(`خطا در آپدیت token_usage: ${tokenUsageError.message}`)
-    console.log("[TEST_LOG] 'token_usage' table updated successfully.")
 
-    console.log("[TEST_LOG] Updating 'profiles' table...")
     const expires_at = new Date()
     expires_at.setDate(expires_at.getDate() + planDetails.durationDays)
     const { error: profilesError } = await supabaseAdmin
@@ -115,41 +152,43 @@ export async function GET(req: NextRequest) {
         subscription_status: "active",
         subscription_expires_at: expires_at.toISOString()
       })
-      .eq("user_id", userId)
+      .eq("user_id", transaction.user_id)
     if (profilesError)
       throw new Error(`خطا در آپدیت profiles: ${profilesError.message}`)
-    console.log("[TEST_LOG] 'profiles' table updated successfully.")
 
-    // ۳. ثبت یک تراکنش تستی
-    console.log("[TEST_LOG] Step 3: Inserting test transaction record...")
-    const order_id = `test_${userId.substring(0, 8)}_${Date.now()}`
-    const { error: transactionError } = await supabaseAdmin
+    const { error: transactionUpdateError } = await supabaseAdmin
       .from("transactions")
-      .insert({
-        user_id: userId,
-        order_id: order_id,
-        ref_num: "TEST_TRANSACTION",
-        plan_id: planId,
-        amount: 0,
+      .update({
         status: "success",
-        discount_code: "TEST_CALLBACK",
-        verified_at: new Date().toISOString()
+        verified_at: new Date().toISOString(),
+        ref_num: ref_num
       })
-    if (transactionError)
-      throw new Error(`خطا در ثبت تراکنش تستی: ${transactionError.message}`)
-    console.log("[TEST_LOG] Test transaction inserted successfully.")
+      .eq("order_id", order_id)
+    if (transactionUpdateError)
+      throw new Error(
+        `خطا در آپدیت نهایی تراکنش: ${transactionUpdateError.message}`
+      )
 
-    // ۴. هدایت به صفحه موفقیت
-    console.log("[TEST_LOG] Step 4: Redirecting to success page...")
     return NextResponse.redirect(
-      `${appUrl}/payment-result?status=success&message=اشتراک تست با موفقیت فعال شد.&order_id=${order_id}`
+      `${appUrl}/payment-result?status=success&order_id=${order_id}`
     )
   } catch (error: any) {
-    console.error("[TEST_CALLBACK_ERROR]", error)
+    console.error("[PAYMENT_CALLBACK_ERROR]", error)
     const query = new URLSearchParams({
       status: "error",
-      message: `خطای تست: ${error.message}`
+      message: error.message || "یک خطای پیش‌بینی‌نشده رخ داد."
     })
+    if (order_id_for_redirect) {
+      query.set("order_id", order_id_for_redirect)
+    }
     return NextResponse.redirect(`${appUrl}/payment-result?${query.toString()}`)
   }
+}
+
+export async function GET(req: NextRequest) {
+  return handleCallback(req)
+}
+
+export async function POST(req: NextRequest) {
+  return handleCallback(req)
 }

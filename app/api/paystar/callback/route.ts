@@ -112,7 +112,7 @@ async function handleCallback(req: NextRequest) {
       )
     }
 
-    // ✅ ساخت کلاینت ادمین با منطق صحیح
+    // ساخت کلاینت ادمین با منطق صحیح
     const supabaseAdmin = createAdminClient(
       "https://fgxgwcagpbnlwbsmpdvh.supabase.co",
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -128,28 +128,34 @@ async function handleCallback(req: NextRequest) {
       throw new Error("ایمیل کاربر برای به‌روزرسانی سهمیه توکن یافت نشد.")
     }
 
-    // فعال‌سازی اشتراک
-    await supabase.from("token_usage").upsert(
-      {
-        user_email: user.email,
-        limit_tokens: planDetails.tokens,
-        used_tokens: 0,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: "user_email" }
-    )
+    // ✅ فعال‌سازی اشتراک با استفاده از کلاینت ادمین
+    const { error: tokenUsageError } = await supabaseAdmin
+      .from("token_usage")
+      .upsert(
+        {
+          user_email: user.email,
+          limit_tokens: planDetails.tokens,
+          used_tokens: 0,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: "user_email" }
+      )
+    if (tokenUsageError)
+      throw new Error(`خطا در آپدیت token_usage: ${tokenUsageError.message}`)
 
     const expires_at = new Date()
     expires_at.setDate(expires_at.getDate() + planDetails.durationDays)
-    await supabase
+    const { error: profilesError } = await supabaseAdmin
       .from("profiles")
       .update({
         subscription_status: "active",
         subscription_expires_at: expires_at.toISOString()
       })
       .eq("user_id", transaction.user_id)
+    if (profilesError)
+      throw new Error(`خطا در آپدیت profiles: ${profilesError.message}`)
 
-    await supabase
+    const { error: transactionUpdateError } = await supabaseAdmin
       .from("transactions")
       .update({
         status: "success",
@@ -157,6 +163,10 @@ async function handleCallback(req: NextRequest) {
         ref_num: ref_num
       })
       .eq("order_id", order_id)
+    if (transactionUpdateError)
+      throw new Error(
+        `خطا در آپدیت نهایی تراکنش: ${transactionUpdateError.message}`
+      )
 
     return NextResponse.redirect(
       `${appUrl}/payment-result?status=success&order_id=${order_id}`
