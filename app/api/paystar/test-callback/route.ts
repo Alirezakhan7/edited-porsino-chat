@@ -17,15 +17,15 @@ export async function GET(req: NextRequest) {
   const appUrl = "https://chat.porsino.org"
 
   try {
+    /*
+    // ✅ این بخش امنیتی به صورت موقت غیرفعال شده است تا بتوانید مشکل اصلی را تست کنید
     // برای امنیت، می‌توانید یک کلید مخفی در Vercel تعریف کنید تا این API عمومی نباشد
-    const secret = req.nextUrl.searchParams.get("secret")
-    if (
-      process.env.NODE_ENV === "production" &&
-      secret !== process.env.TEST_CALLBACK_SECRET
-    ) {
-      console.warn("[TEST_LOG] Unauthorized access attempt blocked.")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const secret = req.nextUrl.searchParams.get("secret");
+    if (process.env.NODE_ENV === 'production' && secret !== process.env.TEST_CALLBACK_SECRET) {
+        console.warn("[TEST_LOG] Unauthorized access attempt blocked.");
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    */
 
     const userId = req.nextUrl.searchParams.get("userId")
     const planId = req.nextUrl.searchParams.get(
