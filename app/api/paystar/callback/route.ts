@@ -1,11 +1,10 @@
 /* --------------------------------------------------------------------------
    File: app/api/paystar/callback/route.ts
    Description: Handles the callback from the Paystar payment gateway.
-                This version is production-ready and uses a dedicated admin
-                client to securely fetch user data and activate subscriptions.
+                This version is production-ready and redirects to an
+                intermediary page to prevent cross-origin errors.
    -------------------------------------------------------------------------- */
 import { NextRequest, NextResponse } from "next/server"
-// ✅ برای جلوگیری از تداخل نام، برای هر دو تابع از نام‌های مستعار و واضح استفاده می‌کنیم
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
@@ -18,7 +17,6 @@ const serverPlans = {
   yearly: { tokens: 10_000_000, durationDays: 365 }
 }
 
-// این تابع در هر دو حالت GET و POST استفاده خواهد شد
 async function handleCallback(req: NextRequest) {
   const cookieStore = cookies()
   const supabase = createServerClient(cookieStore)
@@ -70,14 +68,16 @@ async function handleCallback(req: NextRequest) {
         .from("transactions")
         .update({ status: "failed" })
         .eq("order_id", order_id)
+      // ✅ هدایت به صفحه واسط
       return NextResponse.redirect(
-        `${appUrl}/payment-result?status=failed&message=تراکنش توسط شما لغو شد یا ناموفق بود.`
+        `${appUrl}/payment/redirect?status=failed&message=تراکنش توسط شما لغو شد یا ناموفق بود.`
       )
     }
 
     if (transaction.status !== "pending") {
+      // ✅ هدایت به صفحه واسط
       return NextResponse.redirect(
-        `${appUrl}/payment-result?status=success&message=این تراکنش قبلاً با موفقیت پردازش شده است.`
+        `${appUrl}/payment/redirect?status=success&message=این تراکنش قبلاً با موفقیت پردازش شده است.`
       )
     }
 
@@ -112,7 +112,6 @@ async function handleCallback(req: NextRequest) {
       )
     }
 
-    // ساخت کلاینت ادمین با منطق صحیح
     const supabaseAdmin = createAdminClient(
       "https://fgxgwcagpbnlwbsmpdvh.supabase.co",
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -128,7 +127,6 @@ async function handleCallback(req: NextRequest) {
       throw new Error("ایمیل کاربر برای به‌روزرسانی سهمیه توکن یافت نشد.")
     }
 
-    // ✅ فعال‌سازی اشتراک با استفاده از کلاینت ادمین
     const { error: tokenUsageError } = await supabaseAdmin
       .from("token_usage")
       .upsert(
@@ -168,8 +166,9 @@ async function handleCallback(req: NextRequest) {
         `خطا در آپدیت نهایی تراکنش: ${transactionUpdateError.message}`
       )
 
+    // ✅ هدایت به صفحه واسط
     return NextResponse.redirect(
-      `${appUrl}/payment-result?status=success&order_id=${order_id}`
+      `${appUrl}/payment/redirect?status=success&order_id=${order_id}`
     )
   } catch (error: any) {
     console.error("[PAYMENT_CALLBACK_ERROR]", error)
@@ -180,7 +179,10 @@ async function handleCallback(req: NextRequest) {
     if (order_id_for_redirect) {
       query.set("order_id", order_id_for_redirect)
     }
-    return NextResponse.redirect(`${appUrl}/payment-result?${query.toString()}`)
+    // ✅ هدایت به صفحه واسط
+    return NextResponse.redirect(
+      `${appUrl}/payment/redirect?${query.toString()}`
+    )
   }
 }
 
