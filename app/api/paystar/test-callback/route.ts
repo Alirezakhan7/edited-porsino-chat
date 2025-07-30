@@ -1,7 +1,7 @@
 /* --------------------------------------------------------------------------
    File: app/api/paystar/test-callback/route.ts
-   Description: A test endpoint to simulate a successful payment callback
-                and activate a user's subscription without a real payment.
+   Description: A test endpoint with extensive logging to debug subscription
+                activation issues.
    -------------------------------------------------------------------------- */
 import { NextRequest, NextResponse } from "next/server"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
@@ -13,6 +13,7 @@ const serverPlans = {
 }
 
 export async function GET(req: NextRequest) {
+  console.log("[TEST_LOG] Test callback endpoint initiated.")
   const appUrl = "https://chat.porsino.org"
 
   try {
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
       process.env.NODE_ENV === "production" &&
       secret !== process.env.TEST_CALLBACK_SECRET
     ) {
+      console.warn("[TEST_LOG] Unauthorized access attempt blocked.")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -29,6 +31,7 @@ export async function GET(req: NextRequest) {
     const planId = req.nextUrl.searchParams.get(
       "planId"
     ) as keyof typeof serverPlans
+    console.log(`[TEST_LOG] Parsed Params: userId=${userId}, planId=${planId}`)
 
     if (!userId || !planId || !(planId in serverPlans)) {
       throw new Error(
@@ -37,59 +40,107 @@ export async function GET(req: NextRequest) {
     }
 
     const planDetails = serverPlans[planId]
+    console.log(`[TEST_LOG] Plan details found for '${planId}'.`)
+
+    // بررسی وجود متغیرهای محیطی قبل از استفاده
+    const supabaseUrl = "https://fgxgwcagpbnlwbsmpdvh.supabase.co"
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!serviceRoleKey) {
+      console.error(
+        "[TEST_LOG] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is not defined in environment variables."
+      )
+      throw new Error("پیکربندی سرور ناقص است: کلید امنیتی Supabase یافت نشد.")
+    }
+    console.log("[TEST_LOG] SUPABASE_SERVICE_ROLE_KEY is present.")
 
     // ساخت کلاینت ادمین برای دسترسی به دیتابیس
-    const supabaseAdmin = createAdminClient(
-      "https://fgxgwcagpbnlwbsmpdvh.supabase.co",
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    console.log("[TEST_LOG] Creating Supabase admin client...")
+    const supabaseAdmin = createAdminClient(supabaseUrl, serviceRoleKey)
+    console.log("[TEST_LOG] Supabase admin client created successfully.")
 
     // ۱. پیدا کردن ایمیل کاربر
+    console.log(`[TEST_LOG] Step 1: Fetching user with ID: ${userId}`)
     const {
       data: { user },
       error: adminError
     } = await supabaseAdmin.auth.admin.getUserById(userId)
-    if (adminError || !user?.email) {
-      throw new Error(`کاربری با شناسه ${userId} یافت نشد.`)
+
+    if (adminError) {
+      console.error(
+        `[TEST_LOG] Supabase admin error while fetching user:`,
+        adminError
+      )
+    }
+    if (!user) {
+      console.error(
+        `[TEST_LOG] User object is null or undefined for ID: ${userId}`
+      )
     }
 
-    // ۲. فعال‌سازی مستقیم اشتراک (کپی شده از منطق callback اصلی)
-    // آپدیت جدول token_usage
-    await supabaseAdmin.from("token_usage").upsert(
-      {
-        user_email: user.email,
-        limit_tokens: planDetails.tokens,
-        used_tokens: 0,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: "user_email" }
+    if (adminError || !user?.email) {
+      throw new Error(`کاربری با شناسه ${userId} یافت نشد یا ایمیل ندارد.`)
+    }
+    console.log(
+      `[TEST_LOG] Step 1 successful. Found user with email: ${user.email}`
     )
 
-    // آپدیت جدول profiles
+    // ۲. فعال‌سازی مستقیم اشتراک
+    console.log(
+      `[TEST_LOG] Step 2: Activating subscription for user: ${user.email}`
+    )
+
+    console.log("[TEST_LOG] Updating 'token_usage' table...")
+    const { error: tokenUsageError } = await supabaseAdmin
+      .from("token_usage")
+      .upsert(
+        {
+          user_email: user.email,
+          limit_tokens: planDetails.tokens,
+          used_tokens: 0,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: "user_email" }
+      )
+    if (tokenUsageError)
+      throw new Error(`خطا در آپدیت token_usage: ${tokenUsageError.message}`)
+    console.log("[TEST_LOG] 'token_usage' table updated successfully.")
+
+    console.log("[TEST_LOG] Updating 'profiles' table...")
     const expires_at = new Date()
     expires_at.setDate(expires_at.getDate() + planDetails.durationDays)
-    await supabaseAdmin
+    const { error: profilesError } = await supabaseAdmin
       .from("profiles")
       .update({
         subscription_status: "active",
         subscription_expires_at: expires_at.toISOString()
       })
       .eq("user_id", userId)
+    if (profilesError)
+      throw new Error(`خطا در آپدیت profiles: ${profilesError.message}`)
+    console.log("[TEST_LOG] 'profiles' table updated successfully.")
 
-    // ۳. (اختیاری) ثبت یک تراکنش تستی برای داشتن سابقه
+    // ۳. ثبت یک تراکنش تستی
+    console.log("[TEST_LOG] Step 3: Inserting test transaction record...")
     const order_id = `test_${userId.substring(0, 8)}_${Date.now()}`
-    await supabaseAdmin.from("transactions").insert({
-      user_id: userId,
-      order_id: order_id,
-      ref_num: "TEST_TRANSACTION",
-      plan_id: planId,
-      amount: 0,
-      status: "success",
-      discount_code: "TEST_CALLBACK",
-      verified_at: new Date().toISOString()
-    })
+    const { error: transactionError } = await supabaseAdmin
+      .from("transactions")
+      .insert({
+        user_id: userId,
+        order_id: order_id,
+        ref_num: "TEST_TRANSACTION",
+        plan_id: planId,
+        amount: 0,
+        status: "success",
+        discount_code: "TEST_CALLBACK",
+        verified_at: new Date().toISOString()
+      })
+    if (transactionError)
+      throw new Error(`خطا در ثبت تراکنش تستی: ${transactionError.message}`)
+    console.log("[TEST_LOG] Test transaction inserted successfully.")
 
     // ۴. هدایت به صفحه موفقیت
+    console.log("[TEST_LOG] Step 4: Redirecting to success page...")
     return NextResponse.redirect(
       `${appUrl}/payment-result?status=success&message=اشتراک تست با موفقیت فعال شد.&order_id=${order_id}`
     )
