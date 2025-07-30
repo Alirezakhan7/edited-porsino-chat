@@ -1,8 +1,8 @@
 /* --------------------------------------------------------------------------
    File: app/api/paystar/callback/route.ts
    Description: Handles the callback from the Paystar payment gateway.
-                This version creates a dedicated admin client to securely
-                fetch user data and activate subscriptions.
+                This version is production-ready and uses a dedicated admin
+                client to securely fetch user data and activate subscriptions.
    -------------------------------------------------------------------------- */
 import { NextRequest, NextResponse } from "next/server"
 // ✅ برای جلوگیری از تداخل نام، برای هر دو تابع از نام‌های مستعار و واضح استفاده می‌کنیم
@@ -20,9 +20,7 @@ const serverPlans = {
 
 // این تابع در هر دو حالت GET و POST استفاده خواهد شد
 async function handleCallback(req: NextRequest) {
-  console.log(`[CALLBACK_LOG] Received request with method: ${req.method}`)
   const cookieStore = cookies()
-  // ✅ استفاده از نام مستعار صحیح برای ساخت کلاینت معمولی
   const supabase = createServerClient(cookieStore)
   const appUrl = "https://chat.porsino.org"
   let order_id_for_redirect: string | null = null
@@ -52,15 +50,11 @@ async function handleCallback(req: NextRequest) {
     }
 
     order_id_for_redirect = order_id
-    console.log(
-      `[CALLBACK_LOG] Parsed data: order_id=${order_id}, status=${status}, ref_num=${ref_num}`
-    )
 
     if (!order_id || !ref_num) {
       throw new Error("اطلاعات بازگشتی از درگاه پرداخت ناقص است.")
     }
 
-    console.log("[CALLBACK_LOG] Step 1: Finding transaction in DB...")
     const { data: transaction, error: findError } = await supabase
       .from("transactions")
       .select("*")
@@ -70,12 +64,8 @@ async function handleCallback(req: NextRequest) {
     if (findError || !transaction) {
       throw new Error(`تراکنش با شناسه سفارش ${order_id} یافت نشد.`)
     }
-    console.log("[CALLBACK_LOG] Step 1 successful. Transaction found.")
 
     if (status !== "1") {
-      console.log(
-        "[CALLBACK_LOG] Transaction status is not successful. Updating status to 'failed'."
-      )
       await supabase
         .from("transactions")
         .update({ status: "failed" })
@@ -86,13 +76,11 @@ async function handleCallback(req: NextRequest) {
     }
 
     if (transaction.status !== "pending") {
-      console.log("[CALLBACK_LOG] Transaction already processed.")
       return NextResponse.redirect(
         `${appUrl}/payment-result?status=success&message=این تراکنش قبلاً با موفقیت پردازش شده است.`
       )
     }
 
-    console.log("[CALLBACK_LOG] Step 2: Verifying transaction with Paystar...")
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
     const verify_sign_data = `${transaction.amount}#${ref_num}#${card_number || ""}#${tracking_code || ""}`
@@ -112,13 +100,10 @@ async function handleCallback(req: NextRequest) {
     })
 
     const verifyResult = await verifyResponse.json()
-    console.log("[CALLBACK_LOG] Paystar verify response:", verifyResult)
     if (verifyResult.status !== 1) {
       throw new Error(`خطا در تایید نهایی تراکنش: ${verifyResult.message}`)
     }
-    console.log("[CALLBACK_LOG] Step 2 successful. Transaction verified.")
 
-    console.log("[CALLBACK_LOG] Step 3: Activating user subscription...")
     const planId = transaction.plan_id
     const planDetails = serverPlans[planId as keyof typeof serverPlans]
     if (!planDetails) {
@@ -127,9 +112,9 @@ async function handleCallback(req: NextRequest) {
       )
     }
 
-    // ✅ ساخت کلاینت ادمین با نام مستعار و آدرس دستی
+    // ✅ ساخت کلاینت ادمین با منطق صحیح
     const supabaseAdmin = createAdminClient(
-      "https://fgxgwcagpbnlwbsmpdvh.supabase.co", // 🔴 مهم: این آدرس باید با آدرس پروژه شما در Supabase یکسان باشد
+      "https://fgxgwcagpbnlwbsmpdvh.supabase.co",
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
@@ -143,6 +128,7 @@ async function handleCallback(req: NextRequest) {
       throw new Error("ایمیل کاربر برای به‌روزرسانی سهمیه توکن یافت نشد.")
     }
 
+    // فعال‌سازی اشتراک
     await supabase.from("token_usage").upsert(
       {
         user_email: user.email,
@@ -171,9 +157,7 @@ async function handleCallback(req: NextRequest) {
         ref_num: ref_num
       })
       .eq("order_id", order_id)
-    console.log("[CALLBACK_LOG] Step 3 successful. Subscription activated.")
 
-    console.log("[CALLBACK_LOG] Step 4: Redirecting to success page...")
     return NextResponse.redirect(
       `${appUrl}/payment-result?status=success&order_id=${order_id}`
     )
