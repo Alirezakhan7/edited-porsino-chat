@@ -1,58 +1,66 @@
 /* --------------------------------------------------------------------------
    File: app/api/paystar/callback/route.ts
-   Description: Handles the callback from the Paystar payment gateway. It
-                verifies the transaction, and upon success, updates the user's
-                subscription status and token limits in Supabase.
+   Description: Handles the callback from the Paystar payment gateway.
+                This version creates a dedicated admin client to securely
+                fetch user data and activate subscriptions.
    -------------------------------------------------------------------------- */
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+// ✅ برای جلوگیری از تداخل نام، برای هر دو تابع از نام‌های مستعار و واضح استفاده می‌کنیم
+import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { createClient as createServerClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import crypto from "crypto"
 
-// آدرس پایه صحیح برای API تایید تراکنش پی‌استار
 const PAYSTAR_VERIFY_URL = "https://api.paystar.shop/api/pardakht/verify"
 
-// مقادیر پلن‌ها برای آپدیت پروفایل کاربر پس از پرداخت موفق
-// این مقادیر باید با منطق کلی برنامه شما یکسان باشند.
 const serverPlans = {
   monthly: { tokens: 1_000_000, durationDays: 30 },
   yearly: { tokens: 10_000_000, durationDays: 365 }
 }
 
-export async function POST(req: NextRequest) {
+// این تابع در هر دو حالت GET و POST استفاده خواهد شد
+async function handleCallback(req: NextRequest) {
+  console.log(`[CALLBACK_LOG] Received request with method: ${req.method}`)
   const cookieStore = cookies()
-  const supabase = createClient(cookieStore)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!
+  // ✅ استفاده از نام مستعار صحیح برای ساخت کلاینت معمولی
+  const supabase = createServerClient(cookieStore)
+  const appUrl = "https://chat.porsino.org"
   let order_id_for_redirect: string | null = null
 
   try {
-    // ۱. دریافت داده‌های بازگشتی از درگاه (ارسال شده به صورت form-data)
-    const formData = await req.formData()
-    const status = formData.get("status") as string
-    const order_id = formData.get("order_id") as string
-    const ref_num = formData.get("ref_num") as string
-    const card_number = formData.get("card_number") as string // برای ساخت امضای وریفای لازم است
-    const tracking_code = formData.get("tracking_code") as string // برای ساخت امضای وریفای لازم است
+    let status: string | null
+    let order_id: string | null
+    let ref_num: string | null
+    let card_number: string | null
+    let tracking_code: string | null
+
+    if (req.method === "POST") {
+      const formData = await req.formData()
+      status = formData.get("status") as string
+      order_id = formData.get("order_id") as string
+      ref_num = formData.get("ref_num") as string
+      card_number = formData.get("card_number") as string
+      tracking_code = formData.get("tracking_code") as string
+    } else {
+      // Handle GET request
+      const searchParams = req.nextUrl.searchParams
+      status = searchParams.get("status")
+      order_id = searchParams.get("order_id")
+      ref_num = searchParams.get("ref_num")
+      card_number = searchParams.get("card_number")
+      tracking_code = searchParams.get("tracking_code")
+    }
 
     order_id_for_redirect = order_id
+    console.log(
+      `[CALLBACK_LOG] Parsed data: order_id=${order_id}, status=${status}, ref_num=${ref_num}`
+    )
 
-    // ۲. بررسی پارامترهای ضروری بازگشتی
     if (!order_id || !ref_num) {
       throw new Error("اطلاعات بازگشتی از درگاه پرداخت ناقص است.")
     }
 
-    if (status !== "1") {
-      // اگر تراکنش ناموفق بود، وضعیت آن را در دیتابیس بروز کنید
-      await supabase
-        .from("transactions")
-        .update({ status: "failed" })
-        .eq("order_id", order_id)
-      return NextResponse.redirect(
-        `${appUrl}/payment-result?status=failed&message=تراکنش توسط شما لغو شد یا ناموفق بود.`
-      )
-    }
-
-    // ۳. پیدا کردن تراکنش در دیتابیس
+    console.log("[CALLBACK_LOG] Step 1: Finding transaction in DB...")
     const { data: transaction, error: findError } = await supabase
       .from("transactions")
       .select("*")
@@ -62,19 +70,32 @@ export async function POST(req: NextRequest) {
     if (findError || !transaction) {
       throw new Error(`تراکنش با شناسه سفارش ${order_id} یافت نشد.`)
     }
+    console.log("[CALLBACK_LOG] Step 1 successful. Transaction found.")
+
+    if (status !== "1") {
+      console.log(
+        "[CALLBACK_LOG] Transaction status is not successful. Updating status to 'failed'."
+      )
+      await supabase
+        .from("transactions")
+        .update({ status: "failed" })
+        .eq("order_id", order_id)
+      return NextResponse.redirect(
+        `${appUrl}/payment-result?status=failed&message=تراکنش توسط شما لغو شد یا ناموفق بود.`
+      )
+    }
+
     if (transaction.status !== "pending") {
-      // اگر تراکنش قبلاً پردازش شده، کاربر را به صفحه نتیجه هدایت کنید
+      console.log("[CALLBACK_LOG] Transaction already processed.")
       return NextResponse.redirect(
         `${appUrl}/payment-result?status=success&message=این تراکنش قبلاً با موفقیت پردازش شده است.`
       )
     }
 
-    // ۴. تایید نهایی تراکنش با سرویس Verify پی‌استار
+    console.log("[CALLBACK_LOG] Step 2: Verifying transaction with Paystar...")
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
-
-    // امضای وریفای ساختار متفاوتی دارد
-    const verify_sign_data = `${transaction.amount}#${ref_num}#${card_number}#${tracking_code}`
+    const verify_sign_data = `${transaction.amount}#${ref_num}#${card_number || ""}#${tracking_code || ""}`
     const sign = crypto
       .createHmac("sha512", sign_key)
       .update(verify_sign_data)
@@ -91,11 +112,13 @@ export async function POST(req: NextRequest) {
     })
 
     const verifyResult = await verifyResponse.json()
+    console.log("[CALLBACK_LOG] Paystar verify response:", verifyResult)
     if (verifyResult.status !== 1) {
       throw new Error(`خطا در تایید نهایی تراکنش: ${verifyResult.message}`)
     }
+    console.log("[CALLBACK_LOG] Step 2 successful. Transaction verified.")
 
-    // ۵. فعال‌سازی اشتراک کاربر پس از تایید نهایی
+    console.log("[CALLBACK_LOG] Step 3: Activating user subscription...")
     const planId = transaction.plan_id
     const planDetails = serverPlans[planId as keyof typeof serverPlans]
     if (!planDetails) {
@@ -104,25 +127,32 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // دریافت ایمیل کاربر برای آپدیت جدول توکن
-    const {
-      data: { user }
-    } = await supabase.auth.admin.getUserById(transaction.user_id)
-    if (!user?.email)
-      throw new Error("ایمیل کاربر برای به‌روزرسانی سهمیه توکن یافت نشد.")
+    // ✅ ساخت کلاینت ادمین با نام مستعار و آدرس دستی
+    const supabaseAdmin = createAdminClient(
+      "https://fgxgwcagpbnlwbsmpdvh.supabase.co", // 🔴 مهم: این آدرس باید با آدرس پروژه شما در Supabase یکسان باشد
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    // آپدیت یا ایجاد رکورد در جدول token_usage
+    const {
+      data: { user },
+      error: adminError
+    } = await supabaseAdmin.auth.admin.getUserById(transaction.user_id)
+
+    if (adminError || !user?.email) {
+      console.error("[ADMIN_ERROR] Supabase admin error:", adminError)
+      throw new Error("ایمیل کاربر برای به‌روزرسانی سهمیه توکن یافت نشد.")
+    }
+
     await supabase.from("token_usage").upsert(
       {
         user_email: user.email,
         limit_tokens: planDetails.tokens,
-        used_tokens: 0, // ریست کردن توکن‌های مصرفی
+        used_tokens: 0,
         updated_at: new Date().toISOString()
       },
       { onConflict: "user_email" }
     )
 
-    // آپدیت جدول profiles
     const expires_at = new Date()
     expires_at.setDate(expires_at.getDate() + planDetails.durationDays)
     await supabase
@@ -133,23 +163,22 @@ export async function POST(req: NextRequest) {
       })
       .eq("user_id", transaction.user_id)
 
-    // ۶. آپدیت نهایی وضعیت تراکنش در دیتابیس
     await supabase
       .from("transactions")
       .update({
         status: "success",
         verified_at: new Date().toISOString(),
-        ref_num: ref_num // شما می‌توانید شماره کارت و کد رهگیری را نیز اینجا ذخیره کنید
+        ref_num: ref_num
       })
       .eq("order_id", order_id)
+    console.log("[CALLBACK_LOG] Step 3 successful. Subscription activated.")
 
-    // ۷. هدایت کاربر به صفحه اعلام نتیجه موفق
+    console.log("[CALLBACK_LOG] Step 4: Redirecting to success page...")
     return NextResponse.redirect(
       `${appUrl}/payment-result?status=success&order_id=${order_id}`
     )
   } catch (error: any) {
     console.error("[PAYMENT_CALLBACK_ERROR]", error)
-    // در صورت بروز هرگونه خطا، کاربر را به صفحه نتیجه با پیام خطا هدایت کنید
     const query = new URLSearchParams({
       status: "error",
       message: error.message || "یک خطای پیش‌بینی‌نشده رخ داد."
@@ -159,4 +188,12 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.redirect(`${appUrl}/payment-result?${query.toString()}`)
   }
+}
+
+export async function GET(req: NextRequest) {
+  return handleCallback(req)
+}
+
+export async function POST(req: NextRequest) {
+  return handleCallback(req)
 }
