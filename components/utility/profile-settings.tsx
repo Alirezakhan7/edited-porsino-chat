@@ -262,13 +262,16 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
         {/* [بخش آپدیت شده] نمایش وضعیت اشتراک یا دکمه خرید */}
         <div className="border-t border-gray-200 p-4 dark:border-gray-700">
           {isSubscribed ? (
-            <div className="flex w-full cursor-default items-center justify-center space-x-2 space-x-reverse rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-md">
+            <div className="flex w-full cursor-default flex-row-reverse items-center justify-center space-x-2 space-x-reverse rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-md">
               <IconCalendarStats size={20} />
-              <span>
-                {remainingDays > 0
-                  ? `${remainingDays} روز از اشتراک شما باقی مانده`
-                  : "اشتراک شما امروز به پایان می‌رسد"}
-              </span>
+              {remainingDays > 0 ? (
+                <>
+                  <span className="ml-1">{remainingDays}</span>
+                  <span>روز از اشتراک شما باقی مانده</span>
+                </>
+              ) : (
+                <span>اشتراک شما امروز به پایان می‌رسد</span>
+              )}
             </div>
           ) : (
             <a
