@@ -131,10 +131,7 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({}) => {
         contextLength: defaultChatSettings.contextLength,
         includeProfileContext: defaultChatSettings.includeProfileContext,
         includeWorkspaceInstructions:
-          defaultChatSettings.includeWorkspaceInstructions,
-        embeddingsProvider: defaultChatSettings.embeddingsProvider as
-          | "openai"
-          | "local"
+          defaultChatSettings.includeWorkspaceInstructions
       })
     }
 
