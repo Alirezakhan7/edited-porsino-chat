@@ -15,7 +15,7 @@ import {
   handleHostedChat,
   validateChatSettings
 } from "../chat-helpers"
-
+import { LLM_LIST } from "../../../lib/models/llm/llm-list"
 export const useChatHandler = () => {
   const router = useRouter()
 
@@ -173,22 +173,29 @@ export const useChatHandler = () => {
       const newAbortController = new AbortController()
       setAbortController(newAbortController)
 
-      const modelData = models
-        .map(model => ({
+      const availableModelIds = models.map(model => model.model_id)
+      console.log("Searching for model ID:", chatSettings?.model)
+      console.log("In this list of available model IDs:", availableModelIds)
+
+      const modelData = [
+        ...LLM_LIST, // لیستی که در مرحله قبل ساختیم
+        ...models.map(model => ({
           modelId: model.model_id as LLMID,
           modelName: model.name,
-          provider: "custom" as const, // مقدار "custom" برای همه مدل‌ها
+          provider: "custom" as const,
           hostedId: model.id,
           platformLink: "",
           imageInput: false
         }))
-        .find(llm => llm.modelId === chatSettings?.model)
+      ].find(llm => llm.modelId === chatSettings?.model)
+
       console.log("SENDING MESSAGE. VALIDATING WITH:", {
         chatSettings,
         modelData,
         profile,
         selectedWorkspace
       })
+
       validateChatSettings(
         chatSettings,
         modelData,
