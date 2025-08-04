@@ -32,8 +32,7 @@ export const CreateAssistant: FC<CreateAssistantProps> = ({
       temperature: 0.5,
       contextLength: 4096,
       includeProfileContext: true,
-      includeWorkspaceInstructions: true,
-      embeddingsProvider: "openai" // مقدار پیش‌فرض
+      includeWorkspaceInstructions: true
     })
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imageLink, setImageLink] = useState("")
@@ -123,7 +122,6 @@ export const CreateAssistant: FC<CreateAssistantProps> = ({
           image_path: "",
           prompt: assistantChatSettings.prompt,
           temperature: assistantChatSettings.temperature,
-          embeddings_provider: assistantChatSettings.embeddingsProvider,
           files: selectedAssistantRetrievalItems.filter(item =>
             item.hasOwnProperty("type")
           ) as Tables<"files">[],

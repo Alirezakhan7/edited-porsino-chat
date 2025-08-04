@@ -27,8 +27,7 @@ export const CreatePreset: FC<CreatePresetProps> = ({
     temperature: 0.5,
     contextLength: 4096,
     includeProfileContext: true,
-    includeWorkspaceInstructions: true,
-    embeddingsProvider: "openai" // مقدار پیش‌فرض
+    includeWorkspaceInstructions: true
   })
 
   if (!profile) return null
@@ -51,8 +50,7 @@ export const CreatePreset: FC<CreatePresetProps> = ({
           context_length: presetChatSettings.contextLength,
           model: presetChatSettings.model,
           prompt: presetChatSettings.prompt,
-          temperature: presetChatSettings.temperature,
-          embeddings_provider: presetChatSettings.embeddingsProvider
+          temperature: presetChatSettings.temperature
         } as TablesInsert<"presets">
       }
       renderInputs={() => (
