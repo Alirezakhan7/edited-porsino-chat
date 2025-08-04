@@ -183,7 +183,12 @@ export const useChatHandler = () => {
           imageInput: false
         }))
         .find(llm => llm.modelId === chatSettings?.model)
-
+      console.log("SENDING MESSAGE. VALIDATING WITH:", {
+        chatSettings,
+        modelData,
+        profile,
+        selectedWorkspace
+      })
       validateChatSettings(
         chatSettings,
         modelData,
