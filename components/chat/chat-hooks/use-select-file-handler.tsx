@@ -105,7 +105,7 @@ export const useSelectFileHandler = () => {
               type: simplifiedFileType
             },
             selectedWorkspace.id,
-            chatSettings.embeddingsProvider
+            chatSettings.embeddingsProvider || "openai"
           )
 
           setFiles(prev => [...prev, createdFile])
@@ -166,7 +166,7 @@ export const useSelectFileHandler = () => {
                 type: simplifiedFileType
               },
               selectedWorkspace.id,
-              chatSettings.embeddingsProvider
+              chatSettings.embeddingsProvider || "openai"
             )
 
             setFiles(prev => [...prev, createdFile])
