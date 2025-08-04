@@ -241,6 +241,7 @@ export const useChatHandler = () => {
       if (!currentChat && newChatId) {
         const newlyCreatedChat: Tables<"chats"> = {
           id: newChatId,
+          chat_id: newChatId,
           user_id: profile!.user_id,
           workspace_id: selectedWorkspace!.id,
           assistant_id: selectedAssistant?.id || null,
@@ -252,7 +253,6 @@ export const useChatHandler = () => {
           name: messageContent.substring(0, 100),
           prompt: chatSettings!.prompt,
           temperature: chatSettings!.temperature,
-          embeddings_provider: "openai",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           folder_id: null,
