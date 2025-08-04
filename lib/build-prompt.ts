@@ -71,7 +71,7 @@ export async function buildFinalMessages(
     if (nextChatMessageFileItems.length > 0) {
       const findFileItems = nextChatMessageFileItems
         .map(fileItemId =>
-          chatFileItems.find(chatFileItem => chatFileItem.id === fileItemId)
+          chatFileItems?.find(chatFileItem => chatFileItem.id === fileItemId)
         )
         .filter(item => item !== undefined) as Tables<"file_items">[]
 
@@ -161,7 +161,7 @@ export async function buildFinalMessages(
     }
   })
 
-  if (messageFileItems.length > 0) {
+  if (messageFileItems && messageFileItems.length > 0) {
     const retrievalText = buildRetrievalText(messageFileItems)
 
     finalMessages[finalMessages.length - 1] = {
