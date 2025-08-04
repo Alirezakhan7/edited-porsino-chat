@@ -9,6 +9,7 @@ import { Tables, TablesInsert } from "@/supabase/types"
 import { FC, useContext, useEffect, useState } from "react"
 import { AssistantRetrievalSelect } from "./assistant-retrieval-select"
 import { AssistantToolSelect } from "./assistant-tool-select"
+import { ChatSettings } from "@/types"
 
 interface CreateAssistantProps {
   isOpen: boolean
@@ -24,15 +25,16 @@ export const CreateAssistant: FC<CreateAssistantProps> = ({
   const [name, setName] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [description, setDescription] = useState("")
-  const [assistantChatSettings, setAssistantChatSettings] = useState({
-    model: selectedWorkspace?.default_model,
-    prompt: selectedWorkspace?.default_prompt,
-    temperature: selectedWorkspace?.default_temperature,
-    contextLength: selectedWorkspace?.default_context_length,
-    includeProfileContext: false,
-    includeWorkspaceInstructions: false,
-    embeddingsProvider: selectedWorkspace?.embeddings_provider
-  })
+  const [assistantChatSettings, setAssistantChatSettings] =
+    useState<ChatSettings>({
+      model: "gpt-4-turbo-preview", // یک مدل پیش‌فرض معتبر
+      prompt: "",
+      temperature: 0.5,
+      contextLength: 4096,
+      includeProfileContext: true,
+      includeWorkspaceInstructions: true,
+      embeddingsProvider: "openai" // مقدار پیش‌فرض
+    })
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imageLink, setImageLink] = useState("")
   const [selectedAssistantRetrievalItems, setSelectedAssistantRetrievalItems] =
