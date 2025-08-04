@@ -434,8 +434,7 @@ export const handleCreateChat = async (
     model: chatSettings.model,
     name: messageContent.substring(0, 100),
     prompt: chatSettings.prompt,
-    temperature: chatSettings.temperature,
-    embeddings_provider: "openai"
+    temperature: chatSettings.temperature
   })
 
   setSelectedChat(createdChat)

@@ -61,8 +61,7 @@ export const getFileWorkspacesByFileId = async (fileId: string) => {
 export const createFileBasedOnExtension = async (
   file: File,
   fileRecord: TablesInsert<"files">,
-  workspace_id: string,
-  embeddingsProvider: "openai" | "local"
+  workspace_id: string
 ) => {
   const fileExtension = file.name.split(".").pop()
 
