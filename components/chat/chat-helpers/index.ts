@@ -1,4 +1,3 @@
-// Only used in use-chat-handler.tsx to keep it clean
 import { createClient } from "@/lib/supabase/client"
 
 import { createChatFiles } from "@/db/chat-files"
@@ -6,10 +5,6 @@ import { createChat } from "@/db/chats"
 import { createMessageFileItems } from "@/db/message-file-items"
 import { createMessages, updateMessage } from "@/db/messages"
 import { uploadMessageImage } from "@/db/storage/message-images"
-import {
-  buildFinalMessages,
-  adaptMessagesForGoogleGemini
-} from "@/lib/build-prompt"
 import { consumeReadableStream } from "@/lib/consume-stream"
 import { Tables, TablesInsert } from "@/supabase/types"
 import {
@@ -50,34 +45,6 @@ export const validateChatSettings = (
   if (!messageContent) {
     throw new Error("Message content not found")
   }
-}
-
-export const handleRetrieval = async (
-  userInput: string,
-  newMessageFiles: ChatFile[],
-  chatFiles: ChatFile[],
-  embeddingsProvider: "openai" | "local",
-  sourceCount: number
-) => {
-  const response = await fetch("/api/retrieval/retrieve", {
-    method: "POST",
-    body: JSON.stringify({
-      userInput,
-      fileIds: [...newMessageFiles, ...chatFiles].map(file => file.id),
-      embeddingsProvider,
-      sourceCount
-    })
-  })
-
-  if (!response.ok) {
-    console.error("Error retrieving:", response)
-  }
-
-  const { results } = (await response.json()) as {
-    results: Tables<"file_items">[]
-  }
-
-  return results
 }
 
 export const createTempMessages = (
@@ -145,49 +112,6 @@ export const createTempMessages = (
   }
 }
 
-export const handleLocalChat = async (
-  payload: ChatPayload,
-  profile: Tables<"profiles">,
-  chatSettings: ChatSettings,
-  tempAssistantMessage: ChatMessage,
-  isRegeneration: boolean,
-  newAbortController: AbortController,
-  setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>,
-  setFirstTokenReceived: React.Dispatch<React.SetStateAction<boolean>>,
-  setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  setToolInUse: React.Dispatch<React.SetStateAction<string>>
-) => {
-  const formattedMessages = await buildFinalMessages(payload, profile, [])
-
-  const response = await fetchChatResponse(
-    process.env.NEXT_PUBLIC_OLLAMA_URL + "/api/chat",
-    {
-      model: chatSettings.model,
-      messages: formattedMessages,
-      options: {
-        temperature: payload.chatSettings.temperature
-      }
-    },
-    newAbortController,
-    setIsGenerating,
-    setChatMessages
-  )
-
-  // NOTE: Assuming local models don't have the special math logic for now
-  return await processResponse(
-    response,
-    isRegeneration
-      ? payload.chatMessages[payload.chatMessages.length - 1]
-      : tempAssistantMessage,
-    newAbortController,
-    setFirstTokenReceived,
-    setChatMessages,
-    setToolInUse,
-    () => {}, // setTopicSummary
-    () => {} // setSuggestions
-  )
-}
-
 // ✅ تابع handleHostedChat برای هماهنگی با بک‌اند جدید اصلاح شده است
 export const handleHostedChat = async (
   payload: ChatPayload,
@@ -205,48 +129,162 @@ export const handleHostedChat = async (
   setTopicSummary: (summary: string) => void,
   setSuggestions: (suggestions: string[]) => void
 ) => {
-  const provider = modelData.provider
-
-  // ما فقط برای provider کاستوم خودمان منطق ویژه داریم
-  if (provider !== "custom") {
-    // در اینجا می‌توانید منطق سایر provider ها را در آینده قرار دهید
-    throw new Error(`Provider "${provider}" is not supported for hosted chat.`)
-  }
-
+  /**
+   * این تابع با بک‌اند مبتنی بر صف سازگار است:
+   * ابتدا /chat را فراخوانی می‌کند تا job_id و chatId برگردد،
+   * سپس پاسخ نهایی را با پولینگ از /chat/result/{job_id} دریافت می‌کند.
+   */
   const apiEndpoint = "https://api.porsino.org/chat"
 
-  // بدنه درخواست همیشه شامل chatId خواهد بود (که در ابتدا می‌تواند خالی باشد)
+  // آخرین پیام کاربر در آرایه‌ی پیام‌ها
   const lastUserMessage = payload.chatMessages[payload.chatMessages.length - 1]
   const chatIdToSend = lastUserMessage.message.chat_id
 
+  // بدنهٔ درخواست برای سرور
   const requestBody = {
     message: lastUserMessage.message.content,
     customModelId: payload.chatSettings.model,
-    // ✅ منطق صحیح: اگر chatId وجود نداشت، یعنی مسئله جدید است
     isNewProblem: !chatIdToSend,
     chatId: chatIdToSend
   }
 
-  const response = await fetchChatResponse(
-    apiEndpoint,
-    requestBody,
-    newAbortController,
-    setIsGenerating,
-    setChatMessages
-  )
+  try {
+    // دریافت توکن Supabase برای احراز هویت
+    const supabase = createClient()
+    const session = await supabase.auth.getSession()
+    const token = session.data.session?.access_token
 
-  return await processResponse(
-    response,
-    isRegeneration
-      ? payload.chatMessages[payload.chatMessages.length - 1]
-      : tempAssistantChatMessage,
-    newAbortController,
-    setFirstTokenReceived,
-    setChatMessages,
-    setToolInUse,
-    setTopicSummary,
-    setSuggestions
-  )
+    // ارسال اولیه به /chat برای ایجاد job
+    const initialResponse = await fetch(apiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` })
+      },
+      body: JSON.stringify(requestBody),
+      signal: newAbortController.signal
+    })
+
+    if (!initialResponse.ok) {
+      const errorData = await initialResponse
+        .json()
+        .catch(() => ({ detail: "An unknown error occurred." }))
+      const errorText =
+        errorData?.detail && typeof errorData.detail === "string"
+          ? errorData.detail
+          : "An error has occurred. Please try again."
+
+      toast.error(errorText)
+      setIsGenerating(false)
+      setChatMessages(prevMessages => prevMessages.slice(0, -2))
+      throw new Error(errorText)
+    }
+
+    // دریافت job_id و chatId
+    const initialData = (await initialResponse.json()) as {
+      job_id?: string
+      jobId?: string
+      chatId?: string
+      [key: string]: any
+    }
+    const jobId = initialData.job_id ?? initialData.jobId
+    const newChatId = initialData.chatId
+
+    // اگر chatId جدید برگردد، آن را به پیام‌های موقت اعمال کنید
+    if (newChatId) {
+      tempAssistantChatMessage.message.chat_id = newChatId
+      lastUserMessage.message.chat_id = newChatId
+    }
+
+    // پولینگ از /chat/result/{job_id}
+    const resultEndpoint = `${apiEndpoint}/result/${jobId}`
+    let finalData: any = null
+
+    while (true) {
+      const resultResponse = await fetch(resultEndpoint, {
+        method: "GET",
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
+        signal: newAbortController.signal
+      })
+
+      if (!resultResponse.ok) {
+        const errorData = await resultResponse
+          .json()
+          .catch(() => ({ detail: "An unknown error occurred." }))
+        const errorText =
+          errorData?.detail && typeof errorData.detail === "string"
+            ? errorData.detail
+            : "An error has occurred. Please try again."
+        toast.error(errorText)
+        setIsGenerating(false)
+        setChatMessages(prevMessages => prevMessages.slice(0, -2))
+        throw new Error(errorText)
+      }
+
+      let fullText = ""
+      if (resultResponse.body) {
+        await consumeReadableStream(
+          resultResponse.body,
+          chunk => {
+            setFirstTokenReceived(true)
+            setToolInUse("none")
+            fullText += chunk
+          },
+          newAbortController.signal
+        )
+      }
+
+      try {
+        finalData = JSON.parse(fullText)
+      } catch (error) {
+        console.error("Error parsing result JSON:", error, {
+          receivedText: fullText
+        })
+        throw error
+      }
+
+      if (finalData && finalData.status === "processing") {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        continue
+      }
+      break
+    }
+
+    // استخراج داده‌های نهایی
+    const answer = finalData.answer || ""
+    const topic = finalData.topic_summary || ""
+    const suggs = finalData.suggestions || []
+    const chatIdFinal = finalData.chatId || newChatId || chatIdToSend
+
+    // بروزرسانی UI
+    setChatMessages(prev =>
+      prev.map(chatMessage => {
+        if (chatMessage.message.id === tempAssistantChatMessage.message.id) {
+          return {
+            ...chatMessage,
+            message: {
+              ...chatMessage.message,
+              content: answer,
+              chat_id: chatIdFinal || chatMessage.message.chat_id
+            }
+          }
+        }
+        return chatMessage
+      })
+    )
+    setTopicSummary(topic)
+    setSuggestions(suggs)
+
+    return { generatedText: answer, newChatId: chatIdFinal }
+  } catch (error) {
+    console.error(error)
+    setIsGenerating(false)
+    // در صورت خطا، پیام‌های موقت را حذف می‌کنیم
+    setChatMessages(prevMessages => prevMessages.slice(0, -2))
+    throw error
+  }
 }
 
 export const fetchChatResponse = async (
@@ -397,7 +435,7 @@ export const handleCreateChat = async (
     name: messageContent.substring(0, 100),
     prompt: chatSettings.prompt,
     temperature: chatSettings.temperature,
-    embeddings_provider: chatSettings.embeddingsProvider
+    embeddings_provider: "openai"
   })
 
   setSelectedChat(createdChat)
@@ -425,28 +463,24 @@ export const handleCreateMessages = async (
   generatedText: string, // ✅ این را هنوز لازم داریم
   newMessageImages: MessageImage[],
   isRegeneration: boolean,
-  retrievedFileItems: Tables<"file_items">[],
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  setChatFileItems: React.Dispatch<
-    React.SetStateAction<Tables<"file_items">[]>
-  >,
   setChatImages: React.Dispatch<React.SetStateAction<MessageImage[]>>,
   selectedAssistant: Tables<"assistants"> | null
 ) => {
   // ✅ به جای ساختن پیام از اول، پیام کاربر را از آرایه ورودی می‌خوانیم
-  const userMessageToSave = chatMessages[chatMessages.length - 1].message
+  const userMessageToSave = chatMessages[chatMessages.length - 2].message // Corrected index
+  const assistantMessageToSave = chatMessages[chatMessages.length - 1].message
 
   const finalUserMessage: TablesInsert<"messages"> = {
-    // ✅ تمام مقادیر را از آبجکت پیام می‌خوانیم و فقط chat_id را اصلاح می‌کنیم
     ...userMessageToSave,
     chat_id: currentChat.id
   }
 
   const finalAssistantMessage: TablesInsert<"messages"> = {
+    ...assistantMessageToSave,
     chat_id: currentChat.id,
-    assistant_id: selectedAssistant?.id || null,
     user_id: profile.user_id,
-    content: generatedText, // پاسخ نهایی مدل
+    content: generatedText,
     model: modelData.modelId,
     role: "assistant",
     sequence_number: userMessageToSave.sequence_number + 1,
@@ -500,8 +534,7 @@ export const handleCreateMessages = async (
             : chatMsg.message.id === assistantMessage.id
               ? {
                   ...chatMsg,
-                  message: assistantMessage,
-                  fileItems: retrievedFileItems.map(item => item.id)
+                  message: assistantMessage
                 }
               : chatMsg
         )
@@ -514,23 +547,11 @@ export const handleCreateMessages = async (
             : chatMsg.message.id === assistantMessage.id
               ? {
                   ...chatMsg,
-                  message: assistantMessage,
-                  fileItems: retrievedFileItems.map(item => item.id)
+                  message: assistantMessage
                 }
               : chatMsg
         )
       )
-    }
-
-    if (retrievedFileItems.length > 0) {
-      await createMessageFileItems(
-        retrievedFileItems.map(fileItem => ({
-          user_id: profile.user_id,
-          message_id: assistantMessage.id,
-          file_item_id: fileItem.id
-        }))
-      )
-      setChatFileItems(prev => [...prev, ...retrievedFileItems])
     }
   }
 }

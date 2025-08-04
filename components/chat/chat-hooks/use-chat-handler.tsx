@@ -6,16 +6,13 @@ import { updateChat } from "@/db/chats"
 import { getCollectionFilesByCollectionId } from "@/db/collection-files"
 import { deleteMessagesIncludingAndAfter } from "@/db/messages"
 import { Tables } from "@/supabase/types"
-import { ChatMessage, ChatPayload, LLMID, ModelProvider } from "@/types"
+import { ChatMessage, ChatPayload, LLMID } from "@/types"
 import { useRouter } from "next/navigation"
 import { useContext, useEffect, useRef } from "react"
-import { LLM_LIST } from "../../../lib/models/llm/llm-list"
 import {
   createTempMessages,
   handleCreateMessages,
   handleHostedChat,
-  handleLocalChat,
-  handleRetrieval,
   validateChatSettings
 } from "../chat-helpers"
 
@@ -36,8 +33,6 @@ export const useChatHandler = () => {
     setSelectedChat,
     setChats,
     setSelectedTools,
-    availableLocalModels,
-    availableOpenRouterModels,
     abortController,
     setAbortController,
     chatSettings,
@@ -50,14 +45,9 @@ export const useChatHandler = () => {
     setNewMessageFiles,
     setShowFilesDisplay,
     newMessageFiles,
-    chatFileItems,
-    setChatFileItems,
     setToolInUse,
-    useRetrieval,
-    sourceCount,
     setIsPromptPickerOpen,
     setIsFilePickerOpen,
-    selectedTools,
     selectedPreset,
     setChatSettings,
     models,
@@ -82,7 +72,6 @@ export const useChatHandler = () => {
     setUserInput("")
     setChatMessages([])
     setSelectedChat(null)
-    setChatFileItems([])
 
     setIsGenerating(false)
     setFirstTokenReceived(false)
@@ -109,10 +98,7 @@ export const useChatHandler = () => {
         contextLength: selectedAssistant.context_length,
         includeProfileContext: selectedAssistant.include_profile_context,
         includeWorkspaceInstructions:
-          selectedAssistant.include_workspace_instructions,
-        embeddingsProvider: selectedAssistant.embeddings_provider as
-          | "openai"
-          | "local"
+          selectedAssistant.include_workspace_instructions
       })
 
       let allFiles = []
@@ -153,10 +139,7 @@ export const useChatHandler = () => {
         contextLength: selectedPreset.context_length,
         includeProfileContext: selectedPreset.include_profile_context,
         includeWorkspaceInstructions:
-          selectedPreset.include_workspace_instructions,
-        embeddingsProvider: selectedPreset.embeddings_provider as
-          | "openai"
-          | "local"
+          selectedPreset.include_workspace_instructions
       })
     }
 
@@ -173,7 +156,6 @@ export const useChatHandler = () => {
     }
   }
 
-  // ✅ تابع handleSendMessage به طور کامل بازنویسی شده است
   const handleSendMessage = async (
     messageContent: string,
     chatMessages: ChatMessage[],
@@ -191,19 +173,16 @@ export const useChatHandler = () => {
       const newAbortController = new AbortController()
       setAbortController(newAbortController)
 
-      const modelData = [
-        ...models.map(model => ({
+      const modelData = models
+        .map(model => ({
           modelId: model.model_id as LLMID,
           modelName: model.name,
-          provider: "custom" as ModelProvider,
+          provider: "custom" as const, // مقدار "custom" برای همه مدل‌ها
           hostedId: model.id,
           platformLink: "",
           imageInput: false
-        })),
-        ...LLM_LIST,
-        ...availableLocalModels,
-        ...availableOpenRouterModels
-      ].find(llm => llm.modelId === chatSettings?.model)
+        }))
+        .find(llm => llm.modelId === chatSettings?.model)
 
       validateChatSettings(
         chatSettings,
@@ -215,21 +194,6 @@ export const useChatHandler = () => {
 
       let currentChat = selectedChat ? { ...selectedChat } : null
       const b64Images = newMessageImages.map(image => image.base64)
-      let retrievedFileItems: Tables<"file_items">[] = []
-
-      if (
-        (newMessageFiles.length > 0 || chatFiles.length > 0) &&
-        useRetrieval
-      ) {
-        setToolInUse("retrieval")
-        retrievedFileItems = await handleRetrieval(
-          userInput,
-          newMessageFiles,
-          chatFiles,
-          chatSettings!.embeddingsProvider,
-          sourceCount
-        )
-      }
 
       const { tempUserChatMessage, tempAssistantChatMessage } =
         createTempMessages(
@@ -242,8 +206,6 @@ export const useChatHandler = () => {
           selectedAssistant
         )
 
-      // chatId را در پیام موقت هم قرار می‌دهیم تا به helper برسد
-      // اگر چت موجود باشد، از selectedChat.id استفاده می‌شود، در غیر این صورت یک رشته خالی است
       const chatIdToSend = selectedChat?.id || ""
       tempUserChatMessage.message.chat_id = chatIdToSend
       tempAssistantChatMessage.message.chat_id = chatIdToSend
@@ -254,58 +216,29 @@ export const useChatHandler = () => {
         chatMessages: isRegeneration
           ? [...chatMessages]
           : [...chatMessages, tempUserChatMessage],
-        assistant: selectedChat?.assistant_id ? selectedAssistant : null,
-        messageFileItems: retrievedFileItems,
-        chatFileItems: chatFileItems
+        assistant: selectedChat?.assistant_id ? selectedAssistant : null
       }
 
-      let responsePayload = {
-        generatedText: "",
-        newChatId: null as string | null
-      }
-
-      if (modelData!.provider === "ollama") {
-        // ✅ خروجی handleLocalChat را مستقیماً در responsePayload ذخیره می‌کنیم
-        responsePayload = await handleLocalChat(
-          payload,
-          profile!,
-          chatSettings!,
-          tempAssistantChatMessage,
-          isRegeneration,
-          newAbortController,
-          setIsGenerating,
-          setFirstTokenReceived,
-          setChatMessages,
-          setToolInUse
-        )
-      } else {
-        responsePayload = await handleHostedChat(
-          payload,
-          profile!,
-          modelData!,
-          tempAssistantChatMessage,
-          isRegeneration,
-          newAbortController,
-          newMessageImages,
-          chatImages,
-          setIsGenerating,
-          setFirstTokenReceived,
-          setChatMessages,
-          setToolInUse,
-          setTopicSummary,
-          setSuggestions
-        )
-      }
+      let responsePayload = await handleHostedChat(
+        payload,
+        profile!,
+        modelData!,
+        tempAssistantChatMessage,
+        isRegeneration,
+        newAbortController,
+        newMessageImages,
+        chatImages,
+        setIsGenerating,
+        setFirstTokenReceived,
+        setChatMessages,
+        setToolInUse,
+        setTopicSummary,
+        setSuggestions
+      )
 
       const { generatedText, newChatId } = responsePayload
 
       if (!currentChat && newChatId) {
-        // این حالت یعنی اولین پیام یک چت جدید با موفقیت ارسال و در بک‌اند ساخته شده
-        console.log(
-          "✅ Chat created on backend, updating frontend state with new chatId:",
-          newChatId
-        )
-
         const newlyCreatedChat: Tables<"chats"> = {
           id: newChatId,
           user_id: profile!.user_id,
@@ -319,7 +252,7 @@ export const useChatHandler = () => {
           name: messageContent.substring(0, 100),
           prompt: chatSettings!.prompt,
           temperature: chatSettings!.temperature,
-          embeddings_provider: chatSettings!.embeddingsProvider,
+          embeddings_provider: "openai",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           folder_id: null,
@@ -328,7 +261,7 @@ export const useChatHandler = () => {
 
         setSelectedChat(newlyCreatedChat)
         setChats(chats => [newlyCreatedChat, ...chats])
-        currentChat = newlyCreatedChat // currentChat را برای مرحله بعد آپدیت می‌کنیم
+        currentChat = newlyCreatedChat
       } else if (currentChat) {
         const updatedChat = await updateChat(currentChat.id, {
           updated_at: new Date().toISOString()
@@ -341,18 +274,16 @@ export const useChatHandler = () => {
       }
 
       await handleCreateMessages(
-        // ✅ ما آبجکت کامل پیام‌های موقت را به این تابع می‌دهیم
-        isRegeneration ? chatMessages : [...chatMessages, tempUserChatMessage],
+        isRegeneration
+          ? chatMessages
+          : [...chatMessages, tempUserChatMessage, tempAssistantChatMessage],
         currentChat!,
         profile!,
         modelData!,
-        // messageContent و generatedText دیگر لازم نیستند چون در آبجکت‌ها هستند
         generatedText,
         newMessageImages,
         isRegeneration,
-        retrievedFileItems,
         setChatMessages,
-        setChatFileItems,
         setChatImages,
         selectedAssistant
       )

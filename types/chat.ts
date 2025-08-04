@@ -8,7 +8,7 @@ export interface ChatSettings {
   contextLength: number
   includeProfileContext: boolean
   includeWorkspaceInstructions: boolean
-  embeddingsProvider: "openai" | "local"
+  embeddingsProvider?: "openai" | "local"
 }
 
 export interface ChatPayload {
@@ -16,8 +16,8 @@ export interface ChatPayload {
   workspaceInstructions: string
   chatMessages: ChatMessage[]
   assistant: Tables<"assistants"> | null
-  messageFileItems: Tables<"file_items">[]
-  chatFileItems: Tables<"file_items">[]
+  messageFileItems?: Tables<"file_items">[]
+  chatFileItems?: Tables<"file_items">[]
 }
 
 export interface ChatAPIPayload {
