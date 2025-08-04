@@ -6,7 +6,7 @@ import { ChatbotUIContext } from "@/context/context"
 import { PRESET_NAME_MAX } from "@/db/limits"
 import { TablesInsert } from "@/supabase/types"
 import { FC, useContext, useState } from "react"
-
+import { ChatSettings } from "@/types"
 interface CreatePresetProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
@@ -21,15 +21,14 @@ export const CreatePreset: FC<CreatePresetProps> = ({
   const [name, setName] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [description, setDescription] = useState("")
-  const [presetChatSettings, setPresetChatSettings] = useState({
-    model: selectedWorkspace?.default_model,
-    prompt: selectedWorkspace?.default_prompt,
-    temperature: selectedWorkspace?.default_temperature,
-    contextLength: selectedWorkspace?.default_context_length,
-    includeProfileContext: selectedWorkspace?.include_profile_context,
-    includeWorkspaceInstructions:
-      selectedWorkspace?.include_workspace_instructions,
-    embeddingsProvider: selectedWorkspace?.embeddings_provider
+  const [presetChatSettings, setPresetChatSettings] = useState<ChatSettings>({
+    model: "gpt-4-turbo-preview", // یک مدل پیش‌فرض معتبر
+    prompt: "",
+    temperature: 0.5,
+    contextLength: 4096,
+    includeProfileContext: true,
+    includeWorkspaceInstructions: true,
+    embeddingsProvider: "openai" // مقدار پیش‌فرض
   })
 
   if (!profile) return null
