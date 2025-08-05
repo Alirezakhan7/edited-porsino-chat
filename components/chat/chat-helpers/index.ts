@@ -256,7 +256,13 @@ export const handleHostedChat = async (
     const answer = finalData.answer || ""
     const topic = finalData.topic_summary || ""
     const suggs = finalData.suggestions || []
-    const chatIdFinal = finalData.chatId || newChatId || chatIdToSend
+
+    const chatIdFromResponse = finalData.chatId || newChatId || chatIdToSend
+
+    // اگر شناسه نهایی یک رشته خالی بود، آن را به null تبدیل می‌کنیم
+    // تا به عنوان یک شناسه نامعتبر در نظر گرفته شود.
+    const finalValidChatId =
+      chatIdFromResponse === "" ? null : chatIdFromResponse
 
     // بروزرسانی UI
     setChatMessages(prev =>
@@ -267,7 +273,7 @@ export const handleHostedChat = async (
             message: {
               ...chatMessage.message,
               content: answer,
-              chat_id: chatIdFinal || chatMessage.message.chat_id
+              chat_id: finalValidChatId || chatMessage.message.chat_id
             }
           }
         }
@@ -277,7 +283,7 @@ export const handleHostedChat = async (
     setTopicSummary(topic)
     setSuggestions(suggs)
 
-    return { generatedText: answer, newChatId: chatIdFinal }
+    return { generatedText: answer, newChatId: finalValidChatId } // <-- مقدار اصلاح شده را برمی‌گردانیم
   } catch (error) {
     console.error(error)
     setIsGenerating(false)
