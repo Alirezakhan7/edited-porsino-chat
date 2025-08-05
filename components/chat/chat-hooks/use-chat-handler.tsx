@@ -218,10 +218,6 @@ export const useChatHandler = () => {
           selectedAssistant
         )
 
-      const chatIdToSend = selectedChat?.id || ""
-      tempUserChatMessage.message.chat_id = chatIdToSend
-      tempAssistantChatMessage.message.chat_id = chatIdToSend
-
       let payload: ChatPayload = {
         chatSettings: chatSettings!,
         workspaceInstructions: selectedWorkspace!.instructions || "",
@@ -284,6 +280,9 @@ export const useChatHandler = () => {
           )
         )
       }
+
+      tempUserChatMessage.message.chat_id = currentChat!.id
+      tempAssistantChatMessage.message.chat_id = currentChat!.id
 
       await handleCreateMessages(
         isRegeneration
