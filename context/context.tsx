@@ -42,6 +42,8 @@ interface ChatbotUIContext {
   setWorkspaces: Dispatch<SetStateAction<Tables<"workspaces">[]>>
 
   // MODELS STORE
+  envKeyMap: Record<string, VALID_ENV_KEYS>
+  setEnvKeyMap: Dispatch<SetStateAction<Record<string, VALID_ENV_KEYS>>>
   availableHostedModels: LLM[]
   setAvailableHostedModels: Dispatch<SetStateAction<LLM[]>>
   availableLocalModels: LLM[]
@@ -172,6 +174,8 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setWorkspaces: () => {},
 
   // MODELS STORE
+  envKeyMap: {},
+  setEnvKeyMap: () => {},
   availableHostedModels: [],
   setAvailableHostedModels: () => {},
   availableLocalModels: [],

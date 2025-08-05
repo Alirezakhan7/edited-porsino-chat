@@ -1,4 +1,4 @@
-// فایل: context/context-provider.tsx (نسخه کامل و نهایی)
+// فایل: context/context-provider.tsx (نسخه نهایی با استفاده از enum شما)
 
 "use client"
 
@@ -19,13 +19,14 @@ import {
   WorkspaceImage
 } from "@/types"
 import { AssistantImage } from "@/types/images/assistant-image"
+import { VALID_ENV_KEYS } from "@/types/valid-keys" // <-- ایمپورت از فایل جدید
 
 interface ChatbotUIProviderProps {
   children: React.ReactNode
 }
 
 export const ChatbotUIProvider: FC<ChatbotUIProviderProps> = ({ children }) => {
-  // برای تک تک موارد در context.tsx یک useState می‌سازیم
+  // تمام state ها مطابق با context.tsx ساخته می‌شوند
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null)
   const [assistants, setAssistants] = useState<Tables<"assistants">[]>([])
@@ -38,6 +39,7 @@ export const ChatbotUIProvider: FC<ChatbotUIProviderProps> = ({ children }) => {
   const [prompts, setPrompts] = useState<Tables<"prompts">[]>([])
   const [tools, setTools] = useState<Tables<"tools">[]>([])
   const [workspaces, setWorkspaces] = useState<Tables<"workspaces">[]>([])
+  const [envKeyMap, setEnvKeyMap] = useState<Record<string, VALID_ENV_KEYS>>({}) // <-- این state حالا وجود دارد
   const [availableHostedModels, setAvailableHostedModels] = useState<LLM[]>([])
   const [availableLocalModels, setAvailableLocalModels] = useState<LLM[]>([])
   const [availableOpenRouterModels, setAvailableOpenRouterModels] = useState<
@@ -132,7 +134,6 @@ export const ChatbotUIProvider: FC<ChatbotUIProviderProps> = ({ children }) => {
   return (
     <ChatbotUIContext.Provider
       value={{
-        // اینجا تمام مقادیر و توابع setter آنها را قرار می‌دهیم تا با نقشه جور در بیاید
         profile,
         setProfile,
         supabase,
@@ -156,6 +157,8 @@ export const ChatbotUIProvider: FC<ChatbotUIProviderProps> = ({ children }) => {
         setTools,
         workspaces,
         setWorkspaces,
+        envKeyMap,
+        setEnvKeyMap,
         availableHostedModels,
         setAvailableHostedModels,
         availableLocalModels,
@@ -214,7 +217,6 @@ export const ChatbotUIProvider: FC<ChatbotUIProviderProps> = ({ children }) => {
         setAtCommand,
         isAssistantPickerOpen,
         setIsAssistantPickerOpen,
-
         chatFiles,
         setChatFiles,
         chatImages,
