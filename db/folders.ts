@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase/browser-client"
 import { TablesInsert, TablesUpdate } from "@/supabase/types"
-
+import { createClient } from "@/lib/supabase/client"
 export const getFoldersByWorkspaceId = async (workspaceId: string) => {
   const { data: folders, error } = await supabase
     .from("folders")
@@ -54,4 +54,19 @@ export const deleteFolder = async (folderId: string) => {
   }
 
   return true
+}
+
+export const getFoldersByUserId = async (userId: string) => {
+  const supabase = createClient() // از client supabase استفاده می‌کنیم
+  const { data: folders, error } = await supabase
+    .from("folders")
+    .select("*")
+    .eq("user_id", userId)
+
+  if (error) {
+    console.error("Error fetching folders by user id:", error.message)
+    return []
+  }
+
+  return folders
 }
