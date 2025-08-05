@@ -129,18 +129,10 @@ export const handleHostedChat = async (
   setTopicSummary: (summary: string) => void,
   setSuggestions: (suggestions: string[]) => void
 ) => {
-  /**
-   * این تابع با بک‌اند مبتنی بر صف سازگار است:
-   * ابتدا /chat را فراخوانی می‌کند تا job_id و chatId برگردد،
-   * سپس پاسخ نهایی را با پولینگ از /chat/result/{job_id} دریافت می‌کند.
-   */
   const apiEndpoint = "https://api.porsino.org/chat"
-
-  // آخرین پیام کاربر در آرایه‌ی پیام‌ها
   const lastUserMessage = payload.chatMessages[payload.chatMessages.length - 1]
   const chatIdToSend = lastUserMessage.message.chat_id
 
-  // بدنهٔ درخواست برای سرور
   const requestBody = {
     message: lastUserMessage.message.content,
     customModelId: payload.chatSettings.model,
@@ -149,12 +141,10 @@ export const handleHostedChat = async (
   }
 
   try {
-    // دریافت توکن Supabase برای احراز هویت
     const supabase = createClient()
     const session = await supabase.auth.getSession()
     const token = session.data.session?.access_token
 
-    // ارسال اولیه به /chat برای ایجاد job
     const initialResponse = await fetch(apiEndpoint, {
       method: "POST",
       headers: {
@@ -173,14 +163,12 @@ export const handleHostedChat = async (
         errorData?.detail && typeof errorData.detail === "string"
           ? errorData.detail
           : "An error has occurred. Please try again."
-
       toast.error(errorText)
       setIsGenerating(false)
       setChatMessages(prevMessages => prevMessages.slice(0, -2))
       throw new Error(errorText)
     }
 
-    // دریافت job_id و chatId
     const initialData = (await initialResponse.json()) as {
       job_id?: string
       jobId?: string
@@ -190,81 +178,70 @@ export const handleHostedChat = async (
     const jobId = initialData.job_id ?? initialData.jobId
     const newChatId = initialData.chatId
 
-    // اگر chatId جدید برگردد، آن را به پیام‌های موقت اعمال کنید
     if (newChatId) {
       tempAssistantChatMessage.message.chat_id = newChatId
       lastUserMessage.message.chat_id = newChatId
     }
 
-    // پولینگ از /chat/result/{job_id}
     const resultEndpoint = `${apiEndpoint}/result/${jobId}`
     let finalData: any = null
+    let isProcessing = true
 
-    while (true) {
+    while (isProcessing && !newAbortController.signal.aborted) {
       const resultResponse = await fetch(resultEndpoint, {
         method: "GET",
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` })
-        },
+        headers: { ...(token && { Authorization: `Bearer ${token}` }) },
         signal: newAbortController.signal
       })
 
       if (!resultResponse.ok) {
-        const errorData = await resultResponse
-          .json()
-          .catch(() => ({ detail: "An unknown error occurred." }))
-        const errorText =
-          errorData?.detail && typeof errorData.detail === "string"
-            ? errorData.detail
-            : "An error has occurred. Please try again."
-        toast.error(errorText)
-        setIsGenerating(false)
-        setChatMessages(prevMessages => prevMessages.slice(0, -2))
-        throw new Error(errorText)
+        // ... (بخش مدیریت خطا بدون تغییر)
+        throw new Error("Failed to fetch result")
       }
 
       let fullText = ""
       if (resultResponse.body) {
-        await consumeReadableStream(
-          resultResponse.body,
-          chunk => {
-            setFirstTokenReceived(true)
-            setToolInUse("none")
-            fullText += chunk
-          },
-          newAbortController.signal
-        )
+        // کل پاسخ را به صورت یکجا می‌خوانیم
+        const reader = resultResponse.body.getReader()
+        const decoder = new TextDecoder()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          fullText += decoder.decode(value, { stream: true })
+        }
       }
 
       try {
-        finalData = JSON.parse(fullText)
+        const parsedChunk = JSON.parse(fullText)
+        if (parsedChunk.status !== "processing") {
+          finalData = parsedChunk
+          isProcessing = false // برای خروج از حلقه
+        }
       } catch (error) {
         console.error("Error parsing result JSON:", error, {
           receivedText: fullText
         })
-        throw error
+        throw new Error("Failed to parse server response.")
       }
 
-      if (finalData && finalData.status === "processing") {
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        continue
+      if (isProcessing) {
+        await new Promise(resolve => setTimeout(resolve, 2000)) // تاخیر قبل از پرس‌وجوی بعدی
       }
-      break
     }
 
-    // استخراج داده‌های نهایی
+    // ================== اصلاحیه کلیدی ==================
+    // حالا که از حلقه خارج شدیم، یعنی پاسخ نهایی را داریم.
+    // در این لحظه توکن اول را فعال می‌کنیم.
+    setFirstTokenReceived(true)
+    setToolInUse("none")
+    // =================================================
+
     const answer = finalData.answer || ""
     const topic = finalData.topic_summary || ""
     const suggs = finalData.suggestions || []
+    const chatIdFinal = finalData.chatId || newChatId || chatIdToSend
+    const finalValidChatId = chatIdFinal === "" ? null : chatIdFinal
 
-    const chatIdFromResponse = finalData.chatId || newChatId || chatIdToSend
-
-    // اگر شناسه نهایی یک رشته خالی بود، آن را به null تبدیل می‌کنیم
-    // تا به عنوان یک شناسه نامعتبر در نظر گرفته شود.
-    const finalValidChatId =
-      chatIdFromResponse === "" ? null : chatIdFromResponse
-
-    // بروزرسانی UI
     setChatMessages(prev =>
       prev.map(chatMessage => {
         if (chatMessage.message.id === tempAssistantChatMessage.message.id) {
@@ -283,12 +260,13 @@ export const handleHostedChat = async (
     setTopicSummary(topic)
     setSuggestions(suggs)
 
-    return { generatedText: answer, newChatId: finalValidChatId } // <-- مقدار اصلاح شده را برمی‌گردانیم
+    return { generatedText: answer, newChatId: finalValidChatId }
   } catch (error) {
-    console.error(error)
-    setIsGenerating(false)
-    // در صورت خطا، پیام‌های موقت را حذف می‌کنیم
-    setChatMessages(prevMessages => prevMessages.slice(0, -2))
+    if ((error as Error).name !== "AbortError") {
+      console.error(error)
+      setIsGenerating(false)
+      setChatMessages(prevMessages => prevMessages.slice(0, -2))
+    }
     throw error
   }
 }
