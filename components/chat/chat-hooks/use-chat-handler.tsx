@@ -174,8 +174,6 @@ export const useChatHandler = () => {
       setAbortController(newAbortController)
 
       const availableModelIds = models.map(model => model.model_id)
-      console.log("Searching for model ID:", chatSettings?.model)
-      console.log("In this list of available model IDs:", availableModelIds)
 
       const modelData = [
         ...LLM_LIST, // لیستی که در مرحله قبل ساختیم
@@ -188,13 +186,6 @@ export const useChatHandler = () => {
           imageInput: false
         }))
       ].find(llm => llm.modelId === chatSettings?.model)
-
-      console.log("SENDING MESSAGE. VALIDATING WITH:", {
-        chatSettings,
-        modelData,
-        profile,
-        selectedWorkspace
-      })
 
       validateChatSettings(
         chatSettings,
