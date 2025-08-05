@@ -453,16 +453,18 @@ export const handleCreateMessages = async (
   const userMessageToSave = chatMessages[chatMessages.length - 2].message
   const assistantMessageToSave = chatMessages[chatMessages.length - 1].message
 
-  // ✅ یک تاریخ و زمان معتبر در فرمت ISO ایجاد کنید
   const now = new Date().toISOString()
 
+  // ================== اصلاحیه کلیدی ==================
+  // user_id را به صراحت از پروفایل کاربر می‌خوانیم
   const finalUserMessage: TablesInsert<"messages"> = {
     ...userMessageToSave,
+    user_id: profile.user_id, // <-- این خط مهم اضافه شده است
     chat_id: currentChat.id,
-    // ✅ مقادیر نامعتبر را با تاریخ صحیح جایگزین کنید
     created_at: now,
     updated_at: now
   }
+  // =================================================
 
   const finalAssistantMessage: TablesInsert<"messages"> = {
     ...assistantMessageToSave,
@@ -473,18 +475,16 @@ export const handleCreateMessages = async (
     role: "assistant",
     sequence_number: userMessageToSave.sequence_number + 1,
     image_paths: [],
-    // ✅ مقادیر نامعتبر را با تاریخ صحیح جایگزین کنید
     created_at: now,
     updated_at: now
   }
 
   if (isRegeneration) {
     const lastMessage = chatMessages[chatMessages.length - 1].message
-    // برای به‌روزرسانی هم از تاریخ جدید استفاده کنید
     const updatedMessage = await updateMessage(lastMessage.id, {
       ...lastMessage,
       content: generatedText,
-      updated_at: now // ✅ اطمینان از آپدیت شدن تاریخ
+      updated_at: now
     })
 
     setChatMessages(prev =>
