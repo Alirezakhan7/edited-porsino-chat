@@ -79,18 +79,3 @@ export const deleteChat = async (chatId: string) => {
 
   return true
 }
-
-export const getChatsByUserId = async (userId: string) => {
-  const { data: chats, error } = await supabase
-    .from("chats")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("Error fetching chats by user id:", error.message)
-    return []
-  }
-
-  return chats
-}
