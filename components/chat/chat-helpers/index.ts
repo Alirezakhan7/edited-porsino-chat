@@ -139,14 +139,15 @@ export const handleHostedChat = async (
     customModelId: payload.chatSettings.model,
     isNewProblem: !chatIdToSend,
     chatId: chatIdToSend,
-    workspaceId: workspaceId
+    workspaceId: workspaceId,
+    images: newMessageImages.map(img => img.base64)
   }
 
   try {
     const supabase = createClient()
     const session = await supabase.auth.getSession()
     const token = session.data.session?.access_token
-
+    console.log("DEBUG: Final payload being sent to server:", requestBody)
     const initialResponse = await fetch(apiEndpoint, {
       method: "POST",
       headers: {
