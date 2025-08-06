@@ -116,6 +116,7 @@ export const createTempMessages = (
 export const handleHostedChat = async (
   payload: ChatPayload,
   profile: Tables<"profiles">,
+  workspaceId: string,
   modelData: LLM,
   tempAssistantChatMessage: ChatMessage,
   isRegeneration: boolean,
@@ -137,7 +138,8 @@ export const handleHostedChat = async (
     message: lastUserMessage.message.content,
     customModelId: payload.chatSettings.model,
     isNewProblem: !chatIdToSend,
-    chatId: chatIdToSend
+    chatId: chatIdToSend,
+    workspaceId: workspaceId
   }
 
   try {

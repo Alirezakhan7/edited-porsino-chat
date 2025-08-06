@@ -221,6 +221,7 @@ export const useChatHandler = () => {
       let responsePayload = await handleHostedChat(
         payload,
         profile!,
+        selectedWorkspace!.id,
         modelData!,
         tempAssistantChatMessage,
         isRegeneration,
