@@ -141,13 +141,21 @@ export const useSelectFileHandler = () => {
             // Create a temp url for the image file
             const imageUrl = URL.createObjectURL(file)
 
+            // ================== تغییر کلیدی اینجاست ==================
+            // رشته کامل Base64 (شامل پیشوند) را می‌خوانیم
+            const fullBase64 = reader.result as string
+
+            // پیشوند را با استفاده از کاما جدا کرده و فقط خود داده را نگه می‌داریم
+            const pureBase64 = fullBase64.split(",")[1]
+            // ========================================================
+
             // This is a temporary image for display purposes in the chat input
             setNewMessageImages(prev => [
               ...prev,
               {
                 messageId: "temp",
                 path: "",
-                base64: reader.result, // base64 image
+                base64: pureBase64, // <-- حالا فقط رشته خالص ذخیره می‌شود
                 url: imageUrl,
                 file
               }
