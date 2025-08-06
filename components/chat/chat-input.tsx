@@ -226,10 +226,12 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     }
   }, []) // [] یعنی این کد فقط یک بار بعد از اولین رندر اجرا می‌شود
 
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const handleKeyDown = async (event: React.KeyboardEvent) => {
     if (!isTyping && event.key === "Enter" && !event.shiftKey) {
       event.preventDefault()
-      handleSendMessage(userInput, chatMessages, false)
+      await handleSendMessage(userInput, chatMessages, false)
+      setUserInput("")
+      setLocalUserInput("")
     }
   }
 
@@ -356,9 +358,11 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
                         : "cursor-pointer bg-sky-500 text-white hover:bg-sky-600 dark:bg-[#38bdf8] dark:hover:bg-[#2563eb]"
                     )}
                     disabled={!userInput}
-                    onClick={() =>
-                      handleSendMessage(userInput, chatMessages, false)
-                    }
+                    onClick={async () => {
+                      await handleSendMessage(userInput, chatMessages, false)
+                      setUserInput("")
+                      setLocalUserInput("")
+                    }}
                   >
                     <IconArrowUp size={18} stroke={2.5} />
                   </button>
