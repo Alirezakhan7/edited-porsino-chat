@@ -3,8 +3,17 @@
 "use client"
 
 import { ChatbotUIContext } from "@/context/context"
+import { getAssistantWorkspacesByWorkspaceId } from "@/db/assistants"
+import { getChatsByWorkspaceId } from "@/db/chats"
+import { getCollectionWorkspacesByWorkspaceId } from "@/db/collections"
+import { getFileWorkspacesByWorkspaceId } from "@/db/files"
+import { getFoldersByWorkspaceId } from "@/db/folders"
+import { getModelWorkspacesByWorkspaceId } from "@/db/models"
+import { getPresetWorkspacesByWorkspaceId } from "@/db/presets"
 import { getProfileByUserId } from "@/db/profile"
+import { getPromptWorkspacesByWorkspaceId } from "@/db/prompts"
 import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
+import { getToolWorkspacesByWorkspaceId } from "@/db/tools"
 import { getWorkspacesByUserId } from "@/db/workspaces"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import {
@@ -162,6 +171,10 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       const workspaces = await getWorkspacesByUserId(user.id)
       setWorkspaces(workspaces)
 
+      if (workspaces.length > 0) {
+        setSelectedWorkspace(workspaces[0])
+      }
+
       for (const workspace of workspaces) {
         let workspaceImageUrl = ""
 
@@ -190,6 +203,48 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       return profile
     }
   }
+
+  useEffect(() => {
+    const fetchWorkspaceData = async () => {
+      if (selectedWorkspace) {
+        const workspaceId = selectedWorkspace.id
+
+        const [
+          chats,
+          folders,
+          filesData,
+          presetsData,
+          promptsData,
+          collectionsData,
+          assistantsData,
+          toolsData,
+          modelsData
+        ] = await Promise.all([
+          getChatsByWorkspaceId(workspaceId),
+          getFoldersByWorkspaceId(workspaceId),
+          getFileWorkspacesByWorkspaceId(workspaceId),
+          getPresetWorkspacesByWorkspaceId(workspaceId),
+          getPromptWorkspacesByWorkspaceId(workspaceId),
+          getCollectionWorkspacesByWorkspaceId(workspaceId),
+          getAssistantWorkspacesByWorkspaceId(workspaceId),
+          getToolWorkspacesByWorkspaceId(workspaceId),
+          getModelWorkspacesByWorkspaceId(workspaceId)
+        ])
+
+        setChats(chats)
+        setFolders(folders)
+        setFiles(filesData.files || [])
+        setPresets(presetsData.presets || [])
+        setPrompts(promptsData.prompts || [])
+        setCollections(collectionsData.collections || [])
+        setAssistants(assistantsData.assistants || [])
+        setTools(toolsData.tools || [])
+        setModels(modelsData.models || [])
+      }
+    }
+
+    fetchWorkspaceData()
+  }, [selectedWorkspace])
 
   return (
     <ChatbotUIContext.Provider
