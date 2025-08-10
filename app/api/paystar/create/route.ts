@@ -1,9 +1,9 @@
 /* --------------------------------------------------------------------------
-   File: app/api/paystar/create/route.ts
-   Description: Creates a payment transaction by calculating the final price
-                on the server, registering it with Paystar, and saving the
-                initial transaction details to Supabase.
-   -------------------------------------------------------------------------- */
+ * File: app/api/paystar/create/route.ts
+ * Description: (FINAL VERSION) Connects product creation with payment.
+ * 1. Creates the product in StarShop.
+ * 2. Creates the payment transaction with Paystar.
+ * -------------------------------------------------------------------------- */
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
@@ -25,6 +25,9 @@ const serverDiscountCodes: Record<
 }
 
 const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"
+
+// [مهم] آدرس کامل و صحیح سایت شما
+const APP_BASE_URL = "https://chat.porsino.org"
 
 export async function POST(req: Request) {
   const cookieStore = cookies()
@@ -52,7 +55,44 @@ export async function POST(req: Request) {
       )
     }
 
-    // ۴. محاسبه امن قیمت نهایی در سرور
+    // ۴. ساخت یک شناسه یکتا که هم برای سفارش و هم برای کد محصول استفاده می‌شود
+    const unique_code = `user_${user.id.substring(0, 8)}_${Date.now()}`
+
+    // =======================================================================
+    // [بخش جدید] ۵. ایجاد محصول در فروشگاه استارشاپ قبل از پرداخت
+    // =======================================================================
+    try {
+      const createProductResponse = await fetch(
+        `${APP_BASE_URL}/api/starshop/create-product`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            planId: planId,
+            product_code: unique_code,
+            unlimited: true // محصولات اشتراکی معمولا نامحدود هستند
+          })
+        }
+      )
+
+      if (!createProductResponse.ok) {
+        const errorResult = await createProductResponse.json()
+        console.error("StarShop Product Creation Failed:", errorResult)
+        throw new Error(errorResult.message || "خطا در ثبت محصول در فروشگاه.")
+      }
+      console.log(`Product ${unique_code} created successfully in StarShop.`)
+    } catch (productError: any) {
+      // اگر ایجاد محصول در استارشاپ با خطا مواجه شد، فرآیند را متوقف کن
+      return NextResponse.json(
+        { message: productError.message || "مشکل در ارتباط با سیستم فروشگاه." },
+        { status: 500 }
+      )
+    }
+    // =======================================================================
+    // [پایان بخش جدید]
+    // =======================================================================
+
+    // ۶. محاسبه امن قیمت نهایی در سرور
     const selectedPlan = serverPlans[planId as keyof typeof serverPlans]
     let finalAmount = selectedPlan.priceRial
     let appliedDiscountCode = null
@@ -73,14 +113,10 @@ export async function POST(req: Request) {
     }
     finalAmount = Math.round(finalAmount)
 
-    // ✅ ۵. آماده‌سازی پارامترها با آدرس دستی
+    // ۷. آماده‌سازی پارامترها برای درگاه پرداخت
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID
     const sign_key = process.env.PAYSTAR_SECRET_KEY
 
-    // 🔴 مهم: آدرس کامل و صحیح سایت خود را در اینجا وارد کنید
-    const app_url = "https://chat.porsino.org"
-
-    // بررسی وجود متغیرهای حیاتی
     if (!gateway_id || !sign_key) {
       console.error(
         "Server configuration error: PAYSTAR_GATEWAY_ID or PAYSTAR_SECRET_KEY is missing."
@@ -88,18 +124,18 @@ export async function POST(req: Request) {
       throw new Error("پیکربندی سرور ناقص است. لطفاً با پشتیبانی تماس بگیرید.")
     }
 
-    const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
-    const callback_url = `${app_url}/api/paystar/callback`
+    const order_id = unique_code // استفاده از همان کد یکتا به عنوان شناسه سفارش
+    const callback_url = `${APP_BASE_URL}/api/paystar/callback`
     const description = `خرید ${selectedPlan.name}${appliedDiscountCode ? ` (کد تخفیف: ${appliedDiscountCode})` : ""}`
 
-    // ۶. ساخت امضای دیجیتال
+    // ۸. ساخت امضای دیجیتال
     const sign_data = `${finalAmount}#${order_id}#${callback_url}`
     const sign = crypto
       .createHmac("sha512", sign_key)
       .update(sign_data)
       .digest("hex")
 
-    // ۷. ارسال درخواست به درگاه پرداخت
+    // ۹. ارسال درخواست به درگاه پرداخت
     const response = await fetch(PAYSTAR_API_URL, {
       method: "POST",
       headers: {
@@ -123,7 +159,7 @@ export async function POST(req: Request) {
       throw new Error(`خطا در ارتباط با درگاه پرداخت: ${result.message}`)
     }
 
-    // ۸. ثبت اولیه تراکنش در دیتابیس
+    // ۱۰. ثبت اولیه تراکنش در دیتابیس
     const { error: dbError } = await supabase.from("transactions").insert({
       user_id: user.id,
       order_id: order_id,
@@ -139,7 +175,7 @@ export async function POST(req: Request) {
       throw new Error("خطا در ثبت اطلاعات تراکنش در دیتابیس.")
     }
 
-    // ۹. ارسال لینک پرداخت به کلاینت
+    // ۱۱. ارسال لینک پرداخت به کلاینت
     const paymentUrl = `https://api.paystar.shop/api/pardakht/payment?token=${result.data.token}`
     return NextResponse.json({ payment_url: paymentUrl })
   } catch (error: any) {
