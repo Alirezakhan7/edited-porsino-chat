@@ -1,13 +1,15 @@
 /* --------------------------------------------------------------------------
  * File: app/api/paystar/create/route.ts
- * Description: (FINAL VERSION) Connects product creation with payment.
- * 1. Creates the product in StarShop.
+ * Description: (REVISED) Connects product creation with payment.
+ * 1. Directly calls the function to create the product in StarShop.
  * 2. Creates the payment transaction with Paystar.
  * -------------------------------------------------------------------------- */
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
+// [جدید] وارد کردن مستقیم تابع ایجاد محصول
+import { createStarShopProduct } from "@/app/api/starshop/create-product/route"
 
 // ۱. تعریف پلن‌ها و کدهای تخفیف در سمت سرور برای امنیت
 const serverPlans = {
@@ -59,37 +61,22 @@ export async function POST(req: Request) {
     const unique_code = `user_${user.id.substring(0, 8)}_${Date.now()}`
 
     // =======================================================================
-    // [بخش جدید] ۵. ایجاد محصول در فروشگاه استارشاپ قبل از پرداخت
+    // [بخش اصلاح شده] ۵. ایجاد محصول در فروشگاه استارشاپ قبل از پرداخت
     // =======================================================================
     try {
-      const createProductResponse = await fetch(
-        `${APP_BASE_URL}/api/starshop/create-product`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            planId: planId,
-            product_code: unique_code,
-            unlimited: true // محصولات اشتراکی معمولا نامحدود هستند
-          })
-        }
-      )
-
-      if (!createProductResponse.ok) {
-        const errorResult = await createProductResponse.json()
-        console.error("StarShop Product Creation Failed:", errorResult)
-        throw new Error(errorResult.message || "خطا در ثبت محصول در فروشگاه.")
-      }
+      // فراخوانی مستقیم تابع به جای استفاده از fetch
+      await createStarShopProduct(planId, unique_code)
       console.log(`Product ${unique_code} created successfully in StarShop.`)
     } catch (productError: any) {
       // اگر ایجاد محصول در استارشاپ با خطا مواجه شد، فرآیند را متوقف کن
+      console.error("StarShop Product Creation Failed:", productError)
       return NextResponse.json(
         { message: productError.message || "مشکل در ارتباط با سیستم فروشگاه." },
         { status: 500 }
       )
     }
     // =======================================================================
-    // [پایان بخش جدید]
+    // [پایان بخش اصلاح شده]
     // =======================================================================
 
     // ۶. محاسبه امن قیمت نهایی در سرور
