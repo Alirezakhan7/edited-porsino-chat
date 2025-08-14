@@ -1,30 +1,28 @@
 /* --------------------------------------------------------------------------
    File: app/api/paystar/create/route.ts
-   Description: [آماده برای آپدیت] - این فایل برای هماهنگی با الزامات جدید
-                درگاه پرداخت (ارسال اطلاعات محصول) ویرایش شده است.
+   Description: ایجاد تراکنش پرداخت با ارسال سبد خرید (cart) و محاسبه مبلغ در سرور
    -------------------------------------------------------------------------- */
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
 
-// [تغییر ۱] ✅: پلن‌ها را به کدهای محصولی که در پنل استارشاپ ثبت کرده‌اید، نگاشت کنید.
-// این کدها جایگزین قیمت‌های ثابت قبلی می‌شوند.
+// پلن‌ها ↔ کد محصول در استارشاپ
 const serverPlans = {
-  monthly: {
-    product_code: "PORSINO_MONTHLY_SUB", // <-- کد محصول خود را جایگزین کنید
-    name: "اشتراک ماهانه"
-  },
-  yearly: {
-    product_code: "PORSINO_YEARLY_SUB", // <-- کد محصول خود را جایگزین کنید
-    name: "اشتراک سالانه"
-  }
+  monthly: { product_code: "11", name: "اشتراک ماهانه" },
+  yearly: { product_code: "12", name: "اشتراک سالانه" }
+} as const
+
+// قیمت‌ها (ریال) — با UI هماهنگ
+const planPricesRial: Record<keyof typeof serverPlans, number> = {
+  monthly: 8_400_000,
+  yearly: 70_560_000
 }
 
-// کدهای تخفیف مثل قبل باقی می‌مانند. درگاه خودش تخفیف را روی محصولات اعمال می‌کند.
+// کدهای تخفیف (اختیاری)
 const serverDiscountCodes: Record<
   string,
-  { discountPercent: number } | { discountAmountRial: number }
+  { discountPercent?: number; discountAmountRial?: number }
 > = {
   SALE30: { discountPercent: 30 },
   SPECIAL100: { discountAmountRial: 1_000_000 },
@@ -38,6 +36,7 @@ export async function POST(req: Request) {
   const supabase = createClient(cookieStore)
 
   try {
+    // احراز هویت
     const {
       data: { user }
     } = await supabase.auth.getUser()
@@ -48,7 +47,11 @@ export async function POST(req: Request) {
       )
     }
 
-    const { planId, discountCode, amount } = await req.json() // مبلغ نهایی از کلاینت دریافت می‌شود
+    // فقط planId و discountCode از کلاینت بگیریم (amount را نه!)
+    const { planId, discountCode } = (await req.json()) as {
+      planId?: keyof typeof serverPlans | string
+      discountCode?: string
+    }
 
     if (!planId || !(planId in serverPlans)) {
       return NextResponse.json(
@@ -57,28 +60,51 @@ export async function POST(req: Request) {
       )
     }
 
-    // [تغییر ۲] ✅: اطلاعات محصول انتخاب شده را بر اساس planId بگیرید.
+    // انتخاب پلن و محاسبه مبلغ در سرور
     const selectedPlan = serverPlans[planId as keyof typeof serverPlans]
-    const finalAmount = amount // مبلغ نهایی که در کلاینت محاسبه شده است.
+    let finalAmount = planPricesRial[planId as keyof typeof serverPlans]
 
-    const gateway_id = process.env.PAYSTAR_GATEWAY_ID
-    const sign_key = process.env.PAYSTAR_SECRET_KEY
-    const app_url = "https://chat.porsino.org"
-
-    if (!gateway_id || !sign_key) {
-      throw new Error("پیکربندی سرور ناقص است.")
+    if (discountCode) {
+      const d = serverDiscountCodes[discountCode.trim().toUpperCase()]
+      if (d) {
+        if (d.discountPercent && d.discountPercent > 0) {
+          finalAmount = Math.round(finalAmount * (1 - d.discountPercent / 100))
+        }
+        if (d.discountAmountRial && d.discountAmountRial > 0) {
+          finalAmount = Math.max(5_000, finalAmount - d.discountAmountRial)
+        }
+      }
     }
 
+    if (!Number.isFinite(finalAmount) || finalAmount < 5_000) {
+      return NextResponse.json(
+        { message: "مبلغ نهایی نامعتبر است." },
+        { status: 400 }
+      )
+    }
+
+    // تنظیمات درگاه
+    const gateway_id = process.env.PAYSTAR_GATEWAY_ID
+    const sign_key = process.env.PAYSTAR_SECRET_KEY
+    const app_url = process.env.APP_URL || "https://chat.porsino.org"
+
+    if (!gateway_id || !sign_key) {
+      throw new Error(
+        "پیکربندی درگاه ناقص است. (PAYSTAR_GATEWAY_ID / PAYSTAR_SECRET_KEY)"
+      )
+    }
+
+    // سفارش
     const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
     const callback_url = `${app_url}/api/paystar/callback`
 
-    // [تغییر ۳] ✅: نام پرداخت کننده را آماده کنید.
-    // اگر نام کاربر را در پروفایل ذخیره کرده‌اید، از آن استفاده کنید.
+    // نام پرداخت‌کننده
     const payer_name =
-      user.user_metadata?.full_name || user.email || "کاربر پرسینو"
+      (user.user_metadata?.full_name as string | undefined) ||
+      user.email ||
+      "کاربر پرسینو"
 
-    // [تغییر ۴] ❗️: سبد خرید را مطابق مستندات جدید بسازید.
-    // این یک نمونه احتمالی است. باید ساختار دقیق را از مستندات جدید پیدا کنید.
+    // سبد خرید طبق الزام جدید
     const cart = {
       products: [
         {
@@ -86,22 +112,17 @@ export async function POST(req: Request) {
           quantity: 1
         }
       ]
-      // اگر کد تخفیف وجود دارد، ممکن است لازم باشد اینجا ارسال شود.
-      // discount: { code: discountCode }
+      // در صورت نیاز: discount: { code: discountCode }
     }
 
-    // [تغییر ۵] ❗️ مهم: فرمت ساخت امضا را بر اساس مستندات جدید بازنویسی کنید.
-    // فرمت زیر فقط یک حدس است و به احتمال زیاد اشتباه است.
-    // منتظر مستندات جدید بمانید و این بخش را با دقت جایگزین کنید.
-    // مثال احتمالی: const sign_data = `${finalAmount}#${order_id}#${callback_url}#${JSON.stringify(cart)}`
-    const sign_data = `${finalAmount}#${order_id}#${callback_url}` // <-- این خط باید با فرمت جدید جایگزین شود
-
+    // امضا (فرمت مرسوم Paystar – اگر مستند جدید فرمت متفاوت خواست، همینجا جایگزین کن)
+    const sign_data = `${finalAmount}#${order_id}#${callback_url}`
     const sign = crypto
       .createHmac("sha512", sign_key)
       .update(sign_data)
       .digest("hex")
 
-    // [تغییر ۶] ❗️: پارامترهای جدید را به body درخواست اضافه کنید.
+    // بدنه درخواست ایجاد تراکنش
     const body = {
       amount: finalAmount,
       order_id,
@@ -109,14 +130,12 @@ export async function POST(req: Request) {
       sign,
       mail: user.email,
       description: `خرید ${selectedPlan.name}`,
-      // --- فیلدهای جدید ---
-      // نام فیلدها (payer_name و cart) ممکن است متفاوت باشد.
-      payer_name: payer_name,
-      cart: cart // یا هر نام دیگری که در مستندات جدید آمده است
-      // اگر کد تخفیف را جداگانه باید ارسال کنید:
-      // discount_code: discountCode || null
+      payer_name,
+      cart
+      // discount_code: discountCode || null // اگر سرویس‌دهنده صراحتاً بخواهد
     }
 
+    // درخواست به Paystar
     const response = await fetch(PAYSTAR_API_URL, {
       method: "POST",
       headers: {
@@ -127,34 +146,38 @@ export async function POST(req: Request) {
       cache: "no-store"
     })
 
-    const result = await response.json()
-    if (result.status !== 1) {
-      throw new Error(`خطا در ارتباط با درگاه پرداخت: ${result.message}`)
+    // اگر شبکه‌ای/HTTP خطا
+    if (!response.ok) {
+      const text = await response.text().catch(() => "")
+      throw new Error(`HTTP ${response.status} از درگاه: ${text || "نامشخص"}`)
     }
 
+    const result = await response.json().catch(() => ({}))
+    if (result?.status !== 1 || !result?.data?.token) {
+      throw new Error(
+        `خطا در ایجاد تراکنش: ${result?.message || "پاسخ نامعتبر از درگاه"}`
+      )
+    }
+
+    // ثبت تراکنش در DB
     const { error: dbError } = await supabase.from("transactions").insert({
       user_id: user.id,
-      order_id: order_id,
+      order_id,
       ref_num: result.data.ref_num,
       plan_id: planId,
       amount: finalAmount,
       status: "pending",
       discount_code: discountCode || null
     })
+    if (dbError) throw new Error("خطا در ثبت اطلاعات تراکنش در دیتابیس.")
 
-    if (dbError) {
-      throw new Error("خطا در ثبت اطلاعات تراکنش در دیتابیس.")
-    }
-
-    // [تغییر ۷] ✅: آدرس صفحه واسط درگاه.
-    // طبق پیام، کاربر به یک صفحه واسط منتقل شده و سپس به درگاه می‌رود.
-    // لینک دریافتی از درگاه احتمالاً همان لینک صفحه واسط است و این بخش نیازی به تغییر ندارد.
+    // آدرس پرداخت (صفحه واسط/درگاه)
     const paymentUrl = `https://api.paystar.shop/api/pardakht/payment?token=${result.data.token}`
     return NextResponse.json({ payment_url: paymentUrl })
   } catch (error: any) {
     console.error("[PAYMENT_CREATE_ERROR]", error)
     return NextResponse.json(
-      { message: error.message || "یک خطای پیش‌بینی‌نشده در سرور رخ داد." },
+      { message: error?.message || "یک خطای پیش‌بینی‌نشده رخ داد." },
       { status: 500 }
     )
   }

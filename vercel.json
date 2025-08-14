@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/starshop/refresh",
+      "schedule": "0 0,12 * * *"
+    }
+  ]
+}
