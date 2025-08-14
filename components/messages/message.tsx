@@ -115,14 +115,14 @@ const renderStructuredMessage = (content: string) => {
     }
 
     return (
-      <p className="hyphens-none whitespace-pre-line break-words leading-[2]">
+      <p className="hyphens-none whitespace-pre-line break-words leading-loose">
         {cleanedBody}
       </p>
     )
   }
 
   return (
-    <div className="space-y-6 text-right leading-[2]" dir="rtl">
+    <div className="space-y-6 text-right leading-loose" dir="rtl">
       {sections.map(({ title, body }, i) => {
         const styleKey = styleByTitle(title)
         const style = styleMap[styleKey]
@@ -401,7 +401,7 @@ export const Message: FC<MessageProps> = ({
                     : selectedAssistant
                       ? selectedAssistant?.name
                       : MODEL_DATA?.modelName
-                  : profile?.display_name ?? profile?.username}
+                  : (profile?.display_name ?? profile?.username)}
               </div>
             </div>
           )}

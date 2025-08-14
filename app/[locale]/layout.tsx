@@ -10,6 +10,8 @@ import { Inter } from "next/font/google"
 import { cookies } from "next/headers"
 import { ReactNode } from "react"
 import "./globals.css"
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ["latin"] })
 const APP_NAME = "Porsino AI"
@@ -107,6 +109,8 @@ export default async function RootLayout({
             <div id="portals" />
           </TranslationsProvider>
         </Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

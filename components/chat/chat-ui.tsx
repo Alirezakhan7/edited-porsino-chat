@@ -233,7 +233,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
           className="
             absolute inset-x-0 bottom-0 mx-auto h-28
             min-w-[300px] 
-            rounded-t-2xl bg-white/10 backdrop-blur-xl sm:w-[90%] md:w-[80%]
+            rounded-t-2xl bg-white/10 backdrop-blur-xl sm:w-[90%] md:w-4/5
 
             lg:w-[70%] xl:w-[65%]
             dark:bg-[hsla(210_3%_13%_/_0.3)] 
@@ -246,7 +246,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
             className="
             mx-auto min-w-[300px]
             
-            sm:w-[90%] md:w-[80%] lg:w-[70%] xl:w-[65%]
+            sm:w-[90%] md:w-4/5 lg:w-[70%] xl:w-[65%]
           "
           >
             <ChatInput />
