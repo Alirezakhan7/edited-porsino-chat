@@ -29,39 +29,63 @@ interface RootLayoutProps {
 export const metadata: Metadata = {
   applicationName: APP_NAME,
   title: {
-    default: APP_DEFAULT_TITLE,
-    template: APP_TITLE_TEMPLATE
+    default: "پرسینو - هوش مصنوعی کنکوری",
+    template: "%s | پرسینو"
   },
-  description: APP_DESCRIPTION,
+  // START - این خط را جایگزین کنید
+  description:
+    "پرسینو، هوش مصنوعی تخصصی کنکور. پاسخ فوری به سوالات، آموزش گام‌به‌گام و برنامه‌ریزی درسی هوشمند برای موفقیت شما.",
+  // END - پایان بخش جایگزینی
+  keywords: [
+    "هوش مصنوعی کنکوری",
+    "پرسینو",
+    "هوش مصنوعی کنکور",
+    "کمک درسی با هوش مصنوعی",
+    "آموزش کنکور با AI",
+    "تست‌زنی هوش مصنوعی",
+    "ربات حل سوال کنکور",
+    "حل تست آنلاین",
+    "یادگیری هوشمند",
+    "برنامه‌ریزی درسی هوش مصنوعی"
+  ],
   manifest: "/manifest.json",
+  metadataBase: new URL("https://porsino.org"),
+  alternates: {
+    canonical: "https://porsino.org"
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black",
-    title: APP_DEFAULT_TITLE
-    // startUpImage: [],
+    title: "پرسینو"
   },
   formatDetection: {
     telephone: false
   },
   openGraph: {
     type: "website",
-    siteName: APP_NAME,
-    title: {
-      default: APP_DEFAULT_TITLE,
-      template: APP_TITLE_TEMPLATE
-    },
-    description: APP_DESCRIPTION
+    siteName: "پرسینو",
+    title: "پرسینو - هوش مصنوعی کنکوری",
+    description:
+      "آموزش و حل تست‌های کنکور با هوش مصنوعی، سریع، دقیق و شخصی‌سازی شده.",
+    url: "https://porsino.org",
+    images: [
+      {
+        url: "https://porsino.org/og-image.jpg",
+        width: 1024,
+        height: 1024,
+        alt: "پرسینو - هوش مصنوعی کنکوری"
+      }
+    ]
   },
   twitter: {
-    card: "summary",
-    title: {
-      default: APP_DEFAULT_TITLE,
-      template: APP_TITLE_TEMPLATE
-    },
-    description: APP_DESCRIPTION
+    card: "summary_large_image",
+    title: "پرسینو - هوش مصنوعی کنکوری",
+    description:
+      "آموزش و حل تست‌های کنکور با هوش مصنوعی، سریع، دقیق و شخصی‌سازی شده.",
+    images: ["https://porsino.org/og-image.jpg"]
   },
   icons: {
-    icon: "/favicon.ico" // مسیر دقیق فایل favicon در public
+    icon: "/favicon.ico"
   }
 }
 
@@ -94,7 +118,11 @@ export default async function RootLayout({
   const { t, resources } = await initTranslations(locale, i18nNamespaces)
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      dir={locale === "fa" ? "rtl" : "ltr"}
+    >
       <body className={`${inter.className} bg-background text-foreground`}>
         <Providers attribute="class" defaultTheme="dark" enableSystem={false}>
           <TranslationsProvider
@@ -111,6 +139,21 @@ export default async function RootLayout({
         </Providers>
         <Analytics />
         <SpeedInsights />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "پرسینو",
+            url: "https://porsino.org",
+            description:
+              "هوش مصنوعی ویژه کنکور با آموزش گام‌به‌گام، تست‌زنی و برنامه‌ریزی درسی.",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: "https://porsino.org/search?q={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
+          })}
+        </script>
       </body>
     </html>
   )
