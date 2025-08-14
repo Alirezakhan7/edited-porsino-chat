@@ -54,11 +54,15 @@ export const createTempMessages = (
   b64Images: string[],
   isRegeneration: boolean,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  selectedAssistant: Tables<"assistants"> | null
+  selectedAssistant: Tables<"assistants"> | null,
+  /** NEW: اگر چت انتخاب‌شده داریم، chat_id را به پیام‌های موقتی تزریق کن */
+  selectedChatId?: string | null
 ) => {
+  const cid = selectedChatId ?? ""
+
   let tempUserChatMessage: ChatMessage = {
     message: {
-      chat_id: "",
+      chat_id: cid, // ✅ NEW
       assistant_id: null,
       content: messageContent,
       created_at: "",
@@ -75,7 +79,7 @@ export const createTempMessages = (
 
   let tempAssistantChatMessage: ChatMessage = {
     message: {
-      chat_id: "",
+      chat_id: cid, // ✅ NEW
       assistant_id: selectedAssistant?.id || null,
       content: "",
       created_at: "",
@@ -131,9 +135,26 @@ export const handleHostedChat = async (
   setSuggestions: (suggestions: string[]) => void
 ) => {
   const apiEndpoint = "https://api.porsino.org/chat"
-  const lastUserMessage = payload.chatMessages[payload.chatMessages.length - 1]
-  const chatIdToSend = lastUserMessage.message.chat_id
 
+  // ✅ آخرین پیام «کاربر» را درست پیدا کن
+  const lastUserMessage = [...payload.chatMessages]
+    .reverse()
+    .find(m => m.message.role === "user")
+
+  if (!lastUserMessage) {
+    toast.error("No user message found to send.")
+    setIsGenerating(false)
+    throw new Error("No user message found.")
+  }
+
+  // ✅ از تاریخچه، آخرین chat_id غیرخالی را پیدا کن
+  const lastWithChatId = [...payload.chatMessages]
+    .reverse()
+    .find(m => m.message.chat_id && m.message.chat_id !== "")
+
+  const chatIdToSend = lastWithChatId?.message.chat_id || ""
+
+  // ✅ فقط اگر chat_id نداریم یعنی سؤال اول است
   const requestBody = {
     message: lastUserMessage.message.content,
     customModelId: payload.chatSettings.model,

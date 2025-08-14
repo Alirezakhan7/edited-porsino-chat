@@ -206,7 +206,8 @@ export const useChatHandler = () => {
           b64Images,
           isRegeneration,
           setChatMessages,
-          selectedAssistant
+          selectedAssistant,
+          selectedChat?.id
         )
 
       let payload: ChatPayload = {
