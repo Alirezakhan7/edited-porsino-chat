@@ -20,12 +20,10 @@ type DiscountDetail =
 
 const serverPlans = {
   monthly: { priceRial: 8_400_000, name: "اشتراک ماهانه" },
-  yearly: { priceRial: 70_560_000, name: "اشتراک سالانه" } // قیمت کل سالانه
+  yearly: { priceRial: 80_064_000, name: "اشتراک سالانه" } // قیمت کل سالانه
 }
 
 const serverDiscountCodes: Record<string, DiscountDetail> = {
-  SALE30: { discountPercent: 30 },
-  SPECIAL100: { discountAmountRial: 1_000_000 },
   SUMMER25: { discountPercent: 99 }
 }
 const featuresMonthly = [
@@ -229,7 +227,7 @@ export default function PaymentPage() {
                       {planId === "yearly" && (
                         <div className="absolute left-4 top-4 z-10">
                           <div className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600 dark:bg-red-900/20 dark:text-red-400">
-                            ۳۰٪&nbsp;تخفیف
+                            ۲۰٪&nbsp;تخفیف
                           </div>
                         </div>
                       )}

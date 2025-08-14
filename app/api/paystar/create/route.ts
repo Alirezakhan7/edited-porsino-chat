@@ -16,7 +16,7 @@ const serverPlans = {
 // قیمت‌ها (ریال) — با UI هماهنگ
 const planPricesRial: Record<keyof typeof serverPlans, number> = {
   monthly: 8_400_000,
-  yearly: 70_560_000
+  yearly: 80_064_000
 }
 
 // کدهای تخفیف (اختیاری)
@@ -24,8 +24,6 @@ const serverDiscountCodes: Record<
   string,
   { discountPercent?: number; discountAmountRial?: number }
 > = {
-  SALE30: { discountPercent: 30 },
-  SPECIAL100: { discountAmountRial: 1_000_000 },
   SUMMER25: { discountPercent: 99 }
 }
 
