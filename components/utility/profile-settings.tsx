@@ -43,10 +43,14 @@ import {
   SheetTrigger
 } from "../ui/sheet"
 import { ThemeSwitcher } from "./theme-switcher"
+import { forwardRef } from "react"
 
 interface ProfileSettingsProps {}
 
-export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
+export const ProfileSettings = forwardRef<
+  HTMLButtonElement,
+  ProfileSettingsProps
+>((props, ref) => {
   const { profile, setProfile } = useContext(ChatbotUIContext)
 
   const router = useRouter()
@@ -158,23 +162,29 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
     const timeDiff = expiresAt.getTime() - today.getTime()
     remainingDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24))
   }
-
+  {
+  }
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        {profile.image_url ? (
-          <Image
-            className="size-[34px] cursor-pointer rounded-full hover:opacity-80"
-            src={profile.image_url + "?" + new Date().getTime()}
-            height={34}
-            width={34}
-            alt="Profile Image"
-          />
-        ) : (
-          <Button size="icon" variant="ghost">
+        <Button
+          ref={ref} // ❗️ ref را اینجا پاس دهید
+          variant="ghost"
+          size="icon"
+          className="rounded-full" // استایل گرد بودن را به خود دکمه بدهید
+        >
+          {profile.image_url ? (
+            <Image
+              className="size-full rounded-full hover:opacity-80"
+              src={profile.image_url + "?" + new Date().getTime()}
+              alt="Profile Image"
+              width={34}
+              height={34}
+            />
+          ) : (
             <IconUser size={SIDEBAR_ICON_SIZE} />
-          </Button>
-        )}
+          )}
+        </Button>
       </SheetTrigger>
 
       <SheetContent
@@ -300,4 +310,5 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
       </SheetContent>
     </Sheet>
   )
-}
+})
+ProfileSettings.displayName = "ProfileSettings"

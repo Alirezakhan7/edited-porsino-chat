@@ -114,7 +114,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
 
   return (
     <Popover>
-      <PopoverTrigger>
+      <PopoverTrigger asChild>
         {/* 
             Updated Trigger: 
             - Responsive width: w-[300px] on mobile,

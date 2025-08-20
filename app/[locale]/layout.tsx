@@ -139,21 +139,24 @@ export default async function RootLayout({
         </Providers>
         <Analytics />
         <SpeedInsights />
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            name: "پرسینو",
-            url: "https://porsino.org",
-            description:
-              "هوش مصنوعی ویژه کنکور با آموزش گام‌به‌گام، تست‌زنی و برنامه‌ریزی درسی.",
-            potentialAction: {
-              "@type": "SearchAction",
-              target: "https://porsino.org/search?q={search_term_string}",
-              "query-input": "required name=search_term_string"
-            }
-          })}
-        </script>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "پرسینو",
+              url: "https://porsino.org",
+              description:
+                "هوش مصنوعی ویژه کنکور با آموزش گام‌به‌گام، تست‌زنی و برنامه‌ریزی درسی.",
+              potentialAction: {
+                "@type": "SearchAction",
+                target: "https://porsino.org/search?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            })
+          }}
+        />
       </body>
     </html>
   )
