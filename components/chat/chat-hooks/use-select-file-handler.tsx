@@ -40,7 +40,7 @@ export const useSelectFileHandler = () => {
 
     setFilesToAccept(
       FULL_MODEL.imageInput
-        ? `${ACCEPTED_FILE_TYPES},image/*`
+        ? `${ACCEPTED_FILE_TYPES},image/*,image/heic,image/heif`
         : ACCEPTED_FILE_TYPES
     )
   }
@@ -143,10 +143,7 @@ export const useSelectFileHandler = () => {
 
             // ================== تغییر کلیدی اینجاست ==================
             // رشته کامل Base64 (شامل پیشوند) را می‌خوانیم
-            const fullBase64 = reader.result as string
-
-            // پیشوند را با استفاده از کاما جدا کرده و فقط خود داده را نگه می‌داریم
-            const pureBase64 = fullBase64.split(",")[1]
+            const dataUrl = reader.result as string
             // ========================================================
 
             // This is a temporary image for display purposes in the chat input
@@ -155,7 +152,7 @@ export const useSelectFileHandler = () => {
               {
                 messageId: "temp",
                 path: "",
-                base64: pureBase64, // <-- حالا فقط رشته خالص ذخیره می‌شود
+                base64: dataUrl, // <-- حالا فقط رشته خالص ذخیره می‌شود
                 url: imageUrl,
                 file
               }
