@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 interface ModernProgressBarProps {
   isGenerating: boolean
@@ -19,7 +19,6 @@ const baseMessages = {
   done: "پاسخ آماده شد! ✅"
 }
 
-// پیام‌های مرحله‌ای قبلی‌ات را هم نگه می‌داریم
 const stagedMessages = [
   "در حال آماده‌سازی پاسخ...",
   "در حال جستجو در منابع... 🔎",
@@ -45,12 +44,19 @@ export default function ModernProgressBar({
   const [barClassName, setBarClassName] = useState("from-cyan-400 to-blue-600")
   const tickRef = useRef<number | null>(null)
 
-  const elapsedMs = useMemo(() => {
-    if (!startedAt) return 0
-    return Date.now() - startedAt
-  }, [startedAt, phase, lastByteAt, isGenerating]) // هر تغییر فاز/داده باعث رندر می‌شود
-
+  // ✅ تغییر ۱: یک useEffect جدید فقط برای ریست کردن نوار پیشرفت
+  // این هوک فقط زمانی اجرا می‌شود که یک پروسه تولید پاسخ *جدید* شروع شود.
   useEffect(() => {
+    if (isGenerating) {
+      setProgress(0) // نوار پیشرفت را صفر کن
+      setMsg(baseMessages.connecting) // پیام را به حالت اولیه برگردان
+      setBarClassName("from-cyan-400 to-blue-600") // رنگ را ریست کن
+    }
+  }, [isGenerating]) // <-- فقط به isGenerating وابسته است
+
+  // ✅ تغییر ۲: useEffect اصلی دیگر مسئول ریست کردن نیست و فقط پیشرفت را مدیریت می‌کند
+  useEffect(() => {
+    // این بخش بدون تغییر باقی می‌ماند: وقتی کار تمام شد، نوار را ۱۰۰٪ کن
     if (!isGenerating && phase !== "offline") {
       setMsg(baseMessages.done)
       setBarClassName("from-emerald-400 to-green-600")
@@ -59,52 +65,50 @@ export default function ModernProgressBar({
       return () => clearTimeout(t)
     }
 
-    // ریست زمانی سناریو جدید شروع می‌شود
-    setMsg(baseMessages.connecting)
-    setBarClassName("from-cyan-400 to-blue-600")
-    setProgress(0)
+    // اگر در حال اجرا یا آفلاین نیستیم، کاری نکن
+    if (!isGenerating && phase !== "offline") {
+      return
+    }
 
-    // تیک متناوب برای آپدیت پیشرفت
+    // ❌ خطوط مربوط به ریست کردن از اینجا حذف شدند
+
+    // این اینتروال، درصد پیشرفت را به صورت مداوم افزایش می‌دهد
     const id = window.setInterval(() => {
+      // ✅ زمان سپری شده را اینجا داخل اینتروال محاسبه می‌کنیم تا باعث اجرای مجدد کل هوک نشود
+      const elapsedMs = startedAt ? Date.now() - startedAt : 0
+
       setProgress(prev => {
-        // منطق پیشرفت بر اساس فاز
+        // منطق پیشرفت شما بدون تغییر باقی می‌ماند
         if (phase === "connecting") {
-          // از 0 تا 20%
           const next = Math.min(prev + 1.5, 20)
           return next
         }
 
         if (phase === "streaming") {
-          // اگر طولانی شد، پیام اضافه بده
           if (elapsedMs > softSlaMs) {
             setMsg("هنوز در حال تولید پاسخ هستم؛ کمی بیشتر زمان می‌برد…")
           } else {
-            // پیام‌های مرحله‌ای‌ات بر اساس زمان
             const idx = Math.min(
               Math.floor(elapsedMs / 5000),
               stagedMessages.length - 1
             )
             setMsg(stagedMessages[idx] ?? baseMessages.streaming)
           }
-          // تا 95%
           const next = Math.min(prev + 2.5, 95)
           return next
         }
 
         if (phase === "stalled") {
           setMsg(baseMessages.stalled)
-          // خیلی کند جلو بره تا 95%
           const next = Math.min(prev + 0.3, 95)
           return next
         }
 
         if (phase === "offline") {
           setMsg(baseMessages.offline)
-          // حرکت نکنه
-          return prev
+          return prev // در حالت آفلاین پیشرفت متوقف می‌شود
         }
 
-        // done → این بلاک عملاً توسط isGenerating=false هندل می‌شود
         return prev
       })
     }, 800)
@@ -113,7 +117,8 @@ export default function ModernProgressBar({
     return () => {
       if (tickRef.current) clearInterval(tickRef.current)
     }
-  }, [isGenerating, phase, elapsedMs, softSlaMs, onComplete])
+    // ✅ تغییر ۳: وابستگی‌ها اصلاح شدند تا از اجرای غیرضروری جلوگیری شود
+  }, [isGenerating, phase, onComplete, softSlaMs, startedAt])
 
   return (
     <AnimatePresence>
