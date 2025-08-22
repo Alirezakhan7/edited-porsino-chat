@@ -126,6 +126,8 @@ interface ChatbotUIContext {
   setNewMessageImages: Dispatch<SetStateAction<MessageImage[]>>
   showFilesDisplay: boolean
   setShowFilesDisplay: Dispatch<SetStateAction<boolean>>
+  isUploadingFiles: boolean
+  setIsUploadingFiles: Dispatch<SetStateAction<boolean>>
 
   // RETRIEVAL STORE
   useRetrieval: boolean
@@ -258,6 +260,8 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setNewMessageImages: () => {},
   showFilesDisplay: false,
   setShowFilesDisplay: () => {},
+  isUploadingFiles: false,
+  setIsUploadingFiles: () => {},
 
   // RETRIEVAL STORE
   useRetrieval: false,

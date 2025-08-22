@@ -20,6 +20,7 @@ import { useChatHandler } from "./chat-hooks/use-chat-handler"
 import { useChatHistoryHandler } from "./chat-hooks/use-chat-history"
 import { usePromptAndCommand } from "./chat-hooks/use-prompt-and-command"
 import { useSelectFileHandler } from "./chat-hooks/use-select-file-handler"
+import { ImageThumb } from "../ui/ImageThumb"
 
 // Helper function to deeply freeze an object and all its nested properties
 const deepFreeze = (obj: any): any => {
@@ -183,7 +184,8 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     selectedTools,
     setSelectedTools,
     assistantImages,
-    setUserInput
+    setUserInput,
+    newMessageImages
   } = useContext(ChatbotUIContext)
 
   const {
@@ -284,6 +286,15 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     <>
       <div className="flex flex-col flex-wrap justify-center gap-2">
         <ChatFilesDisplay />
+        <div className="flex flex-wrap justify-center gap-2">
+          {newMessageImages.map(image => (
+            <ImageThumb
+              key={image.messageId || image.path}
+              src={image.url}
+              uploading={image.isUploading}
+            />
+          ))}
+        </div>
         {selectedTools.map((tool, index) => (
           <div
             key={index}

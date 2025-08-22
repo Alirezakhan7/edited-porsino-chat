@@ -16,6 +16,9 @@ import {
   validateChatSettings
 } from "../chat-helpers"
 import { LLM_LIST } from "../../../lib/models/llm/llm-list"
+import { toast } from "sonner"
+import { getSignedUrlsForChat } from "../chat-helpers"
+
 export const useChatHandler = () => {
   const router = useRouter()
 
@@ -55,6 +58,7 @@ export const useChatHandler = () => {
     isFilePickerOpen,
     isToolPickerOpen,
     setTopicSummary,
+    isUploadingFiles,
     setSuggestions
   } = useContext(ChatbotUIContext)
 
@@ -65,6 +69,54 @@ export const useChatHandler = () => {
       chatInputRef.current?.focus()
     }
   }, [isPromptPickerOpen, isFilePickerOpen, isToolPickerOpen])
+  // ✅ useEffect جدید برای تازه‌سازی لینک عکس‌های قدیمی
+  useEffect(() => {
+    // ۱. تابع را فقط زمانی اجرا کن که یک چت انتخاب شده باشد و پیام‌هایی وجود داشته باشد
+    if (selectedChat && chatMessages.length > 0) {
+      // ۲. تمام مسیرهای عکس از پیام‌های قبلی را جمع‌آوری کن
+      const allImagePaths = chatMessages
+        .flatMap(chatMessage => chatMessage.message.image_paths || [])
+        .filter(path => path) // مسیرهای خالی یا null را حذف کن
+
+      // ۳. اگر مسیری برای پردازش وجود داشت
+      if (allImagePaths.length > 0) {
+        // ۴. تابع کمکی را برای گرفتن لینک‌های جدید فراخوانی کن
+        getSignedUrlsForChat(allImagePaths).then(newUrls => {
+          if (newUrls.length > 0) {
+            // ۵. وضعیت chatImages را با URLهای جدید به‌روزرسانی کن
+            setChatImages(currentChatImages => {
+              // یک Map برای دسترسی سریع به URLهای جدید بر اساس مسیر فایل بساز
+              const urlMap = new Map(newUrls.map(u => [u.path, u.signedUrl]))
+
+              // لیست تصاویر فعلی را با URLهای جدید آپدیت کن
+              // و همچنین اگر تصویری در state وجود نداشت، آن را اضافه کن
+              const updatedImages = currentChatImages.map(img => {
+                if (urlMap.has(img.path)) {
+                  const newUrl = urlMap.get(img.path)!
+                  urlMap.delete(img.path) // برای جلوگیری از افزودن تکراری
+                  return { ...img, url: newUrl }
+                }
+                return img
+              })
+
+              // تصاویر جدیدی که در state نبودند را اضافه کن
+              urlMap.forEach((signedUrl, path) => {
+                updatedImages.push({
+                  messageId: crypto.randomUUID(), // ← یکتا
+                  path,
+                  url: signedUrl,
+                  file: null
+                  // base64 اختیاری است، لازم نیست مقدار بدهی
+                })
+              })
+
+              return updatedImages
+            })
+          }
+        })
+      }
+    }
+  }, [selectedChat, chatMessages, setChatImages]) // <-- وابستگی‌ها
 
   const handleNewChat = async () => {
     if (!selectedWorkspace) return
@@ -79,7 +131,6 @@ export const useChatHandler = () => {
     setChatFiles([])
     setChatImages([])
     setNewMessageFiles([])
-    setNewMessageImages([])
     setShowFilesDisplay(false)
     setIsPromptPickerOpen(false)
     setIsFilePickerOpen(false)
@@ -161,6 +212,12 @@ export const useChatHandler = () => {
     chatMessages: ChatMessage[],
     isRegeneration: boolean
   ) => {
+    if (isUploadingFiles) {
+      toast.error(
+        "Please wait for all files to finish uploading before sending."
+      )
+      return
+    }
     const startingInput = messageContent
     try {
       setUserInput("")
@@ -196,14 +253,16 @@ export const useChatHandler = () => {
       )
 
       let currentChat = selectedChat ? { ...selectedChat } : null
-      const b64Images = newMessageImages.map(image => image.base64)
+      const imagePaths = newMessageImages
+        .map(image => image.path)
+        .filter((path): path is string => path !== null)
 
       const { tempUserChatMessage, tempAssistantChatMessage } =
         createTempMessages(
           messageContent,
           chatMessages,
           chatSettings!,
-          b64Images,
+          imagePaths,
           isRegeneration,
           setChatMessages,
           selectedAssistant,
@@ -236,7 +295,7 @@ export const useChatHandler = () => {
         setTopicSummary,
         setSuggestions
       )
-
+      setNewMessageImages([])
       const { generatedText, newChatId } = responsePayload
 
       if (!currentChat && newChatId) {

@@ -51,23 +51,22 @@ export const createTempMessages = (
   messageContent: string,
   chatMessages: ChatMessage[],
   chatSettings: ChatSettings,
-  b64Images: string[],
+  imagePaths: string[], // ✅ پارامتر ورودی اصلاح شد
   isRegeneration: boolean,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
   selectedAssistant: Tables<"assistants"> | null,
-  /** NEW: اگر چت انتخاب‌شده داریم، chat_id را به پیام‌های موقتی تزریق کن */
   selectedChatId?: string | null
 ) => {
   const cid = selectedChatId ?? ""
 
   let tempUserChatMessage: ChatMessage = {
     message: {
-      chat_id: cid, // ✅ NEW
+      chat_id: cid,
       assistant_id: null,
       content: messageContent,
       created_at: "",
       id: uuidv4(),
-      image_paths: b64Images,
+      image_paths: imagePaths, // ✅ از پارامتر جدید استفاده شد
       model: chatSettings.model,
       role: "user",
       sequence_number: chatMessages.length,
@@ -161,7 +160,8 @@ export const handleHostedChat = async (
     isNewProblem: !chatIdToSend,
     chatId: chatIdToSend,
     workspaceId: workspaceId,
-    images: newMessageImages.map(img => img.base64)
+    // به جای `images` از یک کلید جدید استفاده کنید
+    image_paths: newMessageImages.map(img => img.path) // <-- ارسال URL
   }
 
   try {
@@ -541,4 +541,23 @@ export const handleCreateMessages = async (
       )
     }
   }
+}
+
+export const getSignedUrlsForChat = async (imagePaths: string[]) => {
+  const supabase = createClient()
+  if (imagePaths.length === 0) return []
+
+  const { data, error } = await supabase.storage
+    .from("uploads")
+    .createSignedUrls(imagePaths, 60 * 60 * 24 * 7) // ۷ روز اعتبار
+
+  if (error) {
+    console.error("Error creating signed URLs:", error)
+    return []
+  }
+
+  return data.map(item => ({
+    path: item.path,
+    signedUrl: item.signedUrl
+  }))
 }
