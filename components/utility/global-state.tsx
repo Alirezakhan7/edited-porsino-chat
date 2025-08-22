@@ -58,6 +58,11 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [prompts, setPrompts] = useState<Tables<"prompts">[]>([])
   const [tools, setTools] = useState<Tables<"tools">[]>([])
   const [workspaces, setWorkspaces] = useState<Tables<"workspaces">[]>([])
+  const [networkPhase, setNetworkPhase] = useState<
+    "idle" | "connecting" | "streaming" | "stalled" | "offline" | "done"
+  >("idle")
+  const [streamStartedAt, setStreamStartedAt] = useState<number | null>(null)
+  const [lastByteAt, setLastByteAt] = useState<number | null>(null)
 
   // MODELS STORE
   const [envKeyMap, setEnvKeyMap] = useState<Record<string, VALID_ENV_KEYS>>({})
@@ -254,7 +259,14 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         supabase,
         profile,
         setProfile,
-
+        networkPhase,
+        setNetworkPhase,
+        streamStartedAt,
+        setStreamStartedAt,
+        lastByteAt,
+        setLastByteAt,
+        firstTokenReceived,
+        setFirstTokenReceived,
         // CLASSROOM STATES
         topicSummary,
         setTopicSummary,
@@ -326,8 +338,6 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         // ACTIVE CHAT STORE
         isGenerating,
         setIsGenerating,
-        firstTokenReceived,
-        setFirstTokenReceived,
         abortController,
         setAbortController,
 
