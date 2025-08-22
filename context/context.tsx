@@ -88,7 +88,22 @@ interface ChatbotUIContext {
   setFirstTokenReceived: Dispatch<SetStateAction<boolean>>
   isGenerating: boolean
   setIsGenerating: Dispatch<SetStateAction<boolean>>
-
+  networkPhase:
+    | "idle"
+    | "connecting"
+    | "streaming"
+    | "stalled"
+    | "offline"
+    | "done"
+  setNetworkPhase: Dispatch<
+    SetStateAction<
+      "idle" | "connecting" | "streaming" | "stalled" | "offline" | "done"
+    >
+  >
+  streamStartedAt: number | null
+  setStreamStartedAt: Dispatch<SetStateAction<number | null>>
+  lastByteAt: number | null
+  setLastByteAt: Dispatch<SetStateAction<number | null>>
   // CHAT INPUT COMMAND STORE
   isPromptPickerOpen: boolean
   setIsPromptPickerOpen: Dispatch<SetStateAction<boolean>>
@@ -222,6 +237,12 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setFirstTokenReceived: () => {},
   abortController: null,
   setAbortController: () => {},
+  networkPhase: "idle",
+  setNetworkPhase: () => {},
+  streamStartedAt: null,
+  setStreamStartedAt: () => {},
+  lastByteAt: null,
+  setLastByteAt: () => {},
 
   // CHAT INPUT COMMAND STORE
   isPromptPickerOpen: false,

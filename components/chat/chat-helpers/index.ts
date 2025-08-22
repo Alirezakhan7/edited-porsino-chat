@@ -131,7 +131,13 @@ export const handleHostedChat = async (
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
   setToolInUse: React.Dispatch<React.SetStateAction<string>>,
   setTopicSummary: (summary: string) => void,
-  setSuggestions: (suggestions: string[]) => void
+  setSuggestions: (suggestions: string[]) => void,
+  setNetworkPhase: React.Dispatch<
+    React.SetStateAction<
+      "idle" | "connecting" | "streaming" | "stalled" | "offline" | "done"
+    >
+  >,
+  setLastByteAt: React.Dispatch<React.SetStateAction<number | null>>
 ) => {
   const apiEndpoint = "https://api.porsino.org/chat"
 
@@ -163,11 +169,18 @@ export const handleHostedChat = async (
     // به جای `images` از یک کلید جدید استفاده کنید
     image_paths: newMessageImages.map(img => img.path) // <-- ارسال URL
   }
-
+  let stallWatch: ReturnType<typeof setInterval> | null = null
   try {
     const supabase = createClient()
     const session = await supabase.auth.getSession()
     const token = session.data.session?.access_token
+    const CONNECT_TIMEOUT_MS = 10000
+    const connectTimer = setTimeout(() => {
+      newAbortController.abort()
+      setNetworkPhase("offline")
+      setIsGenerating(false)
+    }, CONNECT_TIMEOUT_MS)
+
     const initialResponse = await fetch(apiEndpoint, {
       method: "POST",
       headers: {
@@ -177,6 +190,7 @@ export const handleHostedChat = async (
       body: JSON.stringify(requestBody),
       signal: newAbortController.signal
     })
+    clearTimeout(connectTimer)
 
     if (!initialResponse.ok) {
       const errorData = await initialResponse
@@ -206,9 +220,20 @@ export const handleHostedChat = async (
       lastUserMessage.message.chat_id = newChatId
     }
 
+    setNetworkPhase("streaming")
+    let lastByteAtMs = Date.now()
+    setLastByteAt(lastByteAtMs)
     const resultEndpoint = `${apiEndpoint}/result/${jobId}`
     let finalData: any = null
     let isProcessing = true
+
+    const STALL_MS = 15000
+    stallWatch = setInterval(() => {
+      // اگر مدت زیادی از آخرین بایت گذشت، فاز رو "stalled" کن
+      if (Date.now() - lastByteAtMs > STALL_MS) {
+        setNetworkPhase("stalled")
+      }
+    }, 1000)
 
     while (isProcessing && !newAbortController.signal.aborted) {
       const resultResponse = await fetch(resultEndpoint, {
@@ -222,6 +247,11 @@ export const handleHostedChat = async (
         throw new Error("Failed to fetch result")
       }
 
+      lastByteAtMs = Date.now()
+      setLastByteAt(lastByteAtMs)
+      // اگر قبلاً به "stalled" رفته بودیم و حالا دوباره دیتا اومده، به "streaming" برگرد
+      setNetworkPhase("streaming")
+
       let fullText = ""
       if (resultResponse.body) {
         // کل پاسخ را به صورت یکجا می‌خوانیم
@@ -230,6 +260,11 @@ export const handleHostedChat = async (
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
+
+          // ✅ چون بایت جدید رسید، زمان آخرین بایت را به‌روزرسانی کن
+          lastByteAtMs = Date.now()
+          setLastByteAt(lastByteAtMs)
+
           fullText += decoder.decode(value, { stream: true })
         }
       }
@@ -251,7 +286,8 @@ export const handleHostedChat = async (
         await new Promise(resolve => setTimeout(resolve, 2000)) // تاخیر قبل از پرس‌وجوی بعدی
       }
     }
-
+    if (stallWatch) clearInterval(stallWatch)
+    setNetworkPhase("done")
     // ================== اصلاحیه کلیدی ==================
     // حالا که از حلقه خارج شدیم، یعنی پاسخ نهایی را داریم.
     // در این لحظه توکن اول را فعال می‌کنیم.
@@ -290,6 +326,8 @@ export const handleHostedChat = async (
       setIsGenerating(false)
       setChatMessages(prevMessages => prevMessages.slice(0, -2))
     }
+    if (stallWatch) clearInterval(stallWatch)
+    setNetworkPhase("offline")
     throw error
   }
 }

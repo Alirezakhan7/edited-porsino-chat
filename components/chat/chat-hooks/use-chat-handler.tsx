@@ -49,6 +49,9 @@ export const useChatHandler = () => {
     setShowFilesDisplay,
     newMessageFiles,
     setToolInUse,
+    setNetworkPhase,
+    setStreamStartedAt,
+    setLastByteAt,
     setIsPromptPickerOpen,
     setIsFilePickerOpen,
     selectedPreset,
@@ -127,7 +130,7 @@ export const useChatHandler = () => {
 
     setIsGenerating(false)
     setFirstTokenReceived(false)
-
+    setNetworkPhase("idle")
     setChatFiles([])
     setChatImages([])
     setNewMessageFiles([])
@@ -226,6 +229,11 @@ export const useChatHandler = () => {
       setIsFilePickerOpen(false)
       setNewMessageImages([])
       setSuggestions([])
+      setFirstTokenReceived(false)
+      setNetworkPhase("idle")
+      setNetworkPhase("connecting")
+      setStreamStartedAt(Date.now())
+      setLastByteAt(Date.now())
 
       const newAbortController = new AbortController()
       setAbortController(newAbortController)
@@ -293,7 +301,9 @@ export const useChatHandler = () => {
         setChatMessages,
         setToolInUse,
         setTopicSummary,
-        setSuggestions
+        setSuggestions,
+        setNetworkPhase,
+        setLastByteAt
       )
       setNewMessageImages([])
       const { generatedText, newChatId } = responsePayload

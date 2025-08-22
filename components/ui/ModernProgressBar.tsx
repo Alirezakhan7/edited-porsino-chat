@@ -1,100 +1,160 @@
 import { motion, AnimatePresence } from "framer-motion"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 interface ModernProgressBarProps {
   isGenerating: boolean
+  phase: "idle" | "connecting" | "streaming" | "stalled" | "offline" | "done"
+  startedAt?: number | null
+  lastByteAt?: number | null
+  softSlaMs?: number
   onComplete: () => void
+  onRetry?: () => void
 }
 
-// پیام‌های مختلف برای نمایش در هر ۵ ثانیه
-const messages = [
-  "در حال آماده‌سازی پاسخ...", // 0-4s
-  "در حال جستجو در منابع... 🔎", // 5-9s
-  "تقریباً آماده است، در حال جمع‌بندی... ✍️", // 10-14s
-  "در حال بررسی اطلاعات مرتبط... 🧠", // 15-19s
-  "در حال تحلیل دقیق سوال شما... 📊", // 20-24s
-  "بازبینی نهایی در حال انجام است... 🔁", // 25-29s
-  "در حال تهیه پاسخ نهایی... 📦", // 30-34s
-  "آخرین لحظات تا تکمیل پاسخ... ⏳" // 35-39s
+const baseMessages = {
+  connecting: "در حال اتصال به سرور...",
+  streaming: "در حال تولید پاسخ...",
+  stalled: "سرعت دریافت پایین است؛ همچنان در حال دریافت...",
+  offline: "اتصال به سرور قطع شد",
+  done: "پاسخ آماده شد! ✅"
+}
+
+// پیام‌های مرحله‌ای قبلی‌ات را هم نگه می‌داریم
+const stagedMessages = [
+  "در حال آماده‌سازی پاسخ...",
+  "در حال جستجو در منابع... 🔎",
+  "تقریباً آماده است، در حال جمع‌بندی... ✍️",
+  "در حال بررسی اطلاعات مرتبط... 🧠",
+  "در حال تحلیل دقیق سوال شما... 📊",
+  "بازبینی نهایی در حال انجام است... 🔁",
+  "در حال تهیه پاسخ نهایی... 📦",
+  "آخرین لحظات تا تکمیل پاسخ... ⏳"
 ]
 
-const ModernProgressBar: React.FC<ModernProgressBarProps> = ({
+export default function ModernProgressBar({
   isGenerating,
-  onComplete
-}) => {
+  phase,
+  startedAt,
+  lastByteAt,
+  softSlaMs = 40000,
+  onComplete,
+  onRetry
+}: ModernProgressBarProps) {
   const [progress, setProgress] = useState(0)
-  const [loadingMessage, setLoadingMessage] = useState(messages[0])
+  const [msg, setMsg] = useState(baseMessages.connecting)
   const [barClassName, setBarClassName] = useState("from-cyan-400 to-blue-600")
+  const tickRef = useRef<number | null>(null)
+
+  const elapsedMs = useMemo(() => {
+    if (!startedAt) return 0
+    return Date.now() - startedAt
+  }, [startedAt, phase, lastByteAt, isGenerating]) // هر تغییر فاز/داده باعث رندر می‌شود
 
   useEffect(() => {
-    if (isGenerating) {
-      // ریست کردن وضعیت
-      setProgress(0)
-      setLoadingMessage(messages[0])
-      setBarClassName("from-cyan-400 to-blue-600")
-
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          const nextProgress = prev + 5
-
-          // توقف در ۹۵٪
-          if (nextProgress >= 95) {
-            clearInterval(interval)
-            return 95
-          }
-
-          // انتخاب پیام متناسب با مرحله
-          const index = Math.floor(nextProgress / 12.5) // هر 12.5٪ ≈ ۵ ثانیه
-          if (messages[index]) {
-            setLoadingMessage(messages[index])
-          }
-
-          return nextProgress
-        })
-      }, 2000) // هر ۲ ثانیه ۵٪
-
-      return () => clearInterval(interval)
-    } else {
-      // پایان و نمایش پیام نهایی
-      setLoadingMessage("پاسخ آماده شد! ✅")
+    if (!isGenerating && phase !== "offline") {
+      setMsg(baseMessages.done)
       setBarClassName("from-emerald-400 to-green-600")
       setProgress(100)
-
-      const timer = setTimeout(() => {
-        onComplete()
-      }, 800)
-
-      return () => clearTimeout(timer)
+      const t = setTimeout(onComplete, 800)
+      return () => clearTimeout(t)
     }
-  }, [isGenerating, onComplete])
+
+    // ریست زمانی سناریو جدید شروع می‌شود
+    setMsg(baseMessages.connecting)
+    setBarClassName("from-cyan-400 to-blue-600")
+    setProgress(0)
+
+    // تیک متناوب برای آپدیت پیشرفت
+    const id = window.setInterval(() => {
+      setProgress(prev => {
+        // منطق پیشرفت بر اساس فاز
+        if (phase === "connecting") {
+          // از 0 تا 20%
+          const next = Math.min(prev + 1.5, 20)
+          return next
+        }
+
+        if (phase === "streaming") {
+          // اگر طولانی شد، پیام اضافه بده
+          if (elapsedMs > softSlaMs) {
+            setMsg("هنوز در حال تولید پاسخ هستم؛ کمی بیشتر زمان می‌برد…")
+          } else {
+            // پیام‌های مرحله‌ای‌ات بر اساس زمان
+            const idx = Math.min(
+              Math.floor(elapsedMs / 5000),
+              stagedMessages.length - 1
+            )
+            setMsg(stagedMessages[idx] ?? baseMessages.streaming)
+          }
+          // تا 95%
+          const next = Math.min(prev + 2.5, 95)
+          return next
+        }
+
+        if (phase === "stalled") {
+          setMsg(baseMessages.stalled)
+          // خیلی کند جلو بره تا 95%
+          const next = Math.min(prev + 0.3, 95)
+          return next
+        }
+
+        if (phase === "offline") {
+          setMsg(baseMessages.offline)
+          // حرکت نکنه
+          return prev
+        }
+
+        // done → این بلاک عملاً توسط isGenerating=false هندل می‌شود
+        return prev
+      })
+    }, 800)
+
+    tickRef.current = id
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current)
+    }
+  }, [isGenerating, phase, elapsedMs, softSlaMs, onComplete])
 
   return (
     <AnimatePresence>
-      {isGenerating && (
-        <div
-          dir="rtl"
-          className="mx-auto w-full max-w-sm rounded-lg p-4 transition-all duration-300"
-        >
+      {(isGenerating || phase === "offline") && (
+        <div dir="rtl" className="mx-auto w-full max-w-sm rounded-lg p-4">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              {loadingMessage}
+              {msg}
             </span>
-            <span className="font-mono text-xs text-blue-500 dark:text-blue-400">
-              %{Math.round(progress)}
-            </span>
+
+            {phase === "offline" && onRetry ? (
+              <button
+                onClick={onRetry}
+                className="rounded-md border px-2 py-1 text-xs text-red-600 dark:text-red-400"
+              >
+                تلاش مجدد
+              </button>
+            ) : (
+              <span className="font-mono text-xs text-blue-500 dark:text-blue-400">
+                %{Math.round(progress)}
+              </span>
+            )}
           </div>
+
           <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
             <motion.div
               className={`h-full rounded-full bg-gradient-to-r ${barClassName}`}
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 1, ease: "easeInOut" }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
             />
           </div>
+
+          {phase === "offline" && (
+            <p className="mt-2 text-right text-xs text-red-600 dark:text-red-400">
+              اینترنت یا سرور در دسترس نیست.
+              {onRetry ? " روی «تلاش مجدد» بزنید." : ""}
+            </p>
+          )}
         </div>
       )}
     </AnimatePresence>
   )
 }
-
-export default ModernProgressBar

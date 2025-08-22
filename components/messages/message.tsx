@@ -23,7 +23,6 @@ import { WithTooltip } from "../ui/with-tooltip"
 import { MessageActions } from "./message-actions"
 import { MessageMarkdown } from "./message-markdown"
 import FeedbackForm from "../chat/feedback/FeedbackForm"
-import Portal from "@/components/ui/portal"
 import ModernProgressBar from "@/components/ui/ModernProgressBar" // مسیر را متناسب با ساختار پروژه خود تنظیم کنید
 const ICON_SIZE = 32
 
@@ -192,7 +191,10 @@ export const Message: FC<MessageProps> = ({
     assistantImages,
     toolInUse,
     files,
-    models
+    models,
+    networkPhase,
+    streamStartedAt,
+    lastByteAt
   } = useContext(ChatbotUIContext)
 
   const { handleSendMessage } = useChatHandler()
@@ -405,8 +407,8 @@ export const Message: FC<MessageProps> = ({
               </div>
             </div>
           )}
-          {!firstTokenReceived &&
-          isGenerating &&
+          {((!firstTokenReceived && isGenerating) ||
+            networkPhase === "offline") &&
           isLast &&
           message.role === "assistant" ? (
             <>
@@ -417,6 +419,11 @@ export const Message: FC<MessageProps> = ({
                       // کد جدید در اینجا جایگزین می‌شود
                       <ModernProgressBar
                         isGenerating={isGenerating}
+                        phase={networkPhase} // NEW
+                        startedAt={streamStartedAt} // NEW
+                        lastByteAt={lastByteAt} // NEW
+                        softSlaMs={40000} // مثلا ۴۰ ثانیه
+                        onRetry={handleRegenerate} // دکمه‌ی تلاش مجدد
                         onComplete={() => setIsGenerating(false)}
                       />
                     )
