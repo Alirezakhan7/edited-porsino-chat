@@ -33,12 +33,14 @@ const ModernHamburgerButton: FC<{
       onClick={onClick}
       className={cn(
         "relative size-10 rounded-lg transition-all duration-150 ease-out",
-        "border border-white/20 bg-white/90 shadow-lg backdrop-blur-md",
-        "hover:scale-105 hover:bg-white hover:shadow-xl",
-        "dark:border-gray-700/50 dark:bg-gray-900/90 dark:hover:bg-gray-800",
+        // 👇 کلاس‌های جدید
+        "border border-white/20 bg-white/30 shadow-md backdrop-blur-md",
+        "hover:scale-105 hover:bg-white/40 hover:shadow-lg",
+        "dark:border-gray-700/50 dark:bg-[#222]/30 dark:hover:bg-[#222]/40",
+        // 👆 تا اینجا تغییرات اعمال شد
         "focus:outline-none focus:ring-2 focus:ring-blue-500/30 active:scale-95",
         "transform-gpu",
-        isOpen && "pointer-events-none opacity-0", // 👈 محو کامل وقتی بازه
+        isOpen && "pointer-events-none opacity-0",
         className
       )}
       aria-label={isOpen ? "Close menu" : "Open menu"}
@@ -137,6 +139,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
           />
           <div
             className={cn(
+              // کلاس‌های ظاهری حذف شدند
               "transition-all duration-300",
               showSidebar
                 ? "translate-x-2 opacity-0"
