@@ -22,7 +22,7 @@ export const uploadMessageImage = async (path: string, image: File) => {
 
 export const getMessageImageFromStorage = async (filePath: string) => {
   const { data, error } = await supabase.storage
-    .from("message_images")
+    .from("uploads") // <-- اینجا را به "uploads" تغییر دهید
     .createSignedUrl(filePath, 60 * 60 * 24) // 24hrs
 
   if (error) {
