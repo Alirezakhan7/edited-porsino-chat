@@ -99,25 +99,12 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
           ? message.image_paths.map(async imagePath => {
               const url = await getMessageImageFromStorage(imagePath)
 
-              if (url) {
-                const response = await fetch(url)
-                const blob = await response.blob()
-                const base64 = await convertBlobToBase64(blob)
-
-                return {
-                  messageId: message.id,
-                  path: imagePath,
-                  base64,
-                  url,
-                  file: null
-                }
-              }
-
+              // مستقیماً آبجکت را با URL دریافتی برمی‌گردانیم
               return {
                 messageId: message.id,
                 path: imagePath,
-                base64: "",
-                url,
+                base64: null, // دیگر به base64 نیازی نداریم
+                url: url || "", // از url مستقیم استفاده می‌کنیم. اگر url null بود، یک رشته خالی برمی‌گردانیم تا خطا ندهد
                 file: null
               }
             })

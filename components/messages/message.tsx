@@ -542,13 +542,15 @@ export const Message: FC<MessageProps> = ({
 
         <div className="mt-3 flex flex-wrap gap-2">
           {message.image_paths.map((path, index) => {
+            // این `item` همان آبجکتی است که در مرحله قبل ساختید و حاوی `url` است
             const item = chatImages.find(image => image.path === path)
 
             return (
               <Image
                 key={index}
                 className="cursor-pointer rounded hover:opacity-50"
-                src={path.startsWith("data") ? path : item?.base64 || ""}
+                // 👇 تغییر اصلی اینجاست
+                src={path.startsWith("data") ? path : item?.url || ""}
                 alt="message image"
                 width={300}
                 height={300}
@@ -556,7 +558,8 @@ export const Message: FC<MessageProps> = ({
                   setSelectedImage({
                     messageId: message.id,
                     path,
-                    base64: path.startsWith("data") ? path : item?.base64 || "",
+                    // 👇 اینجا هم برای پیش‌نمایش عکس، url را اولویت قرار می‌دهیم
+                    base64: path.startsWith("data") ? path : null,
                     url: path.startsWith("data") ? "" : item?.url || "",
                     file: null
                   })
