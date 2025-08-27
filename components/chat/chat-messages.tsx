@@ -15,9 +15,11 @@ interface ChatSuggestionsProps {
 const ChatSuggestions: FC<ChatSuggestionsProps> = ({ onSuggestionClick }) => {
   const { suggestions, chatSettings } = useContext(ChatbotUIContext)
 
-  // فقط اگر مدل ریاضی انتخاب شده بود و پیشنهادی وجود داشت، دکمه‌ها را نمایش بده
+  // مدل‌هایی که اجازه نمایش پیشنهاد دارند را یکجا تعریف کن (هم‌نام با بک‌اند)
+  const allowedModels = ["math-advanced", "phys-advanced"]
+
   if (
-    chatSettings?.model !== "math-advanced" ||
+    !allowedModels.includes(chatSettings?.model || "") ||
     !suggestions ||
     suggestions.length === 0
   ) {
@@ -30,7 +32,7 @@ const ChatSuggestions: FC<ChatSuggestionsProps> = ({ onSuggestionClick }) => {
         <button
           key={index}
           className="rounded-xl bg-gray-100 px-4 py-2 text-right text-sm font-semibold text-gray-800 shadow-md transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-          dir="rtl" // این attribute جهت متن را درست می‌کند
+          dir="rtl"
           onClick={() => onSuggestionClick(text)}
         >
           {text}
@@ -39,6 +41,7 @@ const ChatSuggestions: FC<ChatSuggestionsProps> = ({ onSuggestionClick }) => {
     </div>
   )
 }
+
 // =================================================================
 
 interface ChatMessagesProps {
