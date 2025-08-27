@@ -67,7 +67,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
     }
   }, [chatMessages, suggestions]) // Add suggestions to dependency array
 
-  const isClassroomMode = ["math-advanced", "physics-advanced"].includes(
+  const isClassroomMode = ["math-advanced", "phys-advanced"].includes(
     chatSettings?.model || ""
   )
 
