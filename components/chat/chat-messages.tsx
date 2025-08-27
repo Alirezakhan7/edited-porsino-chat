@@ -256,7 +256,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
           </div>
 
           {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
-          {["math-advanced", "physics-advanced"].includes(
+          {["math-advanced", "phys-advanced"].includes(
             chatSettings?.model || ""
           ) &&
             chatMessages.length > 0 && (
