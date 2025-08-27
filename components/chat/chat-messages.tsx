@@ -256,11 +256,11 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
           </div>
 
           {/* 👇 کامپوننت دکمه‌های پیشنهادی اینجا قرار می‌گیرد */}
-          {chatSettings?.model === "math-advanced" &&
+          {["math-advanced", "physics-advanced"].includes(
+            chatSettings?.model || ""
+          ) &&
             chatMessages.length > 0 && (
               <div className="mt-6">
-                {" "}
-                {/* کنترل دقیق فاصله از بالا */}
                 <ChatSuggestions onSuggestionClick={handleSuggestionClick} />
               </div>
             )}
