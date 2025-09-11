@@ -171,7 +171,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
             </div>
             <div dir="rtl" className="grid grid-cols-2 gap-2 p-2 text-right">
               {["math", "chem", "phys", "bio"].map(subject => {
-                const isSubjectDisabled = subject === "chem"
+                const isSubjectDisabled =
+                  subject === "chem" || subject === "math" || subject === "phys"
 
                 return (
                   <div

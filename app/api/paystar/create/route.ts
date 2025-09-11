@@ -1,7 +1,7 @@
 /* --------------------------------------------------------------------------
-   File: app/api/paystar/create/route.ts
-   Description: ایجاد تراکنش پرداخت با ارسال سبد خرید (cart) و محاسبه مبلغ در سرور
-   -------------------------------------------------------------------------- */
+    File: app/api/paystar/create/route.ts
+    Description: ایجاد تراکنش پرداخت با ارسال سبد خرید (cart) و محاسبه مبلغ در سرور
+    -------------------------------------------------------------------------- */
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
@@ -9,14 +9,16 @@ import crypto from "crypto"
 
 // پلن‌ها ↔ کد محصول در استارشاپ
 const serverPlans = {
-  monthly: { product_code: "11", name: "اشتراک ماهانه" },
-  yearly: { product_code: "12", name: "اشتراک سالانه" }
+  bio_1m: { product_code: "REPLACE_WITH_CODE_1M", name: "زیست یک‌ماهه" },
+  bio_6m: { product_code: "REPLACE_WITH_CODE_6M", name: "زیست شش‌ماهه" },
+  bio_9m: { product_code: "REPLACE_WITH_CODE_9M", name: "زیست نه‌ماهه" }
 } as const
 
-// قیمت‌ها (ریال) — با UI هماهنگ
+// قیمت‌ها (ریال) — مطابق porsino.org/pricing
 const planPricesRial: Record<keyof typeof serverPlans, number> = {
-  monthly: 8_400_000,
-  yearly: 80_064_000
+  bio_1m: 3_400_000, // 340,000 تومان
+  bio_6m: 16_720_000, // 1,672,000 تومان
+  bio_9m: 22_950_000 // 2,295,000 تومان
 }
 
 // کدهای تخفیف (اختیاری)
@@ -32,6 +34,15 @@ const PAYSTAR_API_URL = "https://api.paystar.shop/api/pardakht/create"
 export async function POST(req: Request) {
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
+  const app_url_env = process.env.APP_URL || "https://chat.porsino.org"
+  const allowedOrigin = new URL(app_url_env).origin
+  const origin = req.headers.get("origin")
+  if (origin && origin !== allowedOrigin) {
+    return NextResponse.json(
+      { message: "Origin نامعتبر است." },
+      { status: 403 }
+    )
+  }
 
   try {
     // احراز هویت
@@ -81,6 +92,31 @@ export async function POST(req: Request) {
       )
     }
 
+    // [FIX] Check for recent pending transactions BEFORE creating a new one.
+    const { data: recentPending, error: checkError } = await supabase
+      .from("transactions")
+      .select("id, created_at")
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    if (checkError)
+      console.error("Error checking recent pending transaction:", checkError)
+
+    if (
+      recentPending &&
+      recentPending.length > 0 &&
+      Date.now() - new Date(recentPending[0].created_at).getTime() < 60_000
+    ) {
+      return NextResponse.json(
+        {
+          message: "شما یک تراکنش در حال پردازش دارید. لطفاً ۱ دقیقه صبر کنید."
+        },
+        { status: 429 }
+      )
+    }
+
     // تنظیمات درگاه
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID
     const sign_key = process.env.PAYSTAR_SECRET_KEY
@@ -110,10 +146,9 @@ export async function POST(req: Request) {
           quantity: 1
         }
       ]
-      // در صورت نیاز: discount: { code: discountCode }
     }
 
-    // امضا (فرمت مرسوم Paystar – اگر مستند جدید فرمت متفاوت خواست، همینجا جایگزین کن)
+    // امضا
     const sign_data = `${finalAmount}#${order_id}#${callback_url}`
     const sign = crypto
       .createHmac("sha512", sign_key)
@@ -127,10 +162,8 @@ export async function POST(req: Request) {
       callback: callback_url,
       sign,
       mail: user.email,
-      description: `خرید ${selectedPlan.name}`,
       payer_name,
       cart
-      // discount_code: discountCode || null // اگر سرویس‌دهنده صراحتاً بخواهد
     }
 
     // درخواست به Paystar
@@ -151,9 +184,15 @@ export async function POST(req: Request) {
     }
 
     const result = await response.json().catch(() => ({}))
-    if (result?.status !== 1 || !result?.data?.token) {
+
+    // [تغییر] اینجا علاوه بر توکن، وجود ref_num را هم چک می‌کنیم
+    if (
+      result?.status !== 1 ||
+      !result?.data?.token ||
+      !result?.data?.ref_num
+    ) {
       throw new Error(
-        `خطا در ایجاد تراکنش: ${result?.message || "پاسخ نامعتبر از درگاه"}`
+        `خطا در ایجاد تراکنش: ${result?.message || "پاسخ نامعتبر یا ناقص از درگاه"}`
       )
     }
 
@@ -175,7 +214,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("[PAYMENT_CREATE_ERROR]", error)
     return NextResponse.json(
-      { message: error?.message || "یک خطای پیش‌بینی‌نشده رخ داد." },
+      { message: "خطا در ایجاد تراکنش. لطفاً دوباره تلاش کنید." },
       { status: 500 }
     )
   }

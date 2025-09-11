@@ -1,21 +1,23 @@
 /* --------------------------------------------------------------------------
-   File: app/api/paystar/callback/route.ts
-   Description: Handles the callback from the Paystar payment gateway.
-                This final version returns a minimal HTML page that performs
-                a client-side redirect to avoid cross-origin errors.
-   -------------------------------------------------------------------------- */
+     File: app/api/paystar/callback/route.ts
+     Description: Handles the callback from the Paystar payment gateway.
+                  This version uses the admin client for all DB operations
+                  to bypass RLS, as the callback has no user session.
+     -------------------------------------------------------------------------- */
 import { NextRequest, NextResponse } from "next/server"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
-import { createClient as createServerClient } from "@/lib/supabase/server"
-import { cookies } from "next/headers"
+// [حذف شد] دیگر به createServerClient و cookies نیازی نیست
+// import { createClient as createServerClient } from "@/lib/supabase/server"
+// import { cookies } from "next/headers"
 import crypto from "crypto"
 
 const PAYSTAR_VERIFY_URL = "https://api.paystar.shop/api/pardakht/verify"
 
 const serverPlans = {
-  monthly: { tokens: 1_000_000, durationDays: 30 },
-  yearly: { tokens: 10_000_000, durationDays: 365 }
-}
+  bio_1m: { tokens: 1_000_000, durationDays: 30 },
+  bio_6m: { tokens: 6_000_000, durationDays: 180 },
+  bio_9m: { tokens: 9_000_000, durationDays: 270 }
+} as const
 
 // Helper function to create the client-side redirect response
 function createRedirectResponse(appUrl: string, query: URLSearchParams) {
@@ -34,12 +36,16 @@ function createRedirectResponse(appUrl: string, query: URLSearchParams) {
 }
 
 async function handleCallback(req: NextRequest) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
   const appUrl = "https://chat.porsino.org"
   let order_id_for_redirect: string | null = null
 
   try {
+    // [تغییر] کلاینت ادمین را در ابتدای تابع می‌سازیم تا در همه‌جا قابل استفاده باشد
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!, // SUPABASE_URL را هم اضافه کنید
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     let status: string | null
     let order_id: string | null
     let ref_num: string | null
@@ -54,7 +60,6 @@ async function handleCallback(req: NextRequest) {
       card_number = formData.get("card_number") as string
       tracking_code = formData.get("tracking_code") as string
     } else {
-      // Handle GET request
       const searchParams = req.nextUrl.searchParams
       status = searchParams.get("status")
       order_id = searchParams.get("order_id")
@@ -69,7 +74,8 @@ async function handleCallback(req: NextRequest) {
       throw new Error("اطلاعات بازگشتی از درگاه پرداخت ناقص است.")
     }
 
-    const { data: transaction, error: findError } = await supabase
+    // [تغییر] استفاده از supabaseAdmin
+    const { data: transaction, error: findError } = await supabaseAdmin
       .from("transactions")
       .select("*")
       .eq("order_id", order_id)
@@ -79,8 +85,20 @@ async function handleCallback(req: NextRequest) {
       throw new Error(`تراکنش با شناسه سفارش ${order_id} یافت نشد.`)
     }
 
+    if (transaction.ref_num !== ref_num) {
+      // [تغییر] استفاده از supabaseAdmin
+      await supabaseAdmin
+        .from("transactions")
+        .update({
+          status: "failed"
+        })
+        .eq("order_id", order_id)
+      throw new Error("شماره پیگیری تراکنش با اطلاعات ثبت‌شده مغایرت دارد.")
+    }
+
     if (status !== "1") {
-      await supabase
+      // [تغییر] استفاده از supabaseAdmin
+      await supabaseAdmin
         .from("transactions")
         .update({ status: "failed" })
         .eq("order_id", order_id)
@@ -91,7 +109,7 @@ async function handleCallback(req: NextRequest) {
       return createRedirectResponse(appUrl, query)
     }
 
-    if (transaction.status !== "pending") {
+    if (transaction.status === "success") {
       const query = new URLSearchParams({
         status: "success",
         message: "این تراکنش قبلاً با موفقیت پردازش شده است."
@@ -99,9 +117,20 @@ async function handleCallback(req: NextRequest) {
       return createRedirectResponse(appUrl, query)
     }
 
+    if (transaction.status === "failed") {
+      const query = new URLSearchParams({
+        status: "failed",
+        message:
+          "این تراکنش قبلاً ناموفق بوده و امکان پردازش مجدد آن وجود ندارد."
+      })
+      return createRedirectResponse(appUrl, query)
+    }
+
     const gateway_id = process.env.PAYSTAR_GATEWAY_ID!
     const sign_key = process.env.PAYSTAR_SECRET_KEY!
-    const verify_sign_data = `${transaction.amount}#${ref_num}#${card_number || ""}#${tracking_code || ""}`
+    const verify_sign_data = `${transaction.amount}#${ref_num}#${
+      card_number || ""
+    }#${tracking_code || ""}`
     const sign = crypto
       .createHmac("sha512", sign_key)
       .update(verify_sign_data)
@@ -119,6 +148,13 @@ async function handleCallback(req: NextRequest) {
 
     const verifyResult = await verifyResponse.json()
     if (verifyResult.status !== 1) {
+      // [تغییر] استفاده از supabaseAdmin
+      await supabaseAdmin
+        .from("transactions")
+        .update({
+          status: "failed"
+        })
+        .eq("order_id", order_id)
       throw new Error(`خطا در تایید نهایی تراکنش: ${verifyResult.message}`)
     }
 
@@ -130,11 +166,7 @@ async function handleCallback(req: NextRequest) {
       )
     }
 
-    const supabaseAdmin = createAdminClient(
-      "https://fgxgwcagpbnlwbsmpdvh.supabase.co",
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
+    // [نکته] این بخش کد شما از قبل درست بود و از supabaseAdmin استفاده می‌کرد
     const {
       data: { user },
       error: adminError
@@ -175,8 +207,7 @@ async function handleCallback(req: NextRequest) {
       .from("transactions")
       .update({
         status: "success",
-        verified_at: new Date().toISOString(),
-        ref_num: ref_num
+        verified_at: new Date().toISOString()
       })
       .eq("order_id", order_id)
     if (transactionUpdateError)

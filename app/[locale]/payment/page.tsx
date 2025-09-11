@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { CheckCircle, Check, Loader2, Percent, X, Sparkles } from "lucide-react"
+import { CheckCircle, Check, Loader2, Percent, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 /* ------------------------------------------------------------------ */
@@ -19,25 +19,34 @@ type DiscountDetail =
   | { discountAmountRial: number }
 
 const serverPlans = {
-  monthly: { priceRial: 8_400_000, name: "اشتراک ماهانه" },
-  yearly: { priceRial: 80_064_000, name: "اشتراک سالانه" } // قیمت کل سالانه
-}
+  bio_1m: {
+    name: "پلن یک‌ماهه زیست‌شناسی",
+    months: 1,
+    priceRialTotal: 3_400_000
+  },
+  bio_6m: {
+    name: "پلن ۶ ماهه زیست‌شناسی",
+    months: 6,
+    priceRialTotal: 16_720_000
+  },
+  bio_9m: {
+    name: "پلن ۹ ماهه زیست‌شناسی",
+    months: 9,
+    priceRialTotal: 22_950_000
+  }
+} as const
 
+// (اختیاری) تخفیف‌ها — در تولید غیرفعال یا سقف‌دار
 const serverDiscountCodes: Record<string, DiscountDetail> = {
-  SUMMER25: { discountPercent: 99 }
+  // "BACK2SCHOOL": { discountPercent: 10 }
 }
-const featuresMonthly = [
-  "دسترسی به دروس ریاضی ، فیزیک و زیست شناسی",
-  "دسترسی به تمام کنکورها",
-  "دسترسی به تمام امتحانات نهایی",
-  "یک میلیون توکن پرسینو برای هر کاربر در ماه"
-]
 
-const featuresYearly = [
-  "تمام امکانات پلن ماهانه",
-  "سی درصد تخفیف نسبت به خرید ماهانه",
-  "مجموع ۱۲۰ میلیون توکن در سال (هر ماه ۱۰ میلیون)",
-  "انتقال توکن‌های استفاده‌ نشده هر ماه به ماه بعد"
+// فقط زیست
+const featuresBio = [
+  "دسترسی کامل به درس زیست‌شناسی",
+  "پرسش و پاسخ با هوش مصنوعی",
+  "آموزش‌های گام‌به‌گام",
+  "یک میلیون توکن در هر ماه از دوره"
 ]
 
 /* ------------------------------------------------------------------ */
@@ -93,12 +102,15 @@ export default function PaymentPage() {
     const map: Record<string, number> = {}
 
     Object.entries(serverPlans).forEach(([id, plan]) => {
-      let amount = plan.priceRial
+      // نکته‌ی مهم: نوع رو تعمداً به number تبدیل می‌کنیم تا literal type نباشه
+      let amount: number = Number(plan.priceRialTotal)
+
       if ("discountPercent" in details) {
         amount = amount * (1 - details.discountPercent / 100)
-      } else {
+      } else if ("discountAmountRial" in details) {
         amount = Math.max(5_000, amount - details.discountAmountRial)
       }
+
       map[id] = Math.round(amount)
     })
     return map
@@ -180,67 +192,33 @@ export default function PaymentPage() {
         {/* ---------- Plans Grid ---------- */}
         <div className="mb-20 grid gap-8 lg:grid-cols-2">
           {Object.entries(serverPlans).map(([planId, plan]) => {
-            // [جدید] محاسبه قیمت نهایی پلن بر اساس ریال
-            const finalPriceRial = discountedPrices?.[planId] ?? plan.priceRial
-            const isDiscounted = finalPriceRial !== plan.priceRial
-
-            // [جدید] محاسبه قیمت نمایشی اصلی (برای ماهانه خود قیمت، برای سالانه معادل ماهانه‌اش)
-            const displayPriceRial =
-              planId === "yearly" ? finalPriceRial / 12 : finalPriceRial
-
-            const isPopular = planId === "yearly" // تغییر به yearly برای نمایش پیشنهاد ویژه
+            // محاسبه قیمت‌ها
+            const base = plan.priceRialTotal
+            const finalPriceRial = discountedPrices?.[planId] ?? base
+            const monthlyEqRial = Math.round(finalPriceRial / plan.months)
+            const isPopular = planId === "bio_6m" // «پرطرفدار»
+            const isDiscounted =
+              appliedCode && discountedPrices?.[planId] !== base
 
             return (
               <motion.div
                 key={planId}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.5,
-                  delay: planId === "monthly" ? 0 : 0.2
-                }}
+                transition={{ duration: 0.5 }}
                 className={`relative overflow-hidden rounded-3xl border shadow-2xl backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] ${
                   isPopular
                     ? "border-blue-200/50 bg-gradient-to-br from-white/30 to-white/10 shadow-blue-500/20 dark:border-blue-400/30 dark:from-white/20 dark:to-white/5"
                     : "border-white/30 bg-white/20 hover:bg-white/30 dark:border-white/20 dark:bg-white/10 dark:hover:bg-white/15"
                 }`}
               >
-                {/* 
-                {isPopular && (
-                  <div className="absolute -top-2 -right-2 z-20">
-                    <div className="relative">
-                      <div className="bg-gradient-to-r from-blue-500 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-xl transform rotate-12 border-2 border-white/50">
-                        پیشنهاد ویژه
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-emerald-400 rounded-full blur-sm opacity-50 transform rotate-12"></div>
-                    </div>
-                  </div>
-                )}
-                */}
-
                 {/* Content */}
                 <div className="space-y-8 p-6 text-center sm:p-8 lg:p-10">
                   {/* Plan Name */}
                   <div className="text-center">
-                    <div className="mb-2 flex items-center justify-center gap-2">
-                      {/* اگر آیکون یا مدال تخفیف داری */}
-                      {planId === "yearly" && (
-                        <div className="absolute left-4 top-4 z-10">
-                          <div className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600 dark:bg-red-900/20 dark:text-red-400">
-                            ۲۰٪&nbsp;تخفیف
-                          </div>
-                        </div>
-                      )}
-                      <h3 className="text-2xl font-bold text-gray-900 md:text-3xl lg:text-4xl dark:text-white">
-                        {plan.name}
-                      </h3>
-                    </div>
-
-                    <p className="text-base text-gray-600 md:text-lg dark:text-gray-400">
-                      {planId === "monthly"
-                        ? "مناسب برای شروع مسیر موفقیت"
-                        : "بهترین و به صرفه ترین انتخاب"}
-                    </p>
+                    <h3 className="text-2xl font-bold text-gray-900 md:text-3xl lg:text-4xl dark:text-white">
+                      {plan.name}
+                    </h3>
                   </div>
 
                   {/* Pricing */}
@@ -250,34 +228,30 @@ export default function PaymentPage() {
                   >
                     <div className="flex items-end justify-center gap-2">
                       <span className="bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-4xl font-bold text-transparent sm:text-5xl dark:from-emerald-300 dark:to-blue-200 dark:text-transparent">
-                        {/* [اصلاح شده ✅] نمایش قیمت محاسبه‌شده */}
-                        {formatNumber(rialToThousandToman(displayPriceRial))}
+                        {formatNumber(rialToThousandToman(monthlyEqRial))}
                       </span>
                       <span className="mb-1 text-xs font-light text-gray-600 sm:text-sm dark:text-gray-400">
-                        هزار تومان / ماهانه
+                        هزار تومان / {plan.months === 1 ? "ماهانه" : "ماه"}
                       </span>
                     </div>
 
-                    {/* [اصلاح شده ✅] نمایش داینامیک معادل سالانه */}
-                    {planId === "yearly" && (
+                    {/* قیمت کل دوره برای پلن‌های بیشتر از ۱ ماه */}
+                    {plan.months > 1 && (
                       <div className="mt-1 text-right text-base text-gray-400 dark:text-gray-500">
+                        قیمت کل دوره:{" "}
                         <span className="font-bold text-gray-600 dark:text-gray-300">
-                          {/* قیمت کل سالانه با تخفیف را نمایش می‌دهد */}
-                          سالانه معادل:{" "}
                           {formatNumber(rialToThousandToman(finalPriceRial))}
-                        </span>
-                        &nbsp;هزار تومان
-                      </div>
-                    )}
-                    {planId === "monthly" && (
-                      <div className="mt-1 min-h-[1.5em] text-right text-base text-gray-400 dark:text-gray-500">
-                        {/* Placeholder to keep alignment */}
+                        </span>{" "}
+                        هزار تومان
                       </div>
                     )}
 
+                    {/* نشانگر تخفیف در صورت اعمال کد */}
                     {isDiscounted && (
                       <motion.div
-                        /* ... props ... */
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
                         className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 dark:bg-green-900/20 dark:text-green-400"
                       >
                         تخفیف اعمال شد
@@ -287,10 +261,7 @@ export default function PaymentPage() {
 
                   {/* Features */}
                   <ul className="space-y-4 text-right">
-                    {(planId === "monthly"
-                      ? featuresMonthly
-                      : featuresYearly
-                    ).map((feature, idx) => (
+                    {featuresBio.map((feature, idx) => (
                       <motion.li
                         key={idx}
                         initial={{ opacity: 0, x: 20 }}
@@ -304,16 +275,14 @@ export default function PaymentPage() {
                     ))}
                   </ul>
 
+                  {/* Button */}
                   <button
                     onClick={() => handlePayment(planId)}
                     disabled={loadingPlan === planId}
                     className={`
                         w-full rounded-2xl border-2 border-white/70 px-8 py-6
-                        text-xl
-                        font-bold shadow-xl
-                        drop-shadow-[0_2px_16px_rgba(16,185,129,0.25)]
-                        transition-all duration-300
-                        hover:scale-[1.02]
+                        text-xl font-bold shadow-xl
+                        transition-all duration-300 hover:scale-[1.02]
                         disabled:cursor-not-allowed disabled:opacity-50
                         dark:border-emerald-300/60
                         ${
