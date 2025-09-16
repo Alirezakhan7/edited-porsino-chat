@@ -1,5 +1,5 @@
-// app/pardakht/redirect-payment/page.tsx
-export const dynamic = "force-dynamic"
+"use client"
+import { useEffect } from "react"
 
 export default function RedirectPaymentPage({
   searchParams
@@ -8,16 +8,6 @@ export default function RedirectPaymentPage({
 }) {
   const token = searchParams.token
   const psp = searchParams.psp
-
-  if (!token || !psp) {
-    return (
-      <html dir="rtl">
-        <body>
-          <p>پارامترهای ورودی ناقص است.</p>
-        </body>
-      </html>
-    )
-  }
 
   const hidden = (name: string, value?: string) =>
     value ? `<input type="hidden" name="${name}" value="${value}" />` : ""
@@ -29,11 +19,6 @@ export default function RedirectPaymentPage({
         ${hidden("token", token)}
         ${hidden("getMethod", "0")}
         ${hidden("nationalCode", searchParams.nationalCode)}
-      </form>`,
-    Asanpardakht: `
-      <form id="f" method="post" action="https://asan.shaparak.ir">
-        ${hidden("RefId", token)}
-        ${hidden("mobileap", searchParams.mobileNo)}
       </form>`,
     Irankish: `
       <form id="f" method="post" action="https://ikc.shaparak.ir/iuiv3/IPG/Index/">
@@ -60,26 +45,29 @@ export default function RedirectPaymentPage({
       <form id="f" method="post" action="https://pec.shaparak.ir/NewIPG/?token=${token}"></form>`
   }
 
-  const form = forms[psp] ?? ""
-  const submitJs = form ? "document.getElementById('f')?.submit();" : ""
+  const form = psp && token ? (forms[psp] ?? "") : ""
+
+  useEffect(() => {
+    if (form) {
+      const f = document.getElementById("f") as HTMLFormElement | null
+      f?.submit()
+    }
+  }, [form])
+
+  if (!token || !psp) {
+    return <p>پارامترهای ورودی ناقص است.</p>
+  }
 
   return (
-    <html dir="rtl">
-      <head>
-        <title>انتقال به صفحه پرداخت</title>
-      </head>
-      <body>
-        {form ? (
-          <div dangerouslySetInnerHTML={{ __html: form }} />
-        ) : (
-          <p>PSP نامعتبر است.</p>
-        )}
-        {/* اجرای اتو‌سابمیت بعد از اینکه فرم داخل DOM قرار گرفت */}
-        <script dangerouslySetInnerHTML={{ __html: submitJs }} />
-        <noscript>
-          <p>برای ادامه، جاوااسکریپت را فعال کنید.</p>
-        </noscript>
-      </body>
-    </html>
+    <>
+      {form ? (
+        <div dangerouslySetInnerHTML={{ __html: form }} />
+      ) : (
+        <p>PSP نامعتبر است.</p>
+      )}
+      <noscript>
+        <p>برای ادامه، جاوااسکریپت را فعال کنید.</p>
+      </noscript>
+    </>
   )
 }
