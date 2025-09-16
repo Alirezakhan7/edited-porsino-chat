@@ -30,6 +30,11 @@ const serverDiscountCodes: Record<
 const DP_CREATE_URL = "https://api.directpay.click/api/pardakht/create"
 
 export async function POST(req: Request) {
+  console.log("[ENV_CHECK]", {
+    GATEWAY_ID: process.env.DIRECTPAY_GATEWAY_ID,
+    SECRET_KEY: process.env.DIRECTPAY_SECRET_KEY ? "✅ موجوده" : "❌ نیست",
+    APP_URL: process.env.APP_URL
+  })
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
 
