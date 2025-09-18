@@ -178,11 +178,9 @@ export async function POST(req: NextRequest) {
       order_id: oid || order_id,
       ref_num,
       amount,
-      payment_amount: payment_amount ?? null,
       plan_id: planId ?? null,
       discount_code: discountCode ?? null,
-      status: "pending",
-      provider: "paystar"
+      status: "pending"
     })
     if (dbErr) console.error("[TX_INSERT_ERROR]", dbErr)
 

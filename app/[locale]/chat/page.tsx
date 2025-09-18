@@ -10,6 +10,7 @@ import { useContext } from "react"
 import { ProfileSettings } from "@/components/utility/profile-settings"
 import { SampleQuestions } from "@/components/chat/sample-questions"
 import { Announcements } from "@/components/utility/announcements"
+import { SupportFab } from "@/components/utility/support-fab"
 
 export default function ChatPage() {
   useHotkey("o", () => handleNewChat())
@@ -84,6 +85,7 @@ export default function ChatPage() {
       ) : (
         <ChatUI />
       )}
+      <SupportFab />
     </>
   )
 }

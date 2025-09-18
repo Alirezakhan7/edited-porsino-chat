@@ -108,10 +108,7 @@ async function handle(req: NextRequest) {
       await admin
         .from("transactions")
         .update({
-          status: "failed",
-          provider: "paystar",
-          tracking_code: tracking_code || null,
-          card_number: card_number || null
+          status: "failed"
         })
         .eq("id", tx.id)
 
@@ -158,10 +155,7 @@ async function handle(req: NextRequest) {
       .from("transactions")
       .update({
         status: "success",
-        provider: "paystar",
-        verified_at: new Date().toISOString(),
-        tracking_code: tracking_code || null,
-        card_number: card_number || null
+        verified_at: new Date().toISOString()
       })
       .eq("id", tx.id)
 
