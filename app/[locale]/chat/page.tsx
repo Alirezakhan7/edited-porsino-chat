@@ -85,7 +85,9 @@ export default function ChatPage() {
       ) : (
         <ChatUI />
       )}
-      <SupportFab />
+      <div className="hidden md:block">
+        <SupportFab />
+      </div>
     </>
   )
 }
