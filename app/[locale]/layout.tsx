@@ -13,6 +13,9 @@ import "./globals.css"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
+// آیکون های پایین صفحه در این فایل هست
+import { BottomNav } from "@/components/layout/BottomNav"
+
 const inter = Inter({ subsets: ["latin"] })
 const APP_NAME = "Porsino AI"
 const APP_DEFAULT_TITLE = "هوش مصنوعی پرسینو"
@@ -131,10 +134,11 @@ export default async function RootLayout({
             resources={resources}
           >
             <Toaster richColors position="top-center" duration={3000} />
-            <div className="flex h-dvh flex-col items-center overflow-x-auto">
+            <div className="flex h-dvh flex-col items-center overflow-x-auto pb-16 md:pb-0">
               {session ? <GlobalState>{children}</GlobalState> : children}
             </div>
             <div id="portals" />
+            {session && <BottomNav />}
           </TranslationsProvider>
         </Providers>
         <Analytics />
