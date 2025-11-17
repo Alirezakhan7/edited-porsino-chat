@@ -6,25 +6,31 @@ import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { IconChevronLeft, IconCalendarPlus } from "@tabler/icons-react"
+// ایمپورت کامپوننت‌های سیستم دیزاین جدید
+import {
+  MaterialCard,
+  IconWrapper,
+  colorThemes
+} from "@/components/material/MaterialUI"
 
 export default function NewExamStep1Page() {
   const router = useRouter()
-  // یک state برای نگهداری تاریخ انتخابی
   const [date, setDate] = useState<Date | undefined>(new Date())
 
+  // تنظیم تم رنگی صفحه (می‌توانید به 'blue', 'pink', 'emerald' تغییر دهید)
+  const themeColor = "purple"
+  const theme = colorThemes[themeColor]
+
   const handleNextStep = () => {
-    // TODO: تاریخ انتخاب شده را به مرحله بعد ارسال کنید
-    // مثلا: router.push(`/upload/new-exam-step-2?date=${date?.toISOString()}`)
-    router.push("/upload/new-exam-step-2") // (آدرس مرحله بعد)
+    router.push("/upload/new-exam-step-2")
   }
 
   const handleSkip = () => {
-    // اگر کاربر رد کرد، بدون تاریخ به مرحله بعد می‌رویم
-    router.push("/upload/new-exam-step-2") // (آدرس مرحله بعد)
+    router.push("/upload/new-exam-step-2")
   }
 
   const handleGoBack = () => {
-    router.back() // بازگشت به صفحه هاب آزمون (/upload)
+    router.back()
   }
 
   return (
@@ -38,61 +44,84 @@ export default function NewExamStep1Page() {
         transition={{ duration: 0.5, ease: "easeInOut" }}
         className="relative w-full max-w-md"
       >
-        {/*
-          ❄️ المان شیشه مات (Frosted Glass) ❄️
-          - backdrop-blur-lg: برای افکت مات‌شدن پس‌زمینه
-          - bg-muted/20: یک پس‌زمینه نیمه‌شفاف (20% opacity)
-          - border border-muted-foreground/30: یک نوار مرزی ظریف
-        */}
-        <div
-          className="border-muted-foreground/30 bg-muted/20 w-full overflow-hidden rounded-2xl 
-                     border shadow-xl backdrop-blur-lg"
-        >
+        {/* بدنه اصلی با استایل متریال */}
+        <MaterialCard elevation={4} className="overflow-hidden">
+          {/* نوار رنگی بالای کارت برای زیبایی */}
+          <div className={`h-2 bg-gradient-to-r ${theme.gradient}`} />
+
           {/* ----- هدر ----- */}
-          <div className="border-muted-foreground/30 flex items-center justify-between border-b p-4">
+          <div className="flex items-center justify-between p-6 pb-2">
+            {/* دکمه بازگشت */}
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground"
+              className="text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
               onClick={handleGoBack}
             >
-              <IconChevronLeft size={20} />
+              <IconChevronLeft size={24} />
             </Button>
-            <h1 className="text-lg font-bold">تاریخ امتحان رو مشخص کن</h1>
-            <IconCalendarPlus size={24} className="text-primary" />
+
+            {/* عنوان و آیکون */}
+            <div className="flex flex-col items-end">
+              <div className="mb-1 flex items-center gap-3">
+                <h1 className="text-lg font-bold text-slate-800">
+                  تاریخ آزمون
+                </h1>
+                {/* آیکون با پس‌زمینه گرادیانت */}
+                <div className="origin-right scale-75">
+                  <IconWrapper icon={IconCalendarPlus} color={themeColor} />
+                </div>
+              </div>
+              <p className="mr-1 text-xs text-slate-500">
+                زمان برگزاری را مشخص کنید
+              </p>
+            </div>
           </div>
+
+          {/* خط جداکننده ظریف */}
+          <div className="mx-6 my-2 h-px bg-slate-100" />
 
           {/* ----- تقویم ----- */}
-          <div className="p-4">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              className="rounded-md"
-              dir="rtl" // اطمینان از راست‌چین بودن خود تقویم
-            />
+          <div className="flex justify-center p-4">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                className="rounded-md bg-white shadow-sm"
+                dir="rtl"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* ----- دکمه‌های پایین ----- */}
-        <div className="mt-6 flex w-full items-center justify-between">
-          <Button
-            variant="link"
-            className="text-muted-foreground"
-            onClick={handleSkip}
-          >
-            رد کردن
-          </Button>
+          {/* ----- دکمه‌های پایین ----- */}
+          <div className="mt-2 flex w-full items-center justify-between p-6 pt-2">
+            <Button
+              variant="ghost"
+              className="text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+              onClick={handleSkip}
+            >
+              بعداً تنظیم می‌کنم
+            </Button>
 
-          <Button
-            size="lg"
-            className="shadow-primary/30 rounded-full px-8 shadow-lg"
-            onClick={handleNextStep}
-            disabled={!date} // اگر تاریخی انتخاب نشده، دکمه غیرفعال است
-          >
-            ادامه
-          </Button>
-        </div>
+            <Button
+              size="lg"
+              onClick={handleNextStep}
+              disabled={!date}
+              // استایل شرطی دکمه: اگر تاریخ انتخاب شده باشد، گرادیانت می‌گیرد
+              className={`
+                rounded-xl px-8 shadow-lg transition-all duration-300
+                ${
+                  !date
+                    ? "cursor-not-allowed bg-slate-100 text-slate-400 shadow-none"
+                    : `bg-gradient-to-r ${theme.gradient} text-white hover:-translate-y-0.5 hover:shadow-xl`
+                }
+              `}
+            >
+              ادامه
+            </Button>
+          </div>
+        </MaterialCard>
       </motion.div>
     </div>
   )

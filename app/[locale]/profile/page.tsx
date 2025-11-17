@@ -29,6 +29,15 @@ import { Button } from "@/components/ui/button"
 import { ThemeSwitcher } from "@/components/utility/theme-switcher"
 import { motion } from "framer-motion"
 
+// ایمپورت کامپوننت‌های متریال دیزاین (مسیر فایل را در صورت نیاز اصلاح کنید)
+import {
+  MaterialCard,
+  IconWrapper,
+  RippleButton,
+  colorThemes,
+  ColorKey
+} from "@/components/material/MaterialUI"
+
 // ایمپورت‌های مورد نیاز برای پاپ‌آپ ویرایش
 import {
   Dialog,
@@ -141,7 +150,8 @@ function ProfilePageContent() {
       title: "۱۰۰ تست",
       earned: true,
       desc: "زدن ۱۰۰ تست زیست",
-      progress: 100
+      progress: 100,
+      color: "blue" as ColorKey
     },
     {
       id: 2,
@@ -149,7 +159,8 @@ function ProfilePageContent() {
       title: "۷ روز پیوسته",
       earned: true,
       desc: "حضور ۷ روز پشت سر هم",
-      progress: 100
+      progress: 100,
+      color: "purple" as ColorKey
     },
     {
       id: 3,
@@ -157,7 +168,8 @@ function ProfilePageContent() {
       title: "۵۰ فلش‌کارت",
       earned: false,
       desc: "پاسخ صحیح به ۵۰ فلش‌کارت",
-      progress: 65
+      progress: 65,
+      color: "pink" as ColorKey
     },
     {
       id: 4,
@@ -165,7 +177,8 @@ function ProfilePageContent() {
       title: "اولین خلاصه",
       earned: true,
       desc: "ساخت اولین خلاصه با AI",
-      progress: 100
+      progress: 100,
+      color: "emerald" as ColorKey
     },
     {
       id: 5,
@@ -173,7 +186,8 @@ function ProfilePageContent() {
       title: "اولین دعوت",
       earned: false,
       desc: "معرفی ۱ کاربر جدید",
-      progress: 0
+      progress: 0,
+      color: "blue" as ColorKey
     }
   ]
 
@@ -184,7 +198,7 @@ function ProfilePageContent() {
     accuracy: 85
   }
 
-  // عکس پیش‌فرض - می‌توانید URL زیر را با مسیر فایل محلی جایگزین کنید
+  // عکس پیش‌فرض
   const DEFAULT_AVATAR = "/images/default-avatar.png"
 
   return (
@@ -193,45 +207,44 @@ function ProfilePageContent() {
       className="animate-fade-down size-full overflow-y-auto px-4 pb-8 pt-6 md:px-8"
     >
       {/* ----- بخش هدر پروفایل ----- */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="relative mb-6 flex flex-col items-center"
+      <MaterialCard
+        className="relative mb-6 flex flex-col items-center p-6 pt-8"
+        elevation={2}
       >
         <Button
           variant="ghost"
           size="icon"
-          className="text-muted-foreground absolute left-0 top-0"
+          className="text-muted-foreground absolute left-4 top-4 transition-colors hover:text-red-500"
           onClick={handleSignOut}
           aria-label="خروج از حساب کاربری"
         >
           <IconLogout size={20} />
         </Button>
 
-        <div className="relative">
+        <div className="group relative">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 opacity-10 blur-sm transition-opacity group-hover:opacity-30"></div>
           <Image
             src={profile.image_url || DEFAULT_AVATAR}
             alt="Profile Image"
-            width={96}
-            height={96}
-            className="size-24 rounded-full  object-cover shadow-lg"
+            width={112}
+            height={112}
+            className="relative z-10 size-28 rounded-full border-4 border-white object-cover shadow-xl"
           />
-          <Button
-            variant="default"
-            size="icon"
-            className="absolute -bottom-2 -right-2 size-8 rounded-full shadow-md"
+          <RippleButton
             onClick={() => setIsEditModalOpen(true)}
-            aria-label="ویرایش پروفایل"
+            className="absolute -bottom-1 -right-1 z-20 flex size-9 items-center justify-center rounded-full border border-blue-100 bg-white text-blue-600 shadow-lg hover:bg-blue-50"
           >
             <IconEdit size={16} />
-          </Button>
+          </RippleButton>
         </div>
-        <h1 className="mt-4 text-2xl font-bold">
+
+        <h1 className="mt-5 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-2xl font-bold text-transparent">
           {profile.display_name || "کاربر پرسینو"}
         </h1>
-        <p className="text-md text-muted-foreground">@{profile.username}</p>
-      </motion.section>
+        <p className="text-md font-medium text-slate-500">
+          @{profile.username}
+        </p>
+      </MaterialCard>
 
       {/* ----- بخش اشتراک ----- */}
       <motion.section
@@ -241,27 +254,32 @@ function ProfilePageContent() {
         className="mb-6"
       >
         {isSubscribed ? (
-          <div className="flex w-full cursor-default flex-row-reverse items-center justify-center space-x-2 space-x-reverse rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg">
-            <IconCalendarStats size={20} />
-            {remainingDays > 0 ? (
-              <>
-                <span className="ml-1">{remainingDays}</span>
-                <span>روز از اشتراک شما باقی مانده</span>
-              </>
-            ) : (
-              <span>اشتراک شما امروز به پایان می‌رسد</span>
-            )}
-          </div>
+          <MaterialCard className="overflow-hidden border-none" elevation={4}>
+            <div className="flex w-full cursor-default flex-row-reverse items-center justify-center space-x-2 space-x-reverse bg-gradient-to-r from-emerald-500 to-teal-600 p-4 text-sm font-bold text-white shadow-inner">
+              <IconCalendarStats size={22} />
+              {remainingDays > 0 ? (
+                <>
+                  <span className="ml-1 text-lg">{remainingDays}</span>
+                  <span>روز از اشتراک شما باقی مانده</span>
+                </>
+              ) : (
+                <span>اشتراک شما امروز به پایان می‌رسد</span>
+              )}
+            </div>
+          </MaterialCard>
         ) : (
-          <a
-            href="https://chat.porsino.org/payment"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="items-right flex w-full justify-center space-x-2 space-x-reverse rounded-xl bg-gradient-to-r from-yellow-400 to-orange-500 px-4 py-3.5 text-sm font-bold text-white shadow-lg transition-all hover:from-yellow-500 hover:to-orange-600 hover:shadow-xl"
+          <MaterialCard
+            className="group overflow-hidden border-none"
+            elevation={4}
+            onClick={() =>
+              window.open("https://chat.porsino.org/payment", "_blank")
+            }
           >
-            <IconCrown size={20} className="text-white" />
-            <span>ارتقا به Porsino Pro</span>
-          </a>
+            <div className="flex w-full cursor-pointer items-center justify-center space-x-2 space-x-reverse bg-gradient-to-r from-amber-400 to-orange-500 p-4 text-sm font-bold text-white transition-all group-hover:brightness-110">
+              <IconCrown size={22} className="animate-pulse text-white" />
+              <span className="text-base">ارتقا به Porsino Pro</span>
+            </div>
+          </MaterialCard>
         )}
       </motion.section>
 
@@ -270,59 +288,82 @@ function ProfilePageContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.2 }}
-        className="mb-6"
+        className="mb-8"
       >
-        <h2 className="mb-3 text-xl font-semibold">آمار یادگیری</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-800">
+          <span className="h-6 w-1 rounded-full bg-blue-600"></span>
+          آمار یادگیری
+        </h2>
+        <div className="grid grid-cols-3 gap-4">
           <TooltipProvider>
+            {/* کارت ۱ */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="bg-muted/50 hover:bg-muted cursor-pointer rounded-lg p-4 text-center transition-all">
-                  <IconBook size={24} className="mx-auto mb-2 text-blue-500" />
-                  <p className="text-2xl font-bold">
-                    {learningStats.testsCompleted}
-                  </p>
-                  <p className="text-muted-foreground text-xs">تست زده</p>
+                <div>
+                  <MaterialCard
+                    className="flex h-full flex-col items-center justify-center p-4 text-center hover:bg-blue-50/50"
+                    elevation={1}
+                  >
+                    <div className="mb-2 rounded-full bg-blue-100 p-2 text-blue-600">
+                      <IconBook size={24} />
+                    </div>
+                    <p className="text-2xl font-extrabold text-slate-800">
+                      {learningStats.testsCompleted}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-slate-500">
+                      تست زده
+                    </p>
+                  </MaterialCard>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>تعداد کل تست‌های حل شده</p>
               </TooltipContent>
             </Tooltip>
-          </TooltipProvider>
 
-          <TooltipProvider>
+            {/* کارت ۲ */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="bg-muted/50 hover:bg-muted cursor-pointer rounded-lg p-4 text-center transition-all">
-                  <IconFlame
-                    size={24}
-                    className="mx-auto mb-2 text-orange-500"
-                  />
-                  <p className="text-2xl font-bold">
-                    {learningStats.streakDays}
-                  </p>
-                  <p className="text-muted-foreground text-xs">روز پیوسته</p>
+                <div>
+                  <MaterialCard
+                    className="flex h-full flex-col items-center justify-center p-4 text-center hover:bg-orange-50/50"
+                    elevation={1}
+                  >
+                    <div className="mb-2 rounded-full bg-orange-100 p-2 text-orange-600">
+                      <IconFlame size={24} />
+                    </div>
+                    <p className="text-2xl font-extrabold text-slate-800">
+                      {learningStats.streakDays}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-slate-500">
+                      روز پیوسته
+                    </p>
+                  </MaterialCard>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>تعداد روزهای متوالی حضور در پلتفرم</p>
               </TooltipContent>
             </Tooltip>
-          </TooltipProvider>
 
-          <TooltipProvider>
+            {/* کارت ۳ */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="bg-muted/50 hover:bg-muted cursor-pointer rounded-lg p-4 text-center transition-all">
-                  <IconTrophy
-                    size={24}
-                    className="mx-auto mb-2 text-yellow-500"
-                  />
-                  <p className="text-2xl font-bold">
-                    {learningStats.accuracy}٪
-                  </p>
-                  <p className="text-muted-foreground text-xs">دقت</p>
+                <div>
+                  <MaterialCard
+                    className="flex h-full flex-col items-center justify-center p-4 text-center hover:bg-yellow-50/50"
+                    elevation={1}
+                  >
+                    <div className="mb-2 rounded-full bg-yellow-100 p-2 text-yellow-600">
+                      <IconTrophy size={24} />
+                    </div>
+                    <p className="text-2xl font-extrabold text-slate-800">
+                      {learningStats.accuracy}٪
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-slate-500">
+                      دقت کل
+                    </p>
+                  </MaterialCard>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -338,104 +379,120 @@ function ProfilePageContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.3 }}
-        className="mb-6"
+        className="mb-8"
       >
-        <h2 className="mb-3 text-xl font-semibold">مدال‌ها و دستاوردها</h2>
-        <div className="bg-muted/50 flex space-x-4 space-x-reverse overflow-x-auto rounded-xl p-4 pb-5">
-          <TooltipProvider>
-            {placeholderMedals.map((medal, index) => (
-              <Tooltip key={medal.id}>
-                <TooltipTrigger asChild>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 * index }}
-                    className={`hover:bg-muted/50 flex shrink-0 cursor-pointer flex-col items-center space-y-2 rounded-lg p-3 transition-all ${
-                      medal.earned ? "opacity-100" : "opacity-40 grayscale"
-                    }`}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`مدال ${medal.title}: ${medal.desc}`}
-                  >
-                    <div
-                      className={`flex size-14 items-center justify-center rounded-full ${
-                        medal.earned
-                          ? "bg-primary/10 text-primary"
-                          : "bg-muted-foreground/10"
+        <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-800">
+          <span className="h-6 w-1 rounded-full bg-purple-600"></span>
+          مدال‌ها و دستاوردها
+        </h2>
+
+        <MaterialCard className="p-2" elevation={2}>
+          <div className="scrollbar-hide flex space-x-4 space-x-reverse overflow-x-auto p-2 pb-4">
+            <TooltipProvider>
+              {placeholderMedals.map((medal, index) => (
+                <Tooltip key={medal.id}>
+                  <TooltipTrigger asChild>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      className={`flex w-28 shrink-0 cursor-pointer flex-col items-center space-y-3 rounded-xl p-4 transition-all ${
+                        medal.earned ? "opacity-100" : "opacity-50 grayscale"
                       }`}
                     >
-                      <medal.icon size={28} />
-                    </div>
-                    <span className="w-16 truncate text-center text-xs font-medium">
-                      {medal.title}
-                    </span>
-                    <div className="bg-muted h-1 w-full rounded-full">
-                      <div
-                        className="bg-primary h-full rounded-full transition-all"
-                        style={{ width: `${medal.progress}%` }}
-                      />
-                    </div>
-                  </motion.div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{medal.desc}</p>
-                  <p className="text-muted-foreground text-xs">
-                    پیشرفت: {medal.progress}%
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </TooltipProvider>
-        </div>
+                      {/* استفاده از IconWrapper جدید */}
+                      <div className="origin-center scale-75">
+                        <IconWrapper icon={medal.icon} color={medal.color} />
+                      </div>
+
+                      <div className="text-center">
+                        <span className="mb-2 block w-full truncate text-xs font-bold text-slate-700">
+                          {medal.title}
+                        </span>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${colorThemes[medal.color].bg}`}
+                            style={{ width: `${medal.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-none bg-slate-800 text-white">
+                    <p className="mb-1 font-bold">{medal.desc}</p>
+                    <p className="text-xs text-slate-300">
+                      پیشرفت: {medal.progress}%
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TooltipProvider>
+          </div>
+        </MaterialCard>
       </motion.section>
 
-      {/* ----- بخش کسب درآمد ----- */}
+      {/* ----- بخش کیف پول ----- */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.4 }}
-        className="mb-6"
+        className="mb-8"
       >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">کیف پول شما</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-slate-800">
+            <span className="h-6 w-1 rounded-full bg-emerald-600"></span>
+            کیف پول
+          </h2>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push("/transactions")}
-            aria-label="مشاهده تاریخچه تراکنش‌ها"
+            className="text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
           >
             <IconHistory size={16} className="ml-1" />
             تاریخچه
           </Button>
         </div>
-        <div className="bg-muted/50 rounded-xl p-4">
-          <div className="mb-4 text-center">
-            <p className="text-muted-foreground text-sm">موجودی قابل استفاده</p>
-            <p className="text-4xl font-bold">
-              ۱۲,۵۰۰ <span className="text-lg">تومان</span>
+
+        <MaterialCard className="relative overflow-hidden p-6" elevation={2}>
+          {/* پس زمینه تزئینی */}
+          <div className="absolute right-0 top-0 -mr-10 -mt-10 size-32 rounded-full bg-emerald-100 opacity-50 blur-2xl"></div>
+          <div className="absolute bottom-0 left-0 -mb-8 -ml-8 size-24 rounded-full bg-blue-100 opacity-50 blur-xl"></div>
+
+          <div className="relative z-10 mb-6 text-center">
+            <p className="mb-1 text-sm font-medium text-slate-500">
+              موجودی قابل استفاده
+            </p>
+            <p className="text-4xl font-black tracking-tight text-emerald-600">
+              ۱۲,۵۰۰{" "}
+              <span className="text-lg font-bold text-emerald-500">تومان</span>
             </p>
           </div>
-          <div className="mb-4 grid grid-cols-2 gap-3 text-center">
-            <div className="bg-background rounded-lg p-3">
-              <p className="text-muted-foreground text-sm">از مدال‌ها</p>
-              <p className="text-lg font-semibold">۵,۰۰۰ ت</p>
+
+          <div className="relative z-10 mb-6 grid grid-cols-2 gap-4 text-center">
+            <div className="rounded-xl border border-white/50 bg-white/60 p-3 shadow-sm backdrop-blur">
+              <p className="mb-1 text-xs text-slate-400">از مدال‌ها</p>
+              <p className="text-lg font-bold text-slate-700">۵,۰۰۰ ت</p>
             </div>
-            <div className="bg-background rounded-lg p-3">
-              <p className="text-muted-foreground text-sm">از معرفی</p>
-              <p className="text-lg font-semibold">۷,۵۰۰ ت</p>
+            <div className="rounded-xl border border-white/50 bg-white/60 p-3 shadow-sm backdrop-blur">
+              <p className="mb-1 text-xs text-slate-400">از معرفی</p>
+              <p className="text-lg font-bold text-slate-700">۷,۵۰۰ ت</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" className="w-full">
-              <IconWallet size={16} className="ml-2" />
-              برداشت وجه
-            </Button>
-            <Button variant="default" className="w-full">
-              <IconGift size={16} className="ml-2" />
-              دعوت دوستان
-            </Button>
+
+          <div className="relative z-10 grid grid-cols-2 gap-4">
+            <RippleButton className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+              <span className="flex items-center justify-center gap-2">
+                <IconWallet size={18} />
+                برداشت
+              </span>
+            </RippleButton>
+            <RippleButton className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200">
+              <span className="flex items-center justify-center gap-2">
+                <IconGift size={18} />
+                دعوت دوستان
+              </span>
+            </RippleButton>
           </div>
-        </div>
+        </MaterialCard>
       </motion.section>
 
       {/* ----- بخش تنظیمات ----- */}
@@ -443,12 +500,24 @@ function ProfilePageContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.5 }}
+        className="mb-6"
       >
-        <h2 className="mb-3 text-xl font-semibold">تنظیمات</h2>
-        <div className="bg-muted/50 flex items-center justify-between rounded-xl p-4">
-          <p className="font-medium">پوسته برنامه</p>
+        <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-800">
+          <span className="h-6 w-1 rounded-full bg-slate-400"></span>
+          تنظیمات
+        </h2>
+        <MaterialCard
+          className="flex items-center justify-between p-5"
+          elevation={1}
+        >
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
+              <IconSparkles size={20} />
+            </div>
+            <p className="font-bold text-slate-700">پوسته برنامه</p>
+          </div>
           <ThemeSwitcher />
-        </div>
+        </MaterialCard>
       </motion.section>
 
       {/* این کامپوننت پاپ‌آپ ویرایش است */}
@@ -622,7 +691,7 @@ function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) {
             <Label>نام کاربری</Label>
             <div className="relative">
               <Input
-                className="pl-10"
+                className="pl-10 text-left"
                 placeholder="Username..."
                 value={username}
                 onChange={e => {
@@ -678,6 +747,7 @@ function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) {
             ref={buttonRef}
             onClick={handleSave}
             disabled={!usernameAvailable || loadingUsername}
+            className="bg-blue-600 hover:bg-blue-700"
           >
             ذخیره
           </Button>

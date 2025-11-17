@@ -22,13 +22,22 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { motion } from "framer-motion"
 import {
   IconChevronLeft,
-  IconFileText,
-  IconAlertTriangle,
-  IconChevronDown
+  IconFileDescription,
+  IconAlertCircle,
+  IconChevronDown,
+  IconSchool,
+  IconListDetails,
+  IconBook
 } from "@tabler/icons-react"
 
+// ایمپورت طبق مسیر درخواستی شما
+import {
+  MaterialCard,
+  IconWrapper,
+  colorThemes
+} from "@/components/material/MaterialUI"
+
 // --- داده‌های موقت (Mock Data) ---
-// TODO: این داده‌ها باید بعداً از Supabase خوانده شوند
 const grades = [
   { value: "دهم", label: "پایه دهم" },
   { value: "یازدهم", label: "پایه یازدهم" },
@@ -46,23 +55,24 @@ const allChapters = {
     { id: "ch1-10", label: "فصل ۱: دنیای زنده" },
     { id: "ch2-10", label: "فصل ۲: گوارش و جذب مواد" },
     { id: "ch3-10", label: "فصل ۳: تبادلات گازی" }
-    // ...
   ],
   یازدهم: [
     { id: "ch1-11", label: "فصل ۱: تنظیم عصبی" },
     { id: "ch2-11", label: "فصل ۲: حواس" }
-    // ...
   ],
   دوازدهم: [
     { id: "ch1-12", label: "فصل ۱: مولکول‌های اطلاعاتی" },
     { id: "ch2-12", label: "فصل ۲: جریان اطلاعات" }
-    // ...
   ]
 }
 // ---------------------------------
 
 export default function NewExamStep3Page() {
   const router = useRouter()
+
+  // تنظیم تم رنگی (آبی برای محتوا مناسب است)
+  const themeColor = "blue"
+  const theme = colorThemes[themeColor]
 
   // State برای فیلدهای فرم
   const [examName, setExamName] = useState("")
@@ -86,22 +96,18 @@ export default function NewExamStep3Page() {
     selectedChapters.length > 0
 
   const handleNextStep = () => {
-    // TODO: تمام اطلاعات (examName, selectedGrade, examType, selectedChapters) را به مرحله بعد ارسال کنید
-    // یا در Supabase ذخیره کنید و ID آزمون را به مرحله بعد بفرستید
-    router.push("/upload/new-exam-step-4") // (آدرس مرحله بعد)
+    router.push("/upload/new-exam-step-4")
   }
 
   const handleGoBack = () => {
-    router.back() // بازگشت به صفحه انتخاب نمره
+    router.back()
   }
 
-  // مدیریت انتخاب/عدم انتخاب فصل‌ها
   const handleChapterToggle = (chapterId: string) => {
-    setSelectedChapters(
-      prev =>
-        prev.includes(chapterId)
-          ? prev.filter(id => id !== chapterId) // حذف فصل
-          : [...prev, chapterId] // اضافه کردن فصل
+    setSelectedChapters(prev =>
+      prev.includes(chapterId)
+        ? prev.filter(id => id !== chapterId)
+        : [...prev, chapterId]
     )
   }
 
@@ -119,58 +125,71 @@ export default function NewExamStep3Page() {
         transition={{ duration: 0.5, ease: "easeInOut" }}
         className="relative w-full max-w-md"
       >
-        {/*
-          ❄️ المان شیشه مات (Frosted Glass) ❄️
-        */}
-        <div
-          className="border-muted-foreground/30 bg-muted/20 w-full overflow-hidden rounded-2xl 
-                     border shadow-xl backdrop-blur-lg"
-        >
+        <MaterialCard elevation={4} className="overflow-hidden">
+          {/* نوار رنگی بالای کارت */}
+          <div className={`h-2 bg-gradient-to-r ${theme.gradient}`} />
+
           {/* ----- هدر ----- */}
-          <div className="border-muted-foreground/30 flex items-center justify-between border-b p-4">
+          <div className="flex items-center justify-between p-6 pb-2">
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground"
+              className="text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
               onClick={handleGoBack}
             >
-              <IconChevronLeft size={20} />
+              <IconChevronLeft size={24} />
             </Button>
-            <h1 className="text-lg font-bold">محتوای امتحانی</h1>
-            <IconFileText size={24} className="text-primary" />
+
+            <div className="flex flex-col items-end">
+              <div className="mb-1 flex items-center gap-3">
+                <h1 className="text-lg font-bold text-slate-800">
+                  جزئیات آزمون
+                </h1>
+                {/* آیکون با رپر جدید */}
+                <div className="origin-right scale-75">
+                  <IconWrapper icon={IconFileDescription} color={themeColor} />
+                </div>
+              </div>
+              <p className="mr-1 text-xs text-slate-500">
+                مشخصات محتوایی را وارد کنید
+              </p>
+            </div>
           </div>
 
-          {/* ----- هشدار ----- */}
-          <div
-            className="flex items-center justify-center gap-2 border-b 
-                       border-red-500/30 bg-red-500/10 p-2 text-sm font-semibold text-red-500"
-          >
-            <IconAlertTriangle size={16} />
-            فقط زیست شناسی
+          {/* خط جداکننده */}
+          <div className="mx-6 my-2 h-px bg-slate-100" />
+
+          {/* ----- هشدار (طراحی جدید) ----- */}
+          <div className="px-6 pt-2">
+            <div className="flex items-center gap-3 rounded-xl border border-red-100 bg-red-50 p-3 text-red-600">
+              <IconAlertCircle size={20} className="shrink-0" />
+              <span className="text-xs font-semibold">
+                توجه: فعلاً فقط درس زیست‌شناسی فعال است.
+              </span>
+            </div>
           </div>
 
           {/* ----- فرم اصلی ----- */}
-          <div className="p-6">
-            <div className="space-y-6">
-              {/* --- 1. نام آزمون --- */}
-              <div>
-                <Label
-                  htmlFor="examName"
-                  className="mb-2 block text-sm font-medium"
-                >
-                  نام آزمون
-                </Label>
-                <Input
-                  id="examName"
-                  placeholder="مثلا: امتحان نهایی فصل ۱ و ۲"
-                  value={examName}
-                  onChange={e => setExamName(e.target.value)}
-                />
-              </div>
+          <div className="space-y-5 p-6">
+            {/* --- 1. نام آزمون --- */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                <span className={`h-3 w-1 rounded-full ${theme.bg}`}></span>
+                نام آزمون
+              </Label>
+              <Input
+                placeholder="مثلا: جمع‌بندی نیم‌سال اول"
+                value={examName}
+                onChange={e => setExamName(e.target.value)}
+                className="h-10 border-slate-200 bg-slate-50 transition-colors focus:border-blue-500"
+              />
+            </div>
 
+            <div className="grid grid-cols-2 gap-4">
               {/* --- 2. پایه تحصیلی --- */}
-              <div>
-                <Label className="mb-2 block text-sm font-medium">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                  <IconSchool size={14} />
                   پایه تحصیلی
                 </Label>
                 <Select
@@ -178,8 +197,8 @@ export default function NewExamStep3Page() {
                   value={selectedGrade}
                   onValueChange={setSelectedGrade}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="پایه را انتخاب کنید..." />
+                  <SelectTrigger className="border-slate-200 bg-slate-50">
+                    <SelectValue placeholder="انتخاب..." />
                   </SelectTrigger>
                   <SelectContent>
                     {grades.map(grade => (
@@ -192,18 +211,19 @@ export default function NewExamStep3Page() {
               </div>
 
               {/* --- 3. نوع امتحان --- */}
-              <div>
-                <Label className="mb-2 block text-sm font-medium">
-                  نوع امتحان
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                  <IconListDetails size={14} />
+                  نوع آزمون
                 </Label>
                 <Select
                   dir="rtl"
                   value={examType}
                   onValueChange={setExamType}
-                  disabled={!selectedGrade} // تا پایه انتخاب نشده، غیرفعال است
+                  disabled={!selectedGrade}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="نوع را انتخاب کنید..." />
+                  <SelectTrigger className="border-slate-200 bg-slate-50">
+                    <SelectValue placeholder="انتخاب..." />
                   </SelectTrigger>
                   <SelectContent>
                     {examTypes.map(type => (
@@ -214,79 +234,91 @@ export default function NewExamStep3Page() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
-              {/* --- 4. انتخاب فصل‌ها (Popover) --- */}
-              <div>
-                <Label className="mb-2 block text-sm font-medium">
-                  فصل‌های امتحان
-                </Label>
-                <Popover
-                  open={chaptersPopoverOpen}
-                  onOpenChange={setChaptersPopoverOpen}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-between"
-                      disabled={!selectedGrade} // تا پایه انتخاب نشده، غیرفعال است
-                    >
+            {/* --- 4. انتخاب فصل‌ها --- */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                <IconBook size={14} />
+                سرفصل‌ها
+              </Label>
+              <Popover
+                open={chaptersPopoverOpen}
+                onOpenChange={setChaptersPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`
+                        h-11 w-full justify-between border-slate-200 bg-slate-50 hover:bg-slate-100
+                        ${!selectedGrade && "cursor-not-allowed opacity-50"}
+                      `}
+                    disabled={!selectedGrade}
+                  >
+                    <span className="truncate text-sm text-slate-700">
                       {selectedChapters.length > 0
                         ? `${selectedChapters.length} فصل انتخاب شده`
-                        : "انتخاب فصل‌ها..."}
-                      <IconChevronDown size={16} />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                    <ScrollArea className="h-48">
-                      <div className="p-4">
-                        {availableChapters.length > 0 ? (
-                          availableChapters.map(chapter => (
-                            <div
-                              key={chapter.id}
-                              className="mb-2 flex items-center space-x-2 space-x-reverse"
+                        : "انتخاب فصل‌های مورد نظر"}
+                    </span>
+                    <IconChevronDown size={16} className="text-slate-400" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="center">
+                  <ScrollArea className="h-48 bg-white">
+                    <div className="space-y-1 p-3">
+                      {availableChapters.length > 0 ? (
+                        availableChapters.map(chapter => (
+                          <div
+                            key={chapter.id}
+                            className="flex items-center space-x-2 space-x-reverse rounded-lg p-2 transition-colors hover:bg-slate-50"
+                          >
+                            <Checkbox
+                              id={chapter.id}
+                              checked={selectedChapters.includes(chapter.id)}
+                              onCheckedChange={() =>
+                                handleChapterToggle(chapter.id)
+                              }
+                              className="border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600"
+                            />
+                            <Label
+                              htmlFor={chapter.id}
+                              className="flex-1 cursor-pointer text-sm text-slate-700"
                             >
-                              <Checkbox
-                                id={chapter.id}
-                                checked={selectedChapters.includes(chapter.id)}
-                                onCheckedChange={() =>
-                                  handleChapterToggle(chapter.id)
-                                }
-                              />
-                              <Label
-                                htmlFor={chapter.id}
-                                className="cursor-pointer"
-                              >
-                                {chapter.label}
-                              </Label>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-muted-foreground text-center text-sm">
-                            ابتدا پایه تحصیلی را انتخاب کنید.
-                          </p>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
-              </div>
+                              {chapter.label}
+                            </Label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="py-4 text-center text-xs text-slate-400">
+                          ابتدا پایه تحصیلی را انتخاب کنید.
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
-        </div>
 
-        {/* ----- دکمه ادامه ----- */}
-        <div className="mt-6 flex w-full justify-center">
-          <Button
-            size="lg"
-            className="shadow-primary/30 w-full max-w-xs rounded-full px-8 py-6 
-                       text-base font-bold shadow-lg
-                       disabled:cursor-not-allowed disabled:shadow-none"
-            onClick={handleNextStep}
-            disabled={!isFormValid} // دکمه غیرفعال
-          >
-            ادامه
-          </Button>
-        </div>
+          {/* ----- فوتر ----- */}
+          <div className="mt-2 p-6 pt-0">
+            <Button
+              size="lg"
+              onClick={handleNextStep}
+              disabled={!isFormValid}
+              className={`
+                h-12 w-full rounded-xl text-base font-bold shadow-lg transition-all duration-300
+                ${
+                  !isFormValid
+                    ? "cursor-not-allowed bg-slate-100 text-slate-400 shadow-none"
+                    : `bg-gradient-to-r ${theme.gradient} text-white hover:-translate-y-0.5 hover:shadow-xl`
+                }
+              `}
+            >
+              تایید و ادامه
+            </Button>
+          </div>
+        </MaterialCard>
       </motion.div>
     </div>
   )

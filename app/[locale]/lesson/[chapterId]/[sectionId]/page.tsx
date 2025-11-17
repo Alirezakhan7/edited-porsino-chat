@@ -3,23 +3,30 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { motion } from "framer-motion"
-import { Progress } from "@/components/ui/progress"
 import {
   IconBook,
   IconCards,
   IconCertificate,
   IconClock,
-  IconArrowRight,
+  IconArrowLeft, // تغییر جهت فلش برای فارسی
   IconLock,
   IconCheck,
-  IconStar
+  IconStar,
+  IconBulb // برای باکس راهنما
 } from "@tabler/icons-react"
 
-import { createClient, SupabaseClient } from "@supabase/supabase-js"
-
+import { createClient } from "@/lib/supabase/client"
 import { findLessonByParams } from "@/lib/lessons/config"
 import type { ActivityId, LessonActivityConfig } from "@/lib/lessons/types"
 import { getLessonProgress, type ActivityProgressMap } from "@/lib/progress/api"
+
+// --- ایمپورت کامپوننت‌های دیزاین سیستم شما ---
+import {
+  MaterialCard,
+  IconWrapper,
+  colorThemes,
+  type ColorKey
+} from "@/components/material/MaterialUI"
 
 // -------------------- انواع نمایشی --------------------
 
@@ -38,10 +45,7 @@ interface LessonViewData {
 
 // -------------------- Supabase --------------------
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createClient()
 
 // -------------------- صفحه گفتار --------------------
 
@@ -54,8 +58,7 @@ export default function LessonPage() {
   }>()
 
   const locale = params.locale ?? "fa"
-
-  const [userId, setUserId] = useState<string | null>(null)
+  const [loadingProgress, setLoadingProgress] = useState<boolean>(true)
   const [activityProgress, setActivityProgress] = useState<ActivityProgressMap>(
     {
       reading: 0,
@@ -64,7 +67,6 @@ export default function LessonPage() {
       "speed-test": 0
     }
   )
-  const [loadingProgress, setLoadingProgress] = useState<boolean>(true)
 
   // پیدا کردن درس از روی chapter/section
   const lessonConfig = useMemo(() => {
@@ -76,13 +78,6 @@ export default function LessonPage() {
   // گرفتن یوزر + progress
   useEffect(() => {
     if (!lessonConfig) {
-      setUserId(null)
-      setActivityProgress({
-        reading: 0,
-        flashcard: 0,
-        exam: 0,
-        "speed-test": 0
-      })
       setLoadingProgress(false)
       return
     }
@@ -93,29 +88,14 @@ export default function LessonPage() {
     async function load() {
       try {
         setLoadingProgress(true)
-
         const {
-          data: { user },
-          error
+          data: { user }
         } = await supabase.auth.getUser()
 
-        if (error) {
-          console.error("[LessonPage] getUser error:", error)
-        }
-
         if (!user || cancelled) {
-          setUserId(null)
-          setActivityProgress({
-            reading: 0,
-            flashcard: 0,
-            exam: 0,
-            "speed-test": 0
-          })
           setLoadingProgress(false)
           return
         }
-
-        setUserId(user.id)
 
         const activityIds = currentLesson.activities.map(a => a.id)
         const map = await getLessonProgress(
@@ -125,7 +105,6 @@ export default function LessonPage() {
         )
 
         if (cancelled) return
-
         setActivityProgress(map)
         setLoadingProgress(false)
       } catch (e) {
@@ -135,7 +114,6 @@ export default function LessonPage() {
     }
 
     load()
-
     return () => {
       cancelled = true
     }
@@ -144,29 +122,21 @@ export default function LessonPage() {
   // ساخت داده نهایی برای UI
   const lessonData: LessonViewData | null = useMemo(() => {
     if (!lessonConfig) return null
-
     const UNLOCK_THRESHOLD = 80
 
     const activities: ActivityView[] = lessonConfig.activities.map(activity => {
       const progress = activityProgress[activity.id] ?? 0
-
       let isLocked = false
 
-      // امتحان نهایی و تست سرعتی، تا وقتی reading و flashcard هر دو زیر ۸۰ باشن، قفل‌اند
       if (activity.id === "exam" || activity.id === "speed-test") {
         const readingProgress = activityProgress.reading ?? 0
         const flashcardProgress = activityProgress.flashcard ?? 0
-
         isLocked =
           readingProgress < UNLOCK_THRESHOLD ||
           flashcardProgress < UNLOCK_THRESHOLD
       }
 
-      return {
-        ...activity,
-        progress,
-        isLocked
-      }
+      return { ...activity, progress, isLocked }
     })
 
     const totalProgress =
@@ -186,23 +156,20 @@ export default function LessonPage() {
     }
   }, [lessonConfig, activityProgress])
 
-  if (!lessonData) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-sm text-slate-300">
-          این درس پیدا نشد. لطفاً از منوی قبلی یک درس معتبر انتخاب کن.
-        </p>
-      </div>
-    )
-  }
-
-  // کلیک روی کارت فعالیت
-  const handleActivityClick = (activity: ActivityView) => {
-    if (activity.isLocked) return
-
-    router.push(
-      `/${locale}/lesson/${params.chapterId}/${params.sectionId}/${activity.id}`
-    )
+  // --- هلپر برای رنگ‌بندی فعالیت‌ها ---
+  const getActivityColor = (id: string): ColorKey => {
+    switch (id) {
+      case "reading":
+        return "blue"
+      case "flashcard":
+        return "purple"
+      case "exam":
+        return "pink"
+      case "speed-test":
+        return "emerald"
+      default:
+        return "blue"
+    }
   }
 
   const getActivityIcon = (id: ActivityId) => {
@@ -220,200 +187,202 @@ export default function LessonPage() {
     }
   }
 
+  // --- هندلر کلیک ---
+  const handleActivityClick = (activity: ActivityView) => {
+    if (activity.isLocked) return
+    router.push(
+      `/${locale}/lesson/${params.chapterId}/${params.sectionId}/${activity.id}`
+    )
+  }
+
+  if (!lessonData) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center bg-gray-100 text-gray-500">
+        این درس پیدا نشد.
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-50">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 md:flex-row md:py-10">
-        {/* ستون اصلی - کارت‌ها */}
+    // پس‌زمینه روشن و استایل کلی مشابه صفحه Path
+    <div dir="rtl" className="min-h-screen bg-gray-100 py-8 pb-12">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 md:px-8 lg:flex-row">
+        {/* ستون اصلی (راست) - لیست فعالیت‌ها */}
         <div className="flex-1 space-y-6">
           {/* هدر درس */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="rounded-3xl bg-gradient-to-r from-sky-500/10 via-emerald-500/10 to-violet-500/10 p-6 shadow-xl ring-1 ring-white/5 backdrop-blur"
           >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-emerald-400">
-                  زیست دهم • فصل ۱
+            <MaterialCard className="relative overflow-hidden p-6 md:p-8">
+              {/* نوار رنگی بالای کارت */}
+              <div className="absolute right-0 top-0 h-2 w-full bg-gradient-to-r from-blue-500 to-purple-500" />
+
+              <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                <div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                      زیست دهم
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">
+                      فصل ۱
+                    </span>
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+                    {lessonData.title}
+                  </h1>
                 </div>
-                <h1 className="text-xl font-bold md:text-2xl">
-                  {lessonData.title}
-                </h1>
-              </div>
-              <div className="flex items-center gap-2 rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/30">
-                <IconStar className="size-4 text-amber-400" />
-                <span>در حال یادگیری</span>
-              </div>
-            </div>
 
-            <p className="text-sm text-slate-200/80 md:text-[15px]">
-              {lessonData.description}
-            </p>
-
-            {/* پیشرفت کلی */}
-            <div className="mx-auto mt-6 max-w-md">
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-medium">پیشرفت کلی</span>
-                <span className="font-bold text-emerald-400">
-                  {lessonData.totalProgress}٪
-                </span>
+                {/* بج پیشرفت */}
+                <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2 text-green-700">
+                  <IconStar className="size-5 fill-green-500 text-green-500" />
+                  <span className="font-bold">
+                    ٪{lessonData.totalProgress} تکمیل شده
+                  </span>
+                </div>
               </div>
-              <Progress value={lessonData.totalProgress} className="h-3" />
-              {loadingProgress && (
-                <p className="mt-2 text-xs text-slate-300/70">
-                  در حال همگام‌سازی با سرور...
-                </p>
-              )}
-            </div>
+
+              <p className="leading-relaxed text-gray-600">
+                {lessonData.description}
+              </p>
+
+              {/* نوار پیشرفت کلی */}
+              <div className="mt-6">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-500"
+                    style={{ width: `${lessonData.totalProgress}%` }}
+                  />
+                </div>
+              </div>
+            </MaterialCard>
           </motion.div>
 
           {/* کارت‌های فعالیت‌ها */}
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-2">
             {lessonData.activities.map((activity, index) => {
               const Icon = getActivityIcon(activity.id)
+              const colorKey = getActivityColor(activity.id)
+              const theme = colorThemes[colorKey]
+              const isLocked = activity.isLocked
 
               return (
-                <motion.button
+                <motion.div
                   key={activity.id}
-                  onClick={() => handleActivityClick(activity)}
-                  disabled={activity.isLocked}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05, duration: 0.25 }}
-                  className={`
-                    group relative flex flex-col items-start justify-between rounded-2xl 
-                    bg-slate-900/60 p-4 text-right shadow-lg ring-1 ring-white/5 
-                    backdrop-blur transition-all duration-200
-                    hover:-translate-y-1 hover:bg-slate-900/80 hover:ring-emerald-500/40
-                    ${activity.isLocked ? "opacity-60 hover:translate-y-0 hover:ring-white/5" : ""}
-                  `}
+                  transition={{ delay: index * 0.1 }}
                 >
-                  <div className="flex w-full items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`
-                            inline-flex size-8 items-center justify-center rounded-xl bg-gradient-to-br ${activity.color}
-                            text-lg
-                          `}
-                        >
-                          {activity.icon}
-                        </span>
-                        {activity.isLocked && (
-                          <span className="flex items-center gap-1 rounded-full bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-slate-300">
-                            <IconLock className="size-3" />
-                            قفل شده
-                          </span>
-                        )}
-                      </div>
-                      <h2 className="text-sm font-semibold text-slate-50 md:text-[15px]">
-                        {activity.title}
-                      </h2>
-                      <p className="text-xs text-slate-300/80">
-                        {activity.description}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-1 text-xs text-slate-300/90">
-                        {activity.progress === 100 ? (
-                          <>
-                            <IconCheck className="size-4 text-emerald-400" />
-                            <span className="font-semibold text-emerald-300">
-                              تکمیل شد
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="font-semibold">
-                              {activity.progress}٪
-                            </span>
-                            <span className="text-[11px] text-slate-400">
-                              پیشرفت
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-800">
-                        <div
-                          className={`
-                            h-full rounded-full bg-gradient-to-r ${activity.color}
-                            transition-all duration-300
-                          `}
-                          style={{ width: `${activity.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex w-full items-center justify-between text-[11px] text-slate-300/80">
-                    <span>
-                      {activity.id === "reading" && "از اینجا شروع کن"}
-                      {activity.id === "flashcard" && "برای تثبیت مفاهیم"}
-                      {activity.id === "exam" && "شبیه‌ساز امتحان واقعی"}
-                      {activity.id === "speed-test" && "برای چالش سرعت و دقت"}
-                    </span>
-                    <IconArrowRight
-                      className={`
-                        size-4 transition-all
-                        ${activity.isLocked ? "text-slate-500" : "text-emerald-400 group-hover:translate-x-0.5"}
-                      `}
-                    />
-                  </div>
-
-                  <div
+                  <MaterialCard
+                    onClick={() => handleActivityClick(activity)}
                     className={`
-                      pointer-events-none absolute inset-x-0 bottom-0 h-0.5 
-                      bg-gradient-to-r ${activity.color} opacity-70
+                      relative h-full border border-transparent p-5 transition-all
+                      ${
+                        isLocked
+                          ? "cursor-not-allowed bg-gray-50 opacity-60 grayscale"
+                          : "cursor-pointer hover:border-blue-200 hover:shadow-xl"
+                      }
                     `}
-                  />
-                </motion.button>
+                  >
+                    {/* نمایش قفل */}
+                    {isLocked && (
+                      <div className="absolute left-4 top-4 rounded-lg bg-gray-200 p-1.5 text-gray-500">
+                        <IconLock size={18} />
+                      </div>
+                    )}
+
+                    {/* محتوا */}
+                    <div className="flex items-start gap-4">
+                      {/* آیکون با استایل MaterialUI */}
+                      <div className={isLocked ? "opacity-50" : ""}>
+                        <IconWrapper icon={Icon} color={colorKey} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h3 className="mb-1 text-lg font-bold text-gray-900">
+                          {activity.title}
+                        </h3>
+                        <p className="mb-3 line-clamp-2 text-sm text-gray-500">
+                          {activity.description}
+                        </p>
+
+                        {/* وضعیت پیشرفت */}
+                        <div className="flex items-center justify-end text-xs">
+                          {activity.progress === 100 ? (
+                            <span className="flex items-center gap-1 font-bold text-green-600">
+                              تکمیل
+                              <IconCheck size={16} />
+                            </span>
+                          ) : (
+                            <span className={`${theme.text} font-bold`}>
+                              {activity.progress}٪ پیشرفت
+                            </span>
+                          )}
+                        </div>
+
+                        {/* نوار پیشرفت کوچک */}
+                        <div
+                          className={`mt-2 h-1.5 w-full rounded-full ${theme.light}`}
+                        >
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${theme.gradient}`}
+                            style={{ width: `${activity.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </MaterialCard>
+                </motion.div>
               )
             })}
           </div>
         </div>
 
-        {/* ستون راهنما */}
+        {/* ستون کناری (چپ) - راهنما */}
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="w-full max-w-sm space-y-4 rounded-3xl bg-slate-950/70 p-5 shadow-xl ring-1 ring-white/5 backdrop-blur"
+          className="w-full space-y-6 lg:w-80"
         >
-          <h3 className="mb-2 text-sm font-semibold text-slate-50">
-            این گفتار را چطور بخوانی؟
-          </h3>
-          <ul className="space-y-3 text-xs text-slate-300/90">
-            <li className="flex items-start gap-2">
-              <span className="mt-1 text-sky-400">•</span>
-              <span>اول متن درسی را به دقت بخوان و نکات مهم را علامت بزن.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 text-emerald-400">•</span>
-              <span>بعد با فلش‌کارت‌ها، مفاهیم کلیدی را چند بار مرور کن.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 text-violet-400">•</span>
-              <span>
-                وقتی احساس کردی مسلطی، امتحان نهایی را بده تا تسلط خودت را
-                بسنجی.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 text-amber-400">•</span>
-              <span>در نهایت با تست سرعتی، روی زمان و دقت خودت کار کن.</span>
-            </li>
-          </ul>
+          <MaterialCard className="border border-yellow-100 bg-gradient-to-br from-yellow-50 to-orange-50 p-6">
+            <div className="mb-4 flex items-center gap-2 text-yellow-700">
+              <IconBulb size={24} className="fill-yellow-400 text-yellow-600" />
+              <h3 className="text-lg font-bold">مسیر پیشنهادی</h3>
+            </div>
 
-          <div className="mt-4 rounded-2xl bg-slate-900/80 p-3 text-xs text-slate-200">
-            <p className="mb-1 font-semibold text-emerald-300">نکته‌ی مهم:</p>
-            <p>
-              درصدهای این صفحه برای هر دانش‌آموز در سرور ذخیره می‌شود و هربار
-              وارد شوی، از همان‌جایی که بودی ادامه می‌دهی.
-            </p>
+            <ul className="relative space-y-4">
+              {/* خط اتصال */}
+              <div className="absolute inset-y-2 right-[7px] w-0.5 bg-yellow-200/50" />
+
+              <li className="relative flex items-start gap-3 pr-4">
+                <span className="absolute right-0 top-1.5 z-10 size-3.5 rounded-full border-2 border-white bg-blue-400 shadow-sm" />
+                <p className="text-sm leading-relaxed text-gray-700">
+                  ابتدا <span className="font-bold text-blue-600">مطالعه</span>{" "}
+                  را کامل کن تا مفاهیم را یاد بگیری.
+                </p>
+              </li>
+              <li className="relative flex items-start gap-3 pr-4">
+                <span className="absolute right-0 top-1.5 z-10 size-3.5 rounded-full border-2 border-white bg-purple-400 shadow-sm" />
+                <p className="text-sm leading-relaxed text-gray-700">
+                  با <span className="font-bold text-purple-600">فلش‌کارت</span>{" "}
+                  مرور کن تا فراموش نکنی.
+                </p>
+              </li>
+              <li className="relative flex items-start gap-3 pr-4">
+                <span className="absolute right-0 top-1.5 z-10 size-3.5 rounded-full border-2 border-white bg-pink-400 shadow-sm" />
+                <p className="text-sm leading-relaxed text-gray-700">
+                  در <span className="font-bold text-pink-600">امتحان</span>{" "}
+                  شرکت کن تا قفل مرحله بعد باز شود.
+                </p>
+              </li>
+            </ul>
+          </MaterialCard>
+
+          <div className="text-center text-xs text-gray-400">
+            پیشرفت شما به صورت خودکار ذخیره می‌شود
           </div>
         </motion.div>
+        <div className="h-20 w-full shrink-0 md:hidden" />
       </div>
     </div>
   )

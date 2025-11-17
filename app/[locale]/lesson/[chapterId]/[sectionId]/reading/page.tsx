@@ -2,31 +2,42 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { motion } from "framer-motion"
-import { Progress } from "@/components/ui/progress"
-import { IconArrowRight, IconCheck } from "@tabler/icons-react"
-import { createClient } from "@supabase/supabase-js"
+import { motion, AnimatePresence } from "framer-motion"
+import {
+  IconArrowRight,
+  IconCheck,
+  IconX,
+  IconBook,
+  IconBulb
+} from "@tabler/icons-react"
+import { createClient } from "@/lib/supabase/client"
 
 import { findLessonByParams } from "@/lib/lessons/config"
 import { getLessonContent } from "@/lib/lessons/content"
 import { upsertActivityProgress } from "@/lib/progress/api"
 import type { ActivityId } from "@/lib/lessons/types"
 
-const ACTIVITY_ID: ActivityId = "reading"
+// --- کامپوننت‌های متریال ---
+import { MaterialCard, colorThemes } from "@/components/material/MaterialUI"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const ACTIVITY_ID: ActivityId = "reading"
+const THEME = colorThemes.blue // تم آبی برای مطالعه
+
+const supabase = createClient()
 
 export default function ReadingPage() {
   const router = useRouter()
-  const params = useParams<{ chapterId: string; sectionId: string }>()
+  const params = useParams<{
+    locale: string
+    chapterId: string
+    sectionId: string
+  }>()
+  const locale = params.locale ?? "fa"
 
   const [userId, setUserId] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
-  const [lastAnsweredId, setLastAnsweredId] = useState<string | null>(null)
 
   const lessonConfig = useMemo(() => {
     return findLessonByParams(
@@ -44,26 +55,17 @@ export default function ReadingPage() {
   useEffect(() => {
     async function loadUser() {
       const {
-        data: { user },
-        error
+        data: { user }
       } = await supabase.auth.getUser()
-      console.log("SUPABASE USER =>", user, "ERROR =>", error)
-      if (error) {
-        console.error("[ReadingPage] getUser error:", error)
-      }
-
       setUserId(user?.id ?? null)
     }
-
     loadUser()
   }, [])
 
   if (!lessonConfig || !content || content.readingQuestions.length === 0) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-sm text-slate-300">
-          برای این گفتار هنوز سؤال‌های بخش مطالعه ثبت نشده است.
-        </p>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-gray-500">
+        محتوای مطالعه برای این بخش یافت نشد.
       </div>
     )
   }
@@ -79,26 +81,15 @@ export default function ReadingPage() {
       : Math.round((answeredCount / totalQuestions) * 100)
 
   const handleAnswer = async (optionIndex: number) => {
-    // اگر قبلاً برای این سؤال جوابی ثبت شده، هیچی نکن
-    if (answers[currentQuestion.id] !== undefined) {
-      return
-    }
+    if (answers[currentQuestion.id] !== undefined) return
 
-    const newAnswers = {
-      ...answers,
-      [currentQuestion.id]: optionIndex
-    }
+    const newAnswers = { ...answers, [currentQuestion.id]: optionIndex }
     setAnswers(newAnswers)
-    setLastAnsweredId(currentQuestion.id)
 
-    // اگر کاربر لاگین است، پیشرفت را در دیتابیس هم ذخیره کن
     if (userId) {
-      const newAnsweredCount = Object.keys(newAnswers).length
-      const newProgress =
-        totalQuestions === 0
-          ? 0
-          : Math.round((newAnsweredCount / totalQuestions) * 100)
-
+      const newProgress = Math.round(
+        (Object.keys(newAnswers).length / totalQuestions) * 100
+      )
       try {
         setSaving(true)
         await upsertActivityProgress(supabase, {
@@ -108,156 +99,168 @@ export default function ReadingPage() {
           progress: newProgress
         })
       } catch (e) {
-        console.error("[ReadingPage] upsertActivityProgress error:", e)
+        console.error(e)
       } finally {
         setSaving(false)
       }
     }
   }
 
-  const isLastQuestion = currentIndex === totalQuestions - 1
   const selectedIndex = answers[currentQuestion.id]
   const isAnswered = selectedIndex !== undefined
-  const isCorrect =
-    selectedIndex !== undefined &&
-    selectedIndex === currentQuestion.correctIndex
+  const isCorrect = isAnswered && selectedIndex === currentQuestion.correctIndex
+  const isLastQuestion = currentIndex === totalQuestions - 1
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-50">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 md:py-10">
-        {/* دکمه بازگشت */}
-        <div className="flex items-center justify-between gap-3">
+    <div dir="rtl" className="min-h-screen bg-gray-100 py-8 pb-20">
+      <div className="mx-auto w-full max-w-3xl px-4 md:px-8">
+        {/* هدر صفحه */}
+        <div className="mb-8 flex items-center justify-between">
           <button
-            onClick={() =>
-              router.push(`/lesson/${params.chapterId}/${params.sectionId}`)
-            }
-            className="inline-flex items-center gap-1 rounded-full bg-slate-900/70 px-3 py-1 text-xs text-slate-200 ring-1 ring-slate-700 hover:bg-slate-800"
+            onClick={() => router.back()}
+            className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-gray-600 shadow-sm transition-colors hover:text-blue-600 hover:shadow-md"
           >
-            <IconArrowRight className="size-4" />
-            بازگشت به صفحه گفتار
+            <IconArrowRight size={18} />
+            <span className="text-sm font-bold">بازگشت</span>
           </button>
-          <span className="text-[11px] text-slate-400">
-            گفتار: {lessonConfig.title}
-          </span>
+
+          <div className="flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-blue-600">
+            <IconBook size={20} />
+            <span className="text-sm font-bold">بخش مطالعه</span>
+          </div>
         </div>
 
-        {/* کارت سؤال و نوار پیشرفت */}
-        <motion.div
-          key={currentQuestion.id}
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="rounded-3xl bg-slate-900/70 p-5 shadow-xl ring-1 ring-white/5 backdrop-blur"
-        >
-          {/* پیشرفت */}
-          <div className="mb-4">
-            <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
-              <span>پیشرفت مطالعه (reading)</span>
-              <span className="font-semibold text-emerald-300">
-                {progressPercent}٪
-              </span>
-            </div>
-            <Progress value={progressPercent} className="h-2" />
-            {saving && (
-              <p className="mt-1 text-[11px] text-slate-400">
-                در حال ذخیره‌سازی پیشرفت...
-              </p>
-            )}
+        {/* نوار پیشرفت */}
+        <div className="mb-6">
+          <div className="mb-2 flex justify-between text-xs font-bold text-gray-500">
+            <span>پیشرفت شما</span>
+            <span>{progressPercent}٪</span>
           </div>
-
-          {/* متن سؤال */}
-          <h1 className="mb-4 text-base font-semibold text-slate-50">
-            {currentQuestion.question}
-          </h1>
-
-          {/* گزینه‌ها */}
-          <div className="space-y-2">
-            {currentQuestion.options.map((opt, idx) => {
-              const isSelected = selectedIndex === idx
-              const isRightOption = idx === currentQuestion.correctIndex
-
-              let optionClasses =
-                "w-full rounded-xl border px-3 py-2 text-right text-sm transition-all"
-
-              if (isSelected) {
-                optionClasses += isCorrect
-                  ? " border-emerald-500 bg-emerald-500/10"
-                  : " border-rose-500 bg-rose-500/10"
-              } else {
-                optionClasses +=
-                  " border-slate-700 bg-slate-900/60 hover:bg-slate-800"
-              }
-
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleAnswer(idx)}
-                  disabled={isAnswered}
-                  className={optionClasses}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span>{opt}</span>
-                    {isSelected && (
-                      <IconCheck
-                        className={`size-4 ${
-                          isCorrect ? "text-emerald-400" : "text-rose-400"
-                        }`}
-                      />
-                    )}
-                    {!isSelected &&
-                      isRightOption &&
-                      lastAnsweredId === currentQuestion.id && (
-                        <span className="text-[10px] text-emerald-300">
-                          گزینه صحیح
-                        </span>
-                      )}
-                  </div>
-                </button>
-              )
-            })}
+          <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
+            <div
+              className="h-full rounded-full bg-blue-500 transition-all duration-500 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
+        </div>
 
-          {/* توضیح بعد از پاسخ */}
-          {selectedIndex !== undefined && currentQuestion.explanation && (
-            <div className="mt-4 rounded-2xl bg-slate-800/80 p-3 text-xs text-slate-200">
-              <p className="mb-1 font-semibold">
-                {isCorrect ? "✅ درست گفتی!" : "ℹ توضیح:"}
-              </p>
-              <p>{currentQuestion.explanation}</p>
-            </div>
-          )}
+        {/* کارت سوال */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentQuestion.id}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <MaterialCard className="relative overflow-hidden p-6 md:p-8">
+              {/* شمارنده سوال */}
+              <div className="absolute left-0 top-0 rounded-br-2xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600 shadow-inner">
+                سوال {currentIndex + 1} از {totalQuestions}
+              </div>
 
-          {/* وضعیت سؤال و ناوبری ساده */}
-          <div className="mt-5 flex items-center justify-between text-xs text-slate-300">
-            <span>
-              سؤال {currentIndex + 1} از {totalQuestions}
-            </span>
+              <h2 className="mb-8 mt-6 text-xl font-bold leading-relaxed text-gray-800 md:text-2xl">
+                {currentQuestion.question}
+              </h2>
 
-            <div className="flex items-center gap-2">
-              {!isLastQuestion && (
-                <button
-                  onClick={() => setCurrentIndex(i => i + 1)}
-                  className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500"
-                >
-                  سؤال بعدی
-                </button>
-              )}
+              {/* گزینه‌ها */}
+              <div className="space-y-3">
+                {currentQuestion.options.map((opt, idx) => {
+                  const isSelected = selectedIndex === idx
+                  const isRightOption = idx === currentQuestion.correctIndex
 
-              {isLastQuestion && (
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/lesson/${params.chapterId}/${params.sectionId}`
-                    )
+                  // تعیین استایل دکمه بر اساس وضعیت پاسخ
+                  let statusClass =
+                    "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50"
+                  let icon = null
+
+                  if (isAnswered) {
+                    if (isSelected && isRightOption) {
+                      statusClass =
+                        "border-green-500 bg-green-50 text-green-700 ring-1 ring-green-500"
+                      icon = <IconCheck className="text-green-600" />
+                    } else if (isSelected && !isRightOption) {
+                      statusClass =
+                        "border-red-500 bg-red-50 text-red-700 ring-1 ring-red-500"
+                      icon = <IconX className="text-red-600" />
+                    } else if (!isSelected && isRightOption) {
+                      statusClass =
+                        "border-green-500 bg-green-50 text-green-700 opacity-70" // گزینه صحیح که انتخاب نشده
+                      icon = <IconCheck className="text-green-600" />
+                    } else {
+                      statusClass = "opacity-50 border-gray-100 bg-gray-50" // گزینه‌های غلط دیگر
+                    }
                   }
-                  className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500"
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => handleAnswer(idx)}
+                      disabled={isAnswered}
+                      className={`
+                                    group flex w-full items-center justify-between rounded-xl border-2 p-4
+                                    text-right text-base transition-all duration-200
+                                    ${statusClass}
+                                `}
+                    >
+                      <span className="font-medium">{opt}</span>
+                      {icon}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* باکس توضیحات (بعد از پاسخ) */}
+              <AnimatePresence>
+                {isAnswered && currentQuestion.explanation && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4"
+                  >
+                    <div className="flex items-start gap-3 text-blue-800">
+                      <IconBulb className="mt-0.5 shrink-0" />
+                      <div>
+                        <span className="mb-1 block font-bold">
+                          نکته آموزشی:
+                        </span>
+                        <p className="text-sm leading-relaxed opacity-90">
+                          {currentQuestion.explanation}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* دکمه بعدی */}
+              {isAnswered && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-8 flex justify-end"
                 >
-                  تمام! برگرد به صفحه گفتار
-                </button>
+                  <button
+                    onClick={() => {
+                      if (isLastQuestion) {
+                        router.push(
+                          `/${locale}/lesson/${params.chapterId}/${params.sectionId}`
+                        )
+                      } else {
+                        setCurrentIndex(prev => prev + 1)
+                      }
+                    }}
+                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700"
+                  >
+                    {isLastQuestion ? "پایان و بازگشت" : "سوال بعدی"}
+                    <IconArrowRight size={20} className="rotate-180" />{" "}
+                    {/* آیکون فلش برعکس برای دکمه بعدی */}
+                  </button>
+                </motion.div>
               )}
-            </div>
-          </div>
-        </motion.div>
+            </MaterialCard>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )
