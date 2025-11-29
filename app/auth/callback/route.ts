@@ -8,8 +8,7 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get("next")
 
   if (code) {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = createClient()
     await supabase.auth.exchangeCodeForSession(code)
   }
 

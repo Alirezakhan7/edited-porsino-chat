@@ -35,8 +35,7 @@ export async function POST(req: Request) {
     SECRET_KEY: process.env.DIRECTPAY_SECRET_KEY ? "✅ موجوده" : "❌ نیست",
     APP_URL: process.env.APP_URL
   })
-  const cookieStore = cookies()
-  const supabase = createClient(cookieStore)
+  const supabase = createClient()
 
   const app_url_env = process.env.APP_URL || "https://chat.porsino.org"
   const allowedOrigin = new URL(app_url_env).origin
