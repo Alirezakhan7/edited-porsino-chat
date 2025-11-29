@@ -17,8 +17,7 @@ export default async function Login({
 }: {
   searchParams: { message?: string; mode?: string }
 }) {
-  const cookieStore = cookies()
-  const supabase = createClient(cookieStore)
+  const supabase = createClient()
 
   // بررسی سشن
   const session = (await supabase.auth.getSession()).data.session
@@ -43,8 +42,7 @@ export default async function Login({
     "use server"
     const email = formData.get("email") as string
     const password = formData.get("password") as string
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = createClient()
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -63,8 +61,7 @@ export default async function Login({
     "use server"
     const email = formData.get("email") as string
     const password = formData.get("password") as string
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = createClient()
 
     const { data, error } = await supabase.auth.signUp({ email, password })
 
@@ -85,8 +82,7 @@ export default async function Login({
     "use server"
     const origin = headers().get("origin")
     const email = formData.get("email") as string
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = createClient()
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: "https://chat.porsino.org/auth/reset-password"
