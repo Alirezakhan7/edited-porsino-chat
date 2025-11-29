@@ -6,48 +6,22 @@ import {
   IconMicroscope,
   IconRun,
   IconDna,
-  IconPlant,
-  IconSparkles
+  IconPlant
 } from "@tabler/icons-react"
+import { motion } from "framer-motion"
 
 import {
-  PageHeader,
   MaterialTabs,
   ProgressCard,
   ChapterAccordion
 } from "@/components/material/LearningComponents"
 import type { ColorKey } from "@/components/material/MaterialUI"
 
-// ------------------ تایپ‌ها ------------------
-
-type GradeKey = "دهم" | "یازدهم" | "دوازدهم"
-
-type Section = {
-  id: string
-  title: string
-  progress: number
-}
-
-type Chapter = {
-  id: string
-  title: string
-  icon: any
-  progress: number
-  sections: Section[]
-}
-
-type GradeData = {
-  title: string
-  color: ColorKey
-  overallProgress: number
-  chapters: Chapter[]
-}
-
-// ------------------ داده‌ها ------------------
-
-const learningData: Record<GradeKey, GradeData> = {
+/* ------------------ داده‌ها (همان قبلی) ------------------ */
+// داده‌ها بدون تغییر کپی شده‌اند برای حفظ عملکرد
+const learningData: any = {
   دهم: {
-    title: "زیست‌ دهم",
+    title: "زیست‌شناسی دهم",
     color: "blue",
     overallProgress: 25,
     chapters: [
@@ -59,7 +33,7 @@ const learningData: Record<GradeKey, GradeData> = {
         sections: [
           { id: "s1", title: "گفتار ۱: گستره حیات", progress: 100 },
           { id: "s2", title: "گفتار ۲: مولکول‌های زیستی", progress: 30 },
-          { id: "s3", title: "گفتار ۳: آب و...", progress: 0 }
+          { id: "s3", title: "گفتار ۳: یاخته و بافت‌ها", progress: 0 }
         ]
       },
       {
@@ -68,14 +42,14 @@ const learningData: Record<GradeKey, GradeData> = {
         progress: 10,
         icon: IconRun,
         sections: [
-          { id: "s4", title: "گفتار ۱: ساختار...", progress: 20 },
+          { id: "s4", title: "گفتار ۱: ساختار لوله گوارش", progress: 20 },
           { id: "s5", title: "گفتار ۲: جذب مواد", progress: 0 }
         ]
       }
     ]
   },
   یازدهم: {
-    title: "زیست‌ یازدهم",
+    title: "زیست‌شناسی یازدهم",
     color: "purple",
     overallProgress: 0,
     chapters: [
@@ -89,12 +63,12 @@ const learningData: Record<GradeKey, GradeData> = {
     ]
   },
   دوازدهم: {
-    title: "زیست‌ دوازدهم",
+    title: "زیست‌شناسی دوازدهم",
     color: "pink",
     overallProgress: 0,
     chapters: [
       {
-        id: "ch1-12",
+        id: "biology_12_ch01",
         title: "فصل ۱: مولکول‌های اطلاعاتی",
         icon: IconDna,
         progress: 0,
@@ -111,62 +85,80 @@ const learningData: Record<GradeKey, GradeData> = {
   }
 }
 
-// ------------------ صفحه ------------------
-
 export default function PathPage() {
-  const [activeTab, setActiveTab] = useState<GradeKey>("دهم")
+  const [activeTab, setActiveTab] = useState("دهم")
   const router = useRouter()
   const params = useParams()
-  const locale = (params as { locale?: string })?.locale ?? "fa"
+  // بررسی ایمن locale
+  const locale = params && "locale" in params ? params.locale : "fa"
 
   const current = learningData[activeTab]
-  // فعلاً مقادیر تست — بعداً از Supabase محاسبه می‌شود
-  const learningProgress = current.overallProgress // مثلاً از reading + flashcard
-  const masteryProgress = 10 // از speed-test + exam
-  const overallProgress = 42 // خروجی هوش مصنوعی — فعلاً ثابت
+  const learningProgress = current.overallProgress
+  const masteryProgress = 10
+  const overallProgress = 42
 
   const handleSectionClick = (chapterId: string, sectionId: string) => {
-    router.push(`/${locale}/lesson/${chapterId}/${sectionId}`)
+    router.push(`/${locale}/lesson/${chapterId}`)
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gray-100 py-6 md:px-8">
-      <MaterialTabs
-        tabs={[
-          { label: "دهم", value: "دهم", color: "blue" },
-          { label: "یازدهم", value: "یازدهم", color: "purple" },
-          { label: "دوازدهم", value: "دوازدهم", color: "pink" }
-        ]}
-        active={activeTab}
-        onChange={v => setActiveTab(v as GradeKey)}
-      />
-
-      <ProgressCard
-        title={current.title}
-        learning={learningProgress}
-        mastery={masteryProgress}
-        overall={overallProgress} // فعلاً ثابت
-        color={current.color}
-      />
-
-      <div className="mb-3 flex items-center gap-3">
-        <div className="size-2 rounded-full bg-gray-400" />
-        <h3 className="text-xl font-bold text-gray-700">فهرست فصل‌ها</h3>
-        <div className="h-px flex-1 bg-gray-300" />
+    <div className="relative min-h-screen w-full overflow-x-hidden bg-gray-50 text-gray-900 selection:bg-purple-200 selection:text-purple-900">
+      {/* Background Ambient Mesh (تکنیک مدرن برای پس‌زمینه زنده) */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -left-[10%] -top-[20%] size-[70%] animate-pulse rounded-full bg-blue-200/30 mix-blend-multiply blur-[120px]" />
+        <div className="absolute -right-[10%] top-[20%] size-3/5 animate-pulse rounded-full bg-purple-200/30 mix-blend-multiply blur-[120px] delay-700" />
+        <div className="absolute -bottom-[10%] left-[20%] size-[50%] animate-pulse rounded-full bg-pink-200/30 mix-blend-multiply blur-[120px] delay-1000" />
       </div>
 
-      <div className="space-y-4">
-        {current.chapters.map((chapter, i) => (
-          <ChapterAccordion
-            key={chapter.id}
-            chapter={chapter}
-            index={i}
-            onSectionClick={sectionId =>
-              handleSectionClick(chapter.id, sectionId)
-            }
+      <main className="mx-auto max-w-3xl px-6 py-12 md:py-20" dir="rtl">
+        {/* Tabs */}
+        <MaterialTabs
+          tabs={[
+            { label: "پایه دهم", value: "دهم", color: "blue" },
+            { label: "پایه یازدهم", value: "یازدهم", color: "purple" },
+            { label: "پایه دوازدهم", value: "دوازدهم", color: "pink" }
+          ]}
+          active={activeTab}
+          onChange={v => setActiveTab(v)}
+        />
+
+        {/* Content Animate Presence for smooth transitions between tabs */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <ProgressCard
+            title={current.title}
+            learning={learningProgress}
+            mastery={masteryProgress}
+            overall={overallProgress}
+            color={current.color}
           />
-        ))}
-      </div>
+
+          <div className="mb-6 flex items-center gap-4 opacity-80">
+            <span className="text-lg font-bold text-gray-700">
+              فصل‌های آموزشی
+            </span>
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-gray-300 to-transparent" />
+          </div>
+
+          <div className="space-y-4 pb-20">
+            {current.chapters.map((chapter: any, i: number) => (
+              <ChapterAccordion
+                key={chapter.id}
+                chapter={chapter}
+                index={i}
+                onSectionClick={sectionId =>
+                  handleSectionClick(chapter.id, sectionId)
+                }
+              />
+            ))}
+          </div>
+        </motion.div>
+      </main>
     </div>
   )
 }

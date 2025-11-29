@@ -2,37 +2,48 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+// ابزار کمکی برای ترکیب کلاس‌ها
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
 /* -----------------------------------------
-   1) تم رنگی
+   1) تم رنگی مدرن (Vibrant & Pastel)
 ----------------------------------------- */
 export const colorThemes = {
   blue: {
-    gradient: "from-blue-500 to-blue-700",
-    light: "bg-blue-50",
-    text: "text-blue-700",
-    shadow: "shadow-blue-200",
+    gradient: "from-blue-500 to-indigo-600",
+    light: "bg-blue-50/50",
+    text: "text-blue-600",
+    border: "border-blue-200/50",
+    glow: "shadow-blue-500/20",
     bg: "bg-blue-600"
   },
   purple: {
-    gradient: "from-purple-500 to-purple-700",
-    light: "bg-purple-50",
-    text: "text-purple-700",
-    shadow: "shadow-purple-200",
-    bg: "bg-purple-600"
+    gradient: "from-violet-500 to-fuchsia-600",
+    light: "bg-violet-50/50",
+    text: "text-violet-600",
+    border: "border-violet-200/50",
+    glow: "shadow-violet-500/20",
+    bg: "bg-violet-600"
   },
   pink: {
-    gradient: "from-pink-500 to-pink-700",
-    light: "bg-pink-50",
-    text: "text-pink-700",
-    shadow: "shadow-pink-200",
+    gradient: "from-pink-500 to-rose-600",
+    light: "bg-pink-50/50",
+    text: "text-pink-600",
+    border: "border-pink-200/50",
+    glow: "shadow-pink-500/20",
     bg: "bg-pink-600"
   },
   emerald: {
-    gradient: "from-emerald-500 to-emerald-700",
-    light: "bg-emerald-50",
-    text: "text-emerald-700",
-    shadow: "shadow-emerald-200",
+    gradient: "from-emerald-400 to-teal-600",
+    light: "bg-emerald-50/50",
+    text: "text-emerald-600",
+    border: "border-emerald-200/50",
+    glow: "shadow-emerald-500/20",
     bg: "bg-emerald-600"
   }
 }
@@ -40,12 +51,12 @@ export const colorThemes = {
 export type ColorKey = keyof typeof colorThemes
 
 /* -----------------------------------------
-   2) MaterialCard
+   2) GlassCard (جایگزین MaterialCard)
 ----------------------------------------- */
 export function MaterialCard({
   children,
   className = "",
-  elevation = 2,
+  elevation = 2, // برای سازگاری با کد قبلی نگه داشته شده اما استفاده مدرن می‌شود
   onClick
 }: {
   children: React.ReactNode
@@ -53,31 +64,28 @@ export function MaterialCard({
   elevation?: 1 | 2 | 4 | 8
   onClick?: () => void
 }) {
-  const shadow = {
-    1: "shadow-md",
-    2: "shadow-lg",
-    4: "shadow-xl",
-    8: "shadow-2xl"
-  }[elevation]
-
   return (
     <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2 }}
+      whileHover={onClick ? { y: -4, scale: 1.005 } : undefined}
+      whileTap={onClick ? { scale: 0.98 } : undefined}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
       onClick={onClick}
-      className={`
-        rounded-2xl bg-white/70 backdrop-blur-md transition-all duration-200 
-        ${shadow} ${className}
-        ${onClick ? "cursor-pointer hover:shadow-2xl" : ""}
-      `}
+      className={cn(
+        "relative overflow-hidden rounded-3xl border border-white/40 bg-white/60 p-0 backdrop-blur-xl transition-shadow duration-300",
+        "shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]", // سایه مدرن نرم
+        onClick ? "cursor-pointer" : "",
+        className
+      )}
     >
+      {/* افکت درخشش شیشه‌ای روی کارت */}
+      <div className="pointer-events-none absolute -right-24 -top-24 size-48 rounded-full bg-gradient-to-br from-white/40 to-transparent blur-3xl" />
       {children}
     </motion.div>
   )
 }
 
 /* -----------------------------------------
-   3) RippleButton (دکمه با افکت ریپل)
+   3) Modern Ripple Button
 ----------------------------------------- */
 export function RippleButton({
   children,
@@ -88,48 +96,27 @@ export function RippleButton({
   className?: string
   onClick?: (e: any) => void
 }) {
-  const [ripples, setRipples] = useState<any[]>([])
-
-  const createRipple = (e: any) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-
-    const id = Date.now()
-    setRipples([...ripples, { x, y, id }])
-
-    setTimeout(() => {
-      setRipples(prev => prev.filter(r => r.id !== id))
-    }, 600)
-
-    onClick?.(e)
-  }
-
   return (
-    <button
-      onClick={createRipple}
-      className={`relative overflow-hidden rounded-lg ${className}`}
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className={cn(
+        "relative overflow-hidden rounded-xl px-6 py-3 font-medium text-white shadow-lg transition-all hover:shadow-xl hover:brightness-110",
+        className
+      )}
     >
-      {ripples.map(r => (
-        <span
-          key={r.id}
-          className="absolute animate-ping rounded-full bg-white/40"
-          style={{
-            left: r.x,
-            top: r.y,
-            width: 0,
-            height: 0,
-            animation: "ripple 0.5s ease-out"
-          }}
-        ></span>
-      ))}
-      {children}
-    </button>
+      <div className="relative z-10 flex items-center justify-center gap-2">
+        {children}
+      </div>
+      {/* لایه براق روی دکمه */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+    </motion.button>
   )
 }
 
 /* -----------------------------------------
-   4) IconWrapper
+   4) IconWrapper (Squircle Modern)
 ----------------------------------------- */
 export function IconWrapper({
   icon: Icon,
@@ -142,12 +129,22 @@ export function IconWrapper({
 
   return (
     <div
-      className={`
-        flex size-16 items-center justify-center rounded-xl bg-gradient-to-br ${theme.gradient} text-white 
-        shadow-lg ${theme.shadow}
-      `}
+      className={cn(
+        "relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg",
+        theme.gradient,
+        theme.glow
+      )}
     >
-      <Icon size={32} strokeWidth={2} />
+      {/* آیکون داخلی */}
+      <Icon size={28} strokeWidth={2} className="text-white drop-shadow-md" />
+
+      {/* افکت نورانی پشت آیکون */}
+      <div
+        className={cn(
+          "absolute inset-0 -z-10 rounded-2xl opacity-40 blur-lg",
+          theme.bg
+        )}
+      />
     </div>
   )
 }

@@ -1,21 +1,35 @@
-// lib/lessons/types.ts
+// lib/types.ts
 
-export type ActivityId = "reading" | "flashcard" | "exam" | "speed-test"
+// ساختار هر آیتم در فایل JSON
+export interface GamifiedUnit {
+  uid: string
+  chunk_index: number
+  lesson_title: string
+  is_start_of_lesson: boolean
+  type: "gamified_unit"
 
-export interface LessonActivityConfig {
-  id: ActivityId
-  title: string
-  description: string
-  icon: string // همون ایموجی که روی کارت می‌ذاریم
-  color: string // کلاس گرادینت Tailwind مثل "from-sky-400 to-emerald-400"
+  story: string // متن داستانی (حاوی تگ عکس)
+  konkur_tips: string[] // نکات کنکوری
+
+  interaction: {
+    question: string
+    options: string[]
+    correct_index: number
+    feedback: string
+  }
+
+  flashcard: {
+    front: string
+    back: string
+  }
 }
 
-export interface LessonConfig {
-  lessonKey: string
-  grade: string
-  chapterId: string
-  sectionId: string
-  title: string
-  description: string
-  activities: LessonActivityConfig[]
+// ساختار دیتابیس برای پیشرفت کاربر
+export interface UserProgressDB {
+  id: string
+  user_id: string
+  chapter_id: string
+  current_chunk_index: number
+  completed_steps: number
+  total_xp: number
 }
