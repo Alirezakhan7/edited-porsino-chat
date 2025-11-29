@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // کاربر لاگین‌کرده
-    const supa = createServerClient(cookies())
+    const supa = createServerClient()
     const {
       data: { user }
     } = await supa.auth.getUser()
