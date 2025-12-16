@@ -1,13 +1,8 @@
 "use client"
 
 import React, { useState } from "react"
-import { useRouter, useParams } from "next/navigation"
-import {
-  IconMicroscope,
-  IconRun,
-  IconDna,
-  IconPlant
-} from "@tabler/icons-react"
+import { useRouter } from "next/navigation"
+import { IconMicroscope, IconAtom, IconDna } from "@tabler/icons-react"
 import { motion } from "framer-motion"
 
 import {
@@ -15,114 +10,84 @@ import {
   ProgressCard,
   ChapterAccordion
 } from "@/components/material/LearningComponents"
+
+// اضافه کردن ایمپورت ColorKey
 import type { ColorKey } from "@/components/material/MaterialUI"
 
-/* ------------------ داده‌ها (همان قبلی) ------------------ */
-// داده‌ها بدون تغییر کپی شده‌اند برای حفظ عملکرد
-const learningData: any = {
-  دهم: {
-    title: "زیست‌شناسی دهم",
-    color: "blue",
-    overallProgress: 25,
-    chapters: [
-      {
-        id: "ch1-10",
-        title: "فصل ۱: دنیای زنده",
-        progress: 45,
-        icon: IconMicroscope,
-        sections: [
-          { id: "s1", title: "گفتار ۱: گستره حیات", progress: 100 },
-          { id: "s2", title: "گفتار ۲: مولکول‌های زیستی", progress: 30 },
-          { id: "s3", title: "گفتار ۳: یاخته و بافت‌ها", progress: 0 }
-        ]
-      },
-      {
-        id: "ch2-10",
-        title: "فصل ۲: گوارش و جذب مواد",
-        progress: 10,
-        icon: IconRun,
-        sections: [
-          { id: "s4", title: "گفتار ۱: ساختار لوله گوارش", progress: 20 },
-          { id: "s5", title: "گفتار ۲: جذب مواد", progress: 0 }
-        ]
-      }
-    ]
-  },
-  یازدهم: {
-    title: "زیست‌شناسی یازدهم",
-    color: "purple",
-    overallProgress: 0,
-    chapters: [
-      {
-        id: "ch1-11",
-        title: "فصل ۱: تنظیم عصبی",
-        icon: IconDna,
-        progress: 0,
-        sections: [{ id: "s6", title: "گفتار ۱: یاخته‌های عصبی", progress: 0 }]
-      }
-    ]
-  },
-  دوازدهم: {
-    title: "زیست‌شناسی دوازدهم",
-    color: "pink",
-    overallProgress: 0,
-    chapters: [
-      {
-        id: "biology_12_ch01",
-        title: "فصل ۱: مولکول‌های اطلاعاتی",
-        icon: IconDna,
-        progress: 0,
-        sections: [{ id: "s7", title: "گفتار ۱: نوکلئیک اسیدها", progress: 0 }]
-      },
-      {
-        id: "ch2-12",
-        title: "فصل ۲: جریان اطلاعات",
-        icon: IconPlant,
-        progress: 0,
-        sections: [{ id: "s8", title: "گفتار ۱: رونویسی", progress: 0 }]
-      }
-    ]
-  }
+// ایمپورت کردن داده‌های واقعی
+import { getChaptersByGrade, GradeLevel } from "@/lib/lessons/config"
+
+/* ------------------ تنظیمات صفحه ------------------ */
+
+interface PageProps {
+  params: Promise<{
+    locale: string
+  }>
 }
 
-export default function PathPage() {
-  const [activeTab, setActiveTab] = useState("دهم")
+export default function PathPage({ params }: PageProps) {
+  const { locale } = React.use(params)
   const router = useRouter()
-  const params = useParams()
-  // بررسی ایمن locale
-  const locale = params && "locale" in params ? params.locale : "fa"
 
-  const current = learningData[activeTab]
-  const learningProgress = current.overallProgress
-  const masteryProgress = 10
-  const overallProgress = 42
+  const [activeTab, setActiveTab] = useState<GradeLevel>("10")
 
-  const handleSectionClick = (chapterId: string, sectionId: string) => {
+  const realChapters = getChaptersByGrade(activeTab)
+
+  const learningProgress = 0
+  const masteryProgress = 0
+  const overallProgress = 0
+
+  const handleSectionClick = (chapterId: string) => {
     router.push(`/${locale}/lesson/${chapterId}`)
   }
 
+  // ✅ تغییر مهم: اضافه کردن 'as ColorKey' برای رفع خطای تایپ
+  const gradeInfo = {
+    "10": {
+      title: "زیست‌شناسی دهم",
+      color: "emerald" as ColorKey,
+      icon: IconMicroscope
+    },
+    "11": {
+      title: "زیست‌شناسی یازدهم",
+      color: "blue" as ColorKey,
+      icon: IconAtom
+    },
+    "12": {
+      title: "زیست‌شناسی دوازدهم",
+      color: "purple" as ColorKey,
+      icon: IconDna
+    }
+  }[activeTab]
+
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden bg-gray-50 text-gray-900 selection:bg-purple-200 selection:text-purple-900">
-      {/* Background Ambient Mesh (تکنیک مدرن برای پس‌زمینه زنده) */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -left-[10%] -top-[20%] size-[70%] animate-pulse rounded-full bg-blue-200/30 mix-blend-multiply blur-[120px]" />
-        <div className="absolute -right-[10%] top-[20%] size-3/5 animate-pulse rounded-full bg-purple-200/30 mix-blend-multiply blur-[120px] delay-700" />
-        <div className="absolute -bottom-[10%] left-[20%] size-[50%] animate-pulse rounded-full bg-pink-200/30 mix-blend-multiply blur-[120px] delay-1000" />
+    <div className="min-h-screen bg-gray-50 pb-24" dir="rtl">
+      {/* هدر گرادینت */}
+      <div
+        className={`from- h-48 w-full bg-gradient-to-bl${gradeInfo.color}-600 to-${gradeInfo.color}-800 relative shadow-lg`}
+      >
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+        <div className="absolute -bottom-6 right-0 w-full px-4">
+          <h1 className="text-3xl font-black text-white drop-shadow-md">
+            مسیر یادگیری
+          </h1>
+          <p className="mt-1 text-white/90 opacity-90">
+            قدم به قدم تا تسلط کامل
+          </p>
+        </div>
       </div>
 
-      <main className="mx-auto max-w-3xl px-6 py-12 md:py-20" dir="rtl">
-        {/* Tabs */}
+      <div className="mx-auto max-w-md px-4 pt-12">
         <MaterialTabs
           tabs={[
-            { label: "پایه دهم", value: "دهم", color: "blue" },
-            { label: "پایه یازدهم", value: "یازدهم", color: "purple" },
-            { label: "پایه دوازدهم", value: "دوازدهم", color: "pink" }
+            { label: "پایه دهم", value: "10", color: "emerald" },
+            { label: "پایه یازدهم", value: "11", color: "blue" },
+            { label: "پایه دوازدهم", value: "12", color: "purple" }
           ]}
           active={activeTab}
-          onChange={v => setActiveTab(v)}
+          onChange={v => setActiveTab(v as GradeLevel)}
         />
 
-        {/* Content Animate Presence for smooth transitions between tabs */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, x: 20 }}
@@ -131,11 +96,11 @@ export default function PathPage() {
           transition={{ duration: 0.3 }}
         >
           <ProgressCard
-            title={current.title}
+            title={gradeInfo.title}
             learning={learningProgress}
             mastery={masteryProgress}
             overall={overallProgress}
-            color={current.color}
+            color={gradeInfo.color}
           />
 
           <div className="mb-6 flex items-center gap-4 opacity-80">
@@ -146,19 +111,33 @@ export default function PathPage() {
           </div>
 
           <div className="space-y-4 pb-20">
-            {current.chapters.map((chapter: any, i: number) => (
-              <ChapterAccordion
-                key={chapter.id}
-                chapter={chapter}
-                index={i}
-                onSectionClick={sectionId =>
-                  handleSectionClick(chapter.id, sectionId)
-                }
-              />
-            ))}
+            {realChapters.length === 0 ? (
+              <div className="py-10 text-center text-gray-400">
+                هنوز درسی برای این پایه اضافه نشده است.
+              </div>
+            ) : (
+              realChapters.map((chapter, i) => (
+                <ChapterAccordion
+                  key={chapter.id}
+                  chapter={{
+                    id: chapter.id,
+                    title: chapter.title,
+                    progress: 0,
+                    icon: gradeInfo.icon,
+                    sections: chapter.sections.map(sec => ({
+                      id: sec.id,
+                      title: sec.title,
+                      progress: 0
+                    }))
+                  }}
+                  index={i}
+                  onSectionClick={() => handleSectionClick(chapter.id)}
+                />
+              ))
+            )}
           </div>
         </motion.div>
-      </main>
+      </div>
     </div>
   )
 }
