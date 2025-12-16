@@ -1,22 +1,25 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import type { TablesInsert, TablesUpdate } from "@/supabase/types"
+
+// قفل روی schema public برای جلوگیری از overload/never
+const db = supabase.schema("public")
 
 export const getPresetById = async (presetId: string) => {
-  const { data: preset, error } = await supabase
+  const { data: preset, error } = await db
     .from("presets")
     .select("*")
     .eq("id", presetId)
     .single()
 
   if (!preset) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Preset not found.")
   }
 
   return preset
 }
 
 export const getPresetWorkspacesByWorkspaceId = async (workspaceId: string) => {
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from("workspaces")
     .select(
       `
@@ -29,14 +32,14 @@ export const getPresetWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .single()
 
   if (!workspace) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Workspace not found.")
   }
 
   return workspace
 }
 
 export const getPresetWorkspacesByPresetId = async (presetId: string) => {
-  const { data: preset, error } = await supabase
+  const { data: preset, error } = await db
     .from("presets")
     .select(
       `
@@ -49,7 +52,7 @@ export const getPresetWorkspacesByPresetId = async (presetId: string) => {
     .single()
 
   if (!preset) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Preset not found.")
   }
 
   return preset
@@ -59,9 +62,9 @@ export const createPreset = async (
   preset: TablesInsert<"presets">,
   workspace_id: string
 ) => {
-  const { data: createdPreset, error } = await supabase
+  const { data: createdPreset, error } = await db
     .from("presets")
-    .insert([preset])
+    .insert(preset) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -70,9 +73,9 @@ export const createPreset = async (
   }
 
   await createPresetWorkspace({
-    user_id: preset.user_id,
+    user_id: createdPreset.user_id, // ✅ از رکورد برگشتی
     preset_id: createdPreset.id,
-    workspace_id: workspace_id
+    workspace_id
   })
 
   return createdPreset
@@ -82,9 +85,9 @@ export const createPresets = async (
   presets: TablesInsert<"presets">[],
   workspace_id: string
 ) => {
-  const { data: createdPresets, error } = await supabase
+  const { data: createdPresets, error } = await db
     .from("presets")
-    .insert(presets)
+    .insert(presets) // ✅ چندتایی: آرایه درست است
     .select("*")
 
   if (error) {
@@ -107,9 +110,9 @@ export const createPresetWorkspace = async (item: {
   preset_id: string
   workspace_id: string
 }) => {
-  const { data: createdPresetWorkspace, error } = await supabase
+  const { data: createdPresetWorkspace, error } = await db
     .from("preset_workspaces")
-    .insert([item])
+    .insert(item) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -123,7 +126,7 @@ export const createPresetWorkspace = async (item: {
 export const createPresetWorkspaces = async (
   items: { user_id: string; preset_id: string; workspace_id: string }[]
 ) => {
-  const { data: createdPresetWorkspaces, error } = await supabase
+  const { data: createdPresetWorkspaces, error } = await db
     .from("preset_workspaces")
     .insert(items)
     .select("*")
@@ -137,7 +140,7 @@ export const updatePreset = async (
   presetId: string,
   preset: TablesUpdate<"presets">
 ) => {
-  const { data: updatedPreset, error } = await supabase
+  const { data: updatedPreset, error } = await db
     .from("presets")
     .update(preset)
     .eq("id", presetId)
@@ -152,7 +155,7 @@ export const updatePreset = async (
 }
 
 export const deletePreset = async (presetId: string) => {
-  const { error } = await supabase.from("presets").delete().eq("id", presetId)
+  const { error } = await db.from("presets").delete().eq("id", presetId)
 
   if (error) {
     throw new Error(error.message)
@@ -165,7 +168,7 @@ export const deletePresetWorkspace = async (
   presetId: string,
   workspaceId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("preset_workspaces")
     .delete()
     .eq("preset_id", presetId)

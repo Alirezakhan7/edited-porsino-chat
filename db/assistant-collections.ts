@@ -1,10 +1,13 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert } from "@/supabase/types"
+import type { TablesInsert } from "@/supabase/types"
+
+// قفل روی schema public برای جلوگیری از never / overload
+const db = supabase.schema("public")
 
 export const getAssistantCollectionsByAssistantId = async (
   assistantId: string
 ) => {
-  const { data: assistantCollections, error } = await supabase
+  const { data: assistantCollections, error } = await db
     .from("assistants")
     .select(
       `
@@ -17,7 +20,7 @@ export const getAssistantCollectionsByAssistantId = async (
     .single()
 
   if (!assistantCollections) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Assistant collections not found.")
   }
 
   return assistantCollections
@@ -26,12 +29,13 @@ export const getAssistantCollectionsByAssistantId = async (
 export const createAssistantCollection = async (
   assistantCollection: TablesInsert<"assistant_collections">
 ) => {
-  const { data: createdAssistantCollection, error } = await supabase
+  const { data: createdAssistantCollection, error } = await db
     .from("assistant_collections")
-    .insert(assistantCollection)
+    .insert(assistantCollection) // insert تکی
     .select("*")
+    .single()
 
-  if (!createdAssistantCollection) {
+  if (error) {
     throw new Error(error.message)
   }
 
@@ -41,13 +45,13 @@ export const createAssistantCollection = async (
 export const createAssistantCollections = async (
   assistantCollections: TablesInsert<"assistant_collections">[]
 ) => {
-  const { data: createdAssistantCollections, error } = await supabase
+  const { data: createdAssistantCollections, error } = await db
     .from("assistant_collections")
     .insert(assistantCollections)
     .select("*")
 
   if (!createdAssistantCollections) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Failed to create assistant collections.")
   }
 
   return createdAssistantCollections
@@ -57,7 +61,7 @@ export const deleteAssistantCollection = async (
   assistantId: string,
   collectionId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("assistant_collections")
     .delete()
     .eq("assistant_id", assistantId)

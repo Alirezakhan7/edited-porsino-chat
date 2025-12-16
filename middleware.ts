@@ -10,15 +10,17 @@ export async function middleware(request: NextRequest) {
   try {
     const { supabase, response } = createClient(request)
 
-    const session = await supabase.auth.getSession()
+    const { data, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) return response
 
-    const redirectToChat = session && request.nextUrl.pathname === "/"
+    const userId = data.session?.user?.id
+    const redirectToChat = Boolean(userId) && request.nextUrl.pathname === "/"
 
     if (redirectToChat) {
       const { data: homeWorkspace, error } = await supabase
         .from("workspaces")
         .select("*")
-        .eq("user_id", session.data.session?.user.id)
+        .eq("user_id", userId!) // اینجا userId قطعاً وجود دارد
         .eq("is_home", true)
         .single()
 
@@ -26,9 +28,7 @@ export async function middleware(request: NextRequest) {
         throw new Error(error?.message)
       }
 
-      return NextResponse.redirect(
-        new URL(`/chat`, request.url)
-      )
+      return NextResponse.redirect(new URL(`/chat`, request.url))
     }
 
     return response
@@ -42,8 +42,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // تمام مسیرها رو شامل کن بجز مسیرهای خاص زیر:
-    "/((?!api|_next/|favicon.ico|sw.js|icons|.*\\..*).*)"
-  ]
+  matcher: ["/((?!api|_next/|favicon.ico|sw.js|icons|.*\\..*).*)"]
 }

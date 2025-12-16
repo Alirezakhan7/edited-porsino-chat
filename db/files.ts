@@ -1,25 +1,28 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import type { TablesInsert, TablesUpdate } from "@/supabase/types"
 import mammoth from "mammoth"
 import { toast } from "sonner"
 import { uploadFile } from "./storage/files"
 
+// قفل روی schema public برای جلوگیری از never / overload
+const db = supabase.schema("public")
+
 export const getFileById = async (fileId: string) => {
-  const { data: file, error } = await supabase
+  const { data: file, error } = await db
     .from("files")
     .select("*")
     .eq("id", fileId)
     .single()
 
   if (!file) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "File not found.")
   }
 
   return file
 }
 
 export const getFileWorkspacesByWorkspaceId = async (workspaceId: string) => {
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from("workspaces")
     .select(
       `
@@ -32,14 +35,14 @@ export const getFileWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .single()
 
   if (!workspace) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Workspace not found.")
   }
 
   return workspace
 }
 
 export const getFileWorkspacesByFileId = async (fileId: string) => {
-  const { data: file, error } = await supabase
+  const { data: file, error } = await db
     .from("files")
     .select(
       `
@@ -52,7 +55,7 @@ export const getFileWorkspacesByFileId = async (fileId: string) => {
     .single()
 
   if (!file) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "File not found.")
   }
 
   return file
@@ -67,14 +70,11 @@ export const createFileBasedOnExtension = async (
 
   if (fileExtension === "docx") {
     const arrayBuffer = await file.arrayBuffer()
-    const result = await mammoth.extractRawText({
-      arrayBuffer
-    })
-
+    const result = await mammoth.extractRawText({ arrayBuffer })
     return createDocXFile(result.value, file, fileRecord, workspace_id)
-  } else {
-    return createFile(file, fileRecord, workspace_id)
   }
+
+  return createFile(file, fileRecord, workspace_id)
 }
 
 // For non-docx files
@@ -96,9 +96,10 @@ export const createFile = async (
   } else {
     fileRecord.name = baseName + "." + extension
   }
-  const { data: createdFile, error } = await supabase
+
+  const { data: createdFile, error } = await db
     .from("files")
-    .insert([fileRecord])
+    .insert(fileRecord) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -143,20 +144,19 @@ export const createFile = async (
   }
 
   const fetchedFile = await getFileById(createdFile.id)
-
   return fetchedFile
 }
 
-// // Handle docx files
+// Handle docx files
 export const createDocXFile = async (
   text: string,
   file: File,
   fileRecord: TablesInsert<"files">,
   workspace_id: string
 ) => {
-  const { data: createdFile, error } = await supabase
+  const { data: createdFile, error } = await db
     .from("files")
-    .insert([fileRecord])
+    .insert(fileRecord) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -182,11 +182,9 @@ export const createDocXFile = async (
 
   const response = await fetch("/api/retrieval/process/docx", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      text: text,
+      text,
       fileId: createdFile.id,
       fileExtension: "docx"
     })
@@ -205,7 +203,6 @@ export const createDocXFile = async (
   }
 
   const fetchedFile = await getFileById(createdFile.id)
-
   return fetchedFile
 }
 
@@ -213,7 +210,7 @@ export const createFiles = async (
   files: TablesInsert<"files">[],
   workspace_id: string
 ) => {
-  const { data: createdFiles, error } = await supabase
+  const { data: createdFiles, error } = await db
     .from("files")
     .insert(files)
     .select("*")
@@ -238,9 +235,9 @@ export const createFileWorkspace = async (item: {
   file_id: string
   workspace_id: string
 }) => {
-  const { data: createdFileWorkspace, error } = await supabase
+  const { data: createdFileWorkspace, error } = await db
     .from("file_workspaces")
-    .insert([item])
+    .insert(item) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -254,7 +251,7 @@ export const createFileWorkspace = async (item: {
 export const createFileWorkspaces = async (
   items: { user_id: string; file_id: string; workspace_id: string }[]
 ) => {
-  const { data: createdFileWorkspaces, error } = await supabase
+  const { data: createdFileWorkspaces, error } = await db
     .from("file_workspaces")
     .insert(items)
     .select("*")
@@ -268,7 +265,7 @@ export const updateFile = async (
   fileId: string,
   file: TablesUpdate<"files">
 ) => {
-  const { data: updatedFile, error } = await supabase
+  const { data: updatedFile, error } = await db
     .from("files")
     .update(file)
     .eq("id", fileId)
@@ -283,7 +280,7 @@ export const updateFile = async (
 }
 
 export const deleteFile = async (fileId: string) => {
-  const { error } = await supabase.from("files").delete().eq("id", fileId)
+  const { error } = await db.from("files").delete().eq("id", fileId)
 
   if (error) {
     throw new Error(error.message)
@@ -296,7 +293,7 @@ export const deleteFileWorkspace = async (
   fileId: string,
   workspaceId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("file_workspaces")
     .delete()
     .eq("file_id", fileId)

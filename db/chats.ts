@@ -1,8 +1,10 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import type { TablesInsert, TablesUpdate } from "@/supabase/types"
+
+const db = supabase.schema("public")
 
 export const getChatById = async (chatId: string) => {
-  const { data: chat } = await supabase
+  const { data: chat } = await db
     .from("chats")
     .select("*")
     .eq("id", chatId)
@@ -12,23 +14,23 @@ export const getChatById = async (chatId: string) => {
 }
 
 export const getChatsByWorkspaceId = async (workspaceId: string) => {
-  const { data: chats, error } = await supabase
+  const { data: chats, error } = await db
     .from("chats")
     .select("*")
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })
 
   if (!chats) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Chats not found.")
   }
 
   return chats
 }
 
 export const createChat = async (chat: TablesInsert<"chats">) => {
-  const { data: createdChat, error } = await supabase
+  const { data: createdChat, error } = await db
     .from("chats")
-    .insert([chat])
+    .insert(chat) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -40,7 +42,7 @@ export const createChat = async (chat: TablesInsert<"chats">) => {
 }
 
 export const createChats = async (chats: TablesInsert<"chats">[]) => {
-  const { data: createdChats, error } = await supabase
+  const { data: createdChats, error } = await db
     .from("chats")
     .insert(chats)
     .select("*")
@@ -56,7 +58,7 @@ export const updateChat = async (
   chatId: string,
   chat: TablesUpdate<"chats">
 ) => {
-  const { data: updatedChat, error } = await supabase
+  const { data: updatedChat, error } = await db
     .from("chats")
     .update(chat)
     .eq("id", chatId)
@@ -71,7 +73,7 @@ export const updateChat = async (
 }
 
 export const deleteChat = async (chatId: string) => {
-  const { error } = await supabase.from("chats").delete().eq("id", chatId)
+  const { error } = await db.from("chats").delete().eq("id", chatId)
 
   if (error) {
     throw new Error(error.message)

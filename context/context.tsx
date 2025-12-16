@@ -1,4 +1,4 @@
-import { Tables } from "@/supabase/types"
+import type { Database, Tables } from "@/supabase/types"
 import {
   ChatFile,
   ChatMessage,
@@ -11,12 +11,13 @@ import {
 import { AssistantImage } from "@/types/images/assistant-image"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
 import { Dispatch, SetStateAction, createContext } from "react"
-import type { SupabaseClient } from "@supabase/supabase-js"
 
+import { supabase as browserSupabase } from "@/lib/supabase/browser-client"
+type BrowserSupabaseClient = typeof browserSupabase
 interface ChatbotUIContext {
   // PROFILE STORE
   profile: Tables<"profiles"> | null
-  supabase: SupabaseClient | null
+  supabase: BrowserSupabaseClient | null
   setProfile: Dispatch<SetStateAction<Tables<"profiles"> | null>>
 
   // ITEMS STORE

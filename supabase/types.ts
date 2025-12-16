@@ -14,6 +14,37 @@ export type Database = {
   }
   public: {
     Tables: {
+      user_progress: {
+          Row: {
+            id: string
+            user_id: string
+            chapter_id: string
+            current_chunk_index: number
+            completed_steps: number
+            total_xp: number
+            last_played_at: string | null
+          }
+          Insert: {
+            id?: string
+            user_id: string
+            chapter_id: string
+            current_chunk_index: number
+            completed_steps: number
+            total_xp: number
+            last_played_at?: string | null
+          }
+          Update: {
+            id?: string
+            user_id?: string
+            chapter_id?: string
+            current_chunk_index?: number
+            completed_steps?: number
+            total_xp?: number
+            last_played_at?: string | null
+          }
+          Relationships: []
+        }
+          
       assistant_collections: {
         Row: {
           assistant_id: string

@@ -1,8 +1,11 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import type { TablesInsert, TablesUpdate } from "@/supabase/types"
+
+// قفل روی schema public برای جلوگیری از never / overload
+const db = supabase.schema("public")
 
 export const getHomeWorkspaceByUserId = async (userId: string) => {
-  const { data: homeWorkspace, error } = await supabase
+  const { data: homeWorkspace, error } = await db
     .from("workspaces")
     .select("*")
     .eq("user_id", userId)
@@ -10,35 +13,35 @@ export const getHomeWorkspaceByUserId = async (userId: string) => {
     .single()
 
   if (!homeWorkspace) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Home workspace not found.")
   }
 
   return homeWorkspace.id
 }
 
 export const getWorkspaceById = async (workspaceId: string) => {
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from("workspaces")
     .select("*")
     .eq("id", workspaceId)
     .single()
 
   if (!workspace) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Workspace not found.")
   }
 
   return workspace
 }
 
 export const getWorkspacesByUserId = async (userId: string) => {
-  const { data: workspaces, error } = await supabase
+  const { data: workspaces, error } = await db
     .from("workspaces")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
 
   if (!workspaces) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Workspaces not found.")
   }
 
   return workspaces
@@ -47,9 +50,9 @@ export const getWorkspacesByUserId = async (userId: string) => {
 export const createWorkspace = async (
   workspace: TablesInsert<"workspaces">
 ) => {
-  const { data: createdWorkspace, error } = await supabase
+  const { data: createdWorkspace, error } = await db
     .from("workspaces")
-    .insert([workspace])
+    .insert(workspace) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -64,7 +67,7 @@ export const updateWorkspace = async (
   workspaceId: string,
   workspace: TablesUpdate<"workspaces">
 ) => {
-  const { data: updatedWorkspace, error } = await supabase
+  const { data: updatedWorkspace, error } = await db
     .from("workspaces")
     .update(workspace)
     .eq("id", workspaceId)
@@ -79,10 +82,7 @@ export const updateWorkspace = async (
 }
 
 export const deleteWorkspace = async (workspaceId: string) => {
-  const { error } = await supabase
-    .from("workspaces")
-    .delete()
-    .eq("id", workspaceId)
+  const { error } = await db.from("workspaces").delete().eq("id", workspaceId)
 
   if (error) {
     throw new Error(error.message)
@@ -93,10 +93,9 @@ export const deleteWorkspace = async (workspaceId: string) => {
 
 export const getHomeWorkspace = async () => {
   const session = (await supabase.auth.getSession()).data.session
-
   if (!session) return null
 
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from("workspaces")
     .select("*")
     .eq("user_id", session.user.id)

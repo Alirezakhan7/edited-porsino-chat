@@ -80,7 +80,14 @@ import {
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { Tables, TablesUpdate } from "@/supabase/types"
 import { CollectionFile, ContentType, DataItemType } from "@/types"
-import { FC, useContext, useEffect, useRef, useState } from "react"
+import {
+  FC,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode
+} from "react"
 import profile from "react-syntax-highlighter/dist/esm/languages/hljs/profile"
 import { toast } from "sonner"
 import { SidebarDeleteItem } from "./sidebar-delete-item"
@@ -90,7 +97,7 @@ interface SidebarUpdateItemProps {
   item: DataItemType
   contentType: ContentType
   children: React.ReactNode
-  renderInputs: (renderState: any) => JSX.Element
+  renderInputs: (renderState: any) => ReactNode
   updateState: any
 }
 

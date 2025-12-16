@@ -1,22 +1,25 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import type { TablesInsert, TablesUpdate } from "@/supabase/types"
+
+// قفل کردن روی schema public برای جلوگیری از never/overload ambiguity
+const db = supabase.schema("public")
 
 export const getModelById = async (modelId: string) => {
-  const { data: model, error } = await supabase
+  const { data: model, error } = await db
     .from("models")
     .select("*")
     .eq("id", modelId)
     .single()
 
   if (!model) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Model not found.")
   }
 
   return model
 }
 
 export const getModelWorkspacesByWorkspaceId = async (workspaceId: string) => {
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from("workspaces")
     .select(
       `
@@ -29,14 +32,14 @@ export const getModelWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .single()
 
   if (!workspace) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Workspace not found.")
   }
 
   return workspace
 }
 
 export const getModelWorkspacesByModelId = async (modelId: string) => {
-  const { data: model, error } = await supabase
+  const { data: model, error } = await db
     .from("models")
     .select(
       `
@@ -49,7 +52,7 @@ export const getModelWorkspacesByModelId = async (modelId: string) => {
     .single()
 
   if (!model) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Model not found.")
   }
 
   return model
@@ -59,9 +62,9 @@ export const createModel = async (
   model: TablesInsert<"models">,
   workspace_id: string
 ) => {
-  const { data: createdModel, error } = await supabase
+  const { data: createdModel, error } = await db
     .from("models")
-    .insert([model])
+    .insert(model) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -70,9 +73,9 @@ export const createModel = async (
   }
 
   await createModelWorkspace({
-    user_id: model.user_id,
+    user_id: createdModel.user_id,
     model_id: createdModel.id,
-    workspace_id: workspace_id
+    workspace_id
   })
 
   return createdModel
@@ -82,9 +85,9 @@ export const createModels = async (
   models: TablesInsert<"models">[],
   workspace_id: string
 ) => {
-  const { data: createdModels, error } = await supabase
+  const { data: createdModels, error } = await db
     .from("models")
-    .insert(models)
+    .insert(models) // ✅ اینجا چون چندتایی است آرایه درست است
     .select("*")
 
   if (error) {
@@ -107,9 +110,9 @@ export const createModelWorkspace = async (item: {
   model_id: string
   workspace_id: string
 }) => {
-  const { data: createdModelWorkspace, error } = await supabase
+  const { data: createdModelWorkspace, error } = await db
     .from("model_workspaces")
-    .insert([item])
+    .insert(item) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -123,7 +126,7 @@ export const createModelWorkspace = async (item: {
 export const createModelWorkspaces = async (
   items: { user_id: string; model_id: string; workspace_id: string }[]
 ) => {
-  const { data: createdModelWorkspaces, error } = await supabase
+  const { data: createdModelWorkspaces, error } = await db
     .from("model_workspaces")
     .insert(items)
     .select("*")
@@ -137,7 +140,7 @@ export const updateModel = async (
   modelId: string,
   model: TablesUpdate<"models">
 ) => {
-  const { data: updatedModel, error } = await supabase
+  const { data: updatedModel, error } = await db
     .from("models")
     .update(model)
     .eq("id", modelId)
@@ -152,7 +155,7 @@ export const updateModel = async (
 }
 
 export const deleteModel = async (modelId: string) => {
-  const { error } = await supabase.from("models").delete().eq("id", modelId)
+  const { error } = await db.from("models").delete().eq("id", modelId)
 
   if (error) {
     throw new Error(error.message)
@@ -165,7 +168,7 @@ export const deleteModelWorkspace = async (
   modelId: string,
   workspaceId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("model_workspaces")
     .delete()
     .eq("model_id", modelId)

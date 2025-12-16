@@ -26,7 +26,8 @@ import { createTool } from "@/db/tools"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { Tables, TablesInsert } from "@/supabase/types"
 import { ContentType } from "@/types"
-import { FC, useContext, useRef, useState } from "react"
+import { FC, useContext, useRef, useState, type ReactNode } from "react"
+
 import { toast } from "sonner"
 
 interface SidebarCreateItemProps {
@@ -34,7 +35,7 @@ interface SidebarCreateItemProps {
   isTyping: boolean
   onOpenChange: (isOpen: boolean) => void
   contentType: ContentType
-  renderInputs: () => JSX.Element
+  renderInputs: () => ReactNode
   createState: any
 }
 

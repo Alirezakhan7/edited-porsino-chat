@@ -2,27 +2,30 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getChapterConfig } from "@/lib/lessons/config"
 import LessonMap from "@/components/lessons/LessonMap"
-import { IconChevronRight, IconChartPie } from "@tabler/icons-react"
+import { IconChevronRight } from "@tabler/icons-react"
 
 interface PageProps {
-  params: {
+  params: Promise<{
     chapterId: string
     locale: string
-  }
+  }>
 }
 
 export default async function MapPage({ params }: PageProps) {
-  const { chapterId, locale } = params
+  const { chapterId, locale } = await params
 
   const config = getChapterConfig(chapterId)
-  if (!config)
+  if (!config) {
     return (
       <div className="p-10 text-center font-bold text-red-500">
         فصل پیدا نشد 🚫
       </div>
     )
+  }
 
-  const supabase = createClient()
+  const supabase = await createClient()
+  const db = supabase.schema("public")
+
   const {
     data: { user },
     error
@@ -32,14 +35,20 @@ export default async function MapPage({ params }: PageProps) {
     redirect(`/${locale}/login`)
   }
 
-  const { data: progress } = await supabase
+  const { data: progress, error: progressError } = await db
     .from("user_progress")
     .select("completed_steps")
     .eq("user_id", user.id)
     .eq("chapter_id", chapterId)
-    .single()
+    .maybeSingle()
 
-  const completedSteps = progress?.completed_steps || 0
+  if (progressError) {
+    // اگر می‌خواهی صفحه در هر صورت بالا بیاید، این را به جای throw نگه دار.
+    // در حالت فعلی، خطای دیتابیس را جدی می‌گیریم:
+    throw new Error(progressError.message)
+  }
+
+  const completedSteps = progress?.completed_steps ?? 0
   const progressPercent = Math.round((completedSteps / config.totalSteps) * 100)
 
   return (
@@ -139,8 +148,6 @@ export default async function MapPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* بدنه اصلی */}
-      {/* پدینگ بالا (pt-32) زیاد شده تا محتوا زیر هدر نرود */}
       <main className="pb-32 pt-12">
         <LessonMap
           chapterId={chapterId}

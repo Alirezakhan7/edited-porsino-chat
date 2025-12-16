@@ -1,15 +1,18 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import type { TablesInsert, TablesUpdate } from "@/supabase/types"
+
+// قفل روی schema public برای جلوگیری از never / overload
+const db = supabase.schema("public")
 
 export const getCollectionById = async (collectionId: string) => {
-  const { data: collection, error } = await supabase
+  const { data: collection, error } = await db
     .from("collections")
     .select("*")
     .eq("id", collectionId)
     .single()
 
   if (!collection) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Collection not found.")
   }
 
   return collection
@@ -18,7 +21,7 @@ export const getCollectionById = async (collectionId: string) => {
 export const getCollectionWorkspacesByWorkspaceId = async (
   workspaceId: string
 ) => {
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from("workspaces")
     .select(
       `
@@ -31,7 +34,7 @@ export const getCollectionWorkspacesByWorkspaceId = async (
     .single()
 
   if (!workspace) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Workspace not found.")
   }
 
   return workspace
@@ -40,7 +43,7 @@ export const getCollectionWorkspacesByWorkspaceId = async (
 export const getCollectionWorkspacesByCollectionId = async (
   collectionId: string
 ) => {
-  const { data: collection, error } = await supabase
+  const { data: collection, error } = await db
     .from("collections")
     .select(
       `
@@ -53,7 +56,7 @@ export const getCollectionWorkspacesByCollectionId = async (
     .single()
 
   if (!collection) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Collection not found.")
   }
 
   return collection
@@ -63,9 +66,9 @@ export const createCollection = async (
   collection: TablesInsert<"collections">,
   workspace_id: string
 ) => {
-  const { data: createdCollection, error } = await supabase
+  const { data: createdCollection, error } = await db
     .from("collections")
-    .insert([collection])
+    .insert(collection) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -86,7 +89,7 @@ export const createCollections = async (
   collections: TablesInsert<"collections">[],
   workspace_id: string
 ) => {
-  const { data: createdCollections, error } = await supabase
+  const { data: createdCollections, error } = await db
     .from("collections")
     .insert(collections)
     .select("*")
@@ -111,9 +114,9 @@ export const createCollectionWorkspace = async (item: {
   collection_id: string
   workspace_id: string
 }) => {
-  const { data: createdCollectionWorkspace, error } = await supabase
+  const { data: createdCollectionWorkspace, error } = await db
     .from("collection_workspaces")
-    .insert([item])
+    .insert(item) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -127,7 +130,7 @@ export const createCollectionWorkspace = async (item: {
 export const createCollectionWorkspaces = async (
   items: { user_id: string; collection_id: string; workspace_id: string }[]
 ) => {
-  const { data: createdCollectionWorkspaces, error } = await supabase
+  const { data: createdCollectionWorkspaces, error } = await db
     .from("collection_workspaces")
     .insert(items)
     .select("*")
@@ -141,7 +144,7 @@ export const updateCollection = async (
   collectionId: string,
   collection: TablesUpdate<"collections">
 ) => {
-  const { data: updatedCollection, error } = await supabase
+  const { data: updatedCollection, error } = await db
     .from("collections")
     .update(collection)
     .eq("id", collectionId)
@@ -156,10 +159,7 @@ export const updateCollection = async (
 }
 
 export const deleteCollection = async (collectionId: string) => {
-  const { error } = await supabase
-    .from("collections")
-    .delete()
-    .eq("id", collectionId)
+  const { error } = await db.from("collections").delete().eq("id", collectionId)
 
   if (error) {
     throw new Error(error.message)
@@ -172,7 +172,7 @@ export const deleteCollectionWorkspace = async (
   collectionId: string,
   workspaceId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("collection_workspaces")
     .delete()
     .eq("collection_id", collectionId)

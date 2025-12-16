@@ -5,24 +5,24 @@ import { getChapterConfig } from "@/lib/lessons/config"
 import LessonPlayer from "@/components/lessons/LessonPlayer"
 
 interface PlayPageProps {
-  params: {
+  params: Promise<{
     chapterId: string
     locale: string
-  }
-  searchParams: {
+  }>
+  searchParams: Promise<{
     step?: string
-  }
+  }>
 }
 
 export default async function PlayPage({
   params,
   searchParams
 }: PlayPageProps) {
-  const { chapterId, locale } = params
-  const step = parseInt(searchParams.step || "1")
-
+  const { chapterId, locale } = await params
+  const { step } = await searchParams
+  const stepNumber = parseInt(step || "1")
   // 1. ساخت کلاینت سوپابیس سمت سرور
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // 2. چک کردن یوزر (امن‌ترین روش سمت سرور)
   const {
@@ -48,7 +48,7 @@ export default async function PlayPage({
 
   // 4. برش زدن چانک‌ها (Slicing)
   const CHUNKS_PER_STEP = 5
-  const startIndex = (step - 1) * CHUNKS_PER_STEP
+  const startIndex = (stepNumber - 1) * CHUNKS_PER_STEP
   const endIndex = startIndex + CHUNKS_PER_STEP
 
   const stepUnits = allUnits.slice(startIndex, endIndex)
@@ -74,7 +74,7 @@ export default async function PlayPage({
     <LessonPlayer
       units={stepUnits}
       chapterId={chapterId}
-      stepNumber={step}
+      stepNumber={stepNumber}
       userId={user.id}
       locale={locale}
     />

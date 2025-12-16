@@ -1,22 +1,25 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import type { TablesInsert, TablesUpdate } from "@/supabase/types"
+
+// قفل روی schema public برای جلوگیری از never / overload
+const db = supabase.schema("public")
 
 export const getToolById = async (toolId: string) => {
-  const { data: tool, error } = await supabase
+  const { data: tool, error } = await db
     .from("tools")
     .select("*")
     .eq("id", toolId)
     .single()
 
   if (!tool) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Tool not found.")
   }
 
   return tool
 }
 
 export const getToolWorkspacesByWorkspaceId = async (workspaceId: string) => {
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from("workspaces")
     .select(
       `
@@ -29,14 +32,14 @@ export const getToolWorkspacesByWorkspaceId = async (workspaceId: string) => {
     .single()
 
   if (!workspace) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Workspace not found.")
   }
 
   return workspace
 }
 
 export const getToolWorkspacesByToolId = async (toolId: string) => {
-  const { data: tool, error } = await supabase
+  const { data: tool, error } = await db
     .from("tools")
     .select(
       `
@@ -49,7 +52,7 @@ export const getToolWorkspacesByToolId = async (toolId: string) => {
     .single()
 
   if (!tool) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Tool not found.")
   }
 
   return tool
@@ -59,9 +62,9 @@ export const createTool = async (
   tool: TablesInsert<"tools">,
   workspace_id: string
 ) => {
-  const { data: createdTool, error } = await supabase
+  const { data: createdTool, error } = await db
     .from("tools")
-    .insert([tool])
+    .insert(tool) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -82,7 +85,7 @@ export const createTools = async (
   tools: TablesInsert<"tools">[],
   workspace_id: string
 ) => {
-  const { data: createdTools, error } = await supabase
+  const { data: createdTools, error } = await db
     .from("tools")
     .insert(tools)
     .select("*")
@@ -107,9 +110,9 @@ export const createToolWorkspace = async (item: {
   tool_id: string
   workspace_id: string
 }) => {
-  const { data: createdToolWorkspace, error } = await supabase
+  const { data: createdToolWorkspace, error } = await db
     .from("tool_workspaces")
-    .insert([item])
+    .insert(item) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -123,7 +126,7 @@ export const createToolWorkspace = async (item: {
 export const createToolWorkspaces = async (
   items: { user_id: string; tool_id: string; workspace_id: string }[]
 ) => {
-  const { data: createdToolWorkspaces, error } = await supabase
+  const { data: createdToolWorkspaces, error } = await db
     .from("tool_workspaces")
     .insert(items)
     .select("*")
@@ -137,7 +140,7 @@ export const updateTool = async (
   toolId: string,
   tool: TablesUpdate<"tools">
 ) => {
-  const { data: updatedTool, error } = await supabase
+  const { data: updatedTool, error } = await db
     .from("tools")
     .update(tool)
     .eq("id", toolId)
@@ -152,7 +155,7 @@ export const updateTool = async (
 }
 
 export const deleteTool = async (toolId: string) => {
-  const { error } = await supabase.from("tools").delete().eq("id", toolId)
+  const { error } = await db.from("tools").delete().eq("id", toolId)
 
   if (error) {
     throw new Error(error.message)
@@ -165,7 +168,7 @@ export const deleteToolWorkspace = async (
   toolId: string,
   workspaceId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("tool_workspaces")
     .delete()
     .eq("tool_id", toolId)

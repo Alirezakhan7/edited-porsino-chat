@@ -1,6 +1,5 @@
 // app/api/paystar/create/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import crypto from "crypto"
 import { createClient as createServerClient } from "@/lib/supabase/server" // برای گرفتن user از سشن
 import { createClient as createAdminClient } from "@supabase/supabase-js" // برای درج/آپدیت DB با Service Role
@@ -64,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // کاربر لاگین‌کرده
-    const supa = createServerClient()
+    const supa = await createServerClient()
     const {
       data: { user }
     } = await supa.auth.getUser()

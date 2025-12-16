@@ -1,8 +1,11 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert } from "@/supabase/types"
+import type { TablesInsert } from "@/supabase/types"
+
+// قفل روی schema public برای جلوگیری از never / overload
+const db = supabase.schema("public")
 
 export const getAssistantToolsByAssistantId = async (assistantId: string) => {
-  const { data: assistantTools, error } = await supabase
+  const { data: assistantTools, error } = await db
     .from("assistants")
     .select(
       `
@@ -15,7 +18,7 @@ export const getAssistantToolsByAssistantId = async (assistantId: string) => {
     .single()
 
   if (!assistantTools) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Assistant tools not found.")
   }
 
   return assistantTools
@@ -24,12 +27,13 @@ export const getAssistantToolsByAssistantId = async (assistantId: string) => {
 export const createAssistantTool = async (
   assistantTool: TablesInsert<"assistant_tools">
 ) => {
-  const { data: createdAssistantTool, error } = await supabase
+  const { data: createdAssistantTool, error } = await db
     .from("assistant_tools")
-    .insert(assistantTool)
+    .insert(assistantTool) // insert تکی
     .select("*")
+    .single()
 
-  if (!createdAssistantTool) {
+  if (error) {
     throw new Error(error.message)
   }
 
@@ -39,13 +43,13 @@ export const createAssistantTool = async (
 export const createAssistantTools = async (
   assistantTools: TablesInsert<"assistant_tools">[]
 ) => {
-  const { data: createdAssistantTools, error } = await supabase
+  const { data: createdAssistantTools, error } = await db
     .from("assistant_tools")
     .insert(assistantTools)
     .select("*")
 
   if (!createdAssistantTools) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Failed to create assistant tools.")
   }
 
   return createdAssistantTools
@@ -55,7 +59,7 @@ export const deleteAssistantTool = async (
   assistantId: string,
   toolId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("assistant_tools")
     .delete()
     .eq("assistant_id", assistantId)

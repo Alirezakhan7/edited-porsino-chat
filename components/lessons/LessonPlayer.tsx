@@ -140,17 +140,15 @@ export default function LessonPlayer({
       setCurrentIndex(prev => prev + 1)
     } else {
       try {
-        await supabase
-          .from("user_progress")
-          .upsert(
-            {
-              user_id: userId,
-              chapter_id: chapterId,
-              completed_steps: stepNumber,
-              last_played_at: new Date().toISOString()
-            },
-            { onConflict: "user_id, chapter_id" }
-          )
+        await supabase.from("user_progress").upsert(
+          {
+            user_id: userId,
+            chapter_id: chapterId,
+            completed_steps: stepNumber,
+            last_played_at: new Date().toISOString()
+          },
+          { onConflict: "user_id, chapter_id" }
+        )
         router.refresh()
         router.push(`/${locale}/lesson/${chapterId}`)
       } catch (error) {

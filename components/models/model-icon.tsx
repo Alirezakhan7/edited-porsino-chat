@@ -8,7 +8,7 @@ import { ModelProvider } from "@/types"
 import { IconSparkles } from "@tabler/icons-react"
 import { useTheme } from "next-themes"
 import Image from "next/image"
-import { forwardRef, HTMLAttributes } from "react" // ❗️ تغییر در import
+import { forwardRef, HTMLAttributes } from "react"
 import { AnthropicSVG } from "../icons/anthropic-svg"
 import { GoogleSVG } from "../icons/google-svg"
 import { OpenAISVG } from "../icons/openai-svg"

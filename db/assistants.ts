@@ -1,15 +1,18 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import type { TablesInsert, TablesUpdate } from "@/supabase/types"
+
+// قفل روی schema public برای جلوگیری از never / overload
+const db = supabase.schema("public")
 
 export const getAssistantById = async (assistantId: string) => {
-  const { data: assistant, error } = await supabase
+  const { data: assistant, error } = await db
     .from("assistants")
     .select("*")
     .eq("id", assistantId)
     .single()
 
   if (!assistant) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Assistant not found.")
   }
 
   return assistant
@@ -18,7 +21,7 @@ export const getAssistantById = async (assistantId: string) => {
 export const getAssistantWorkspacesByWorkspaceId = async (
   workspaceId: string
 ) => {
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from("workspaces")
     .select(
       `
@@ -31,7 +34,7 @@ export const getAssistantWorkspacesByWorkspaceId = async (
     .single()
 
   if (!workspace) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Workspace not found.")
   }
 
   return workspace
@@ -40,7 +43,7 @@ export const getAssistantWorkspacesByWorkspaceId = async (
 export const getAssistantWorkspacesByAssistantId = async (
   assistantId: string
 ) => {
-  const { data: assistant, error } = await supabase
+  const { data: assistant, error } = await db
     .from("assistants")
     .select(
       `
@@ -53,7 +56,7 @@ export const getAssistantWorkspacesByAssistantId = async (
     .single()
 
   if (!assistant) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Assistant not found.")
   }
 
   return assistant
@@ -63,9 +66,9 @@ export const createAssistant = async (
   assistant: TablesInsert<"assistants">,
   workspace_id: string
 ) => {
-  const { data: createdAssistant, error } = await supabase
+  const { data: createdAssistant, error } = await db
     .from("assistants")
-    .insert([assistant])
+    .insert(assistant) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -86,7 +89,7 @@ export const createAssistants = async (
   assistants: TablesInsert<"assistants">[],
   workspace_id: string
 ) => {
-  const { data: createdAssistants, error } = await supabase
+  const { data: createdAssistants, error } = await db
     .from("assistants")
     .insert(assistants)
     .select("*")
@@ -111,9 +114,9 @@ export const createAssistantWorkspace = async (item: {
   assistant_id: string
   workspace_id: string
 }) => {
-  const { data: createdAssistantWorkspace, error } = await supabase
+  const { data: createdAssistantWorkspace, error } = await db
     .from("assistant_workspaces")
-    .insert([item])
+    .insert(item) // ✅ insert تکی بدون آرایه
     .select("*")
     .single()
 
@@ -127,7 +130,7 @@ export const createAssistantWorkspace = async (item: {
 export const createAssistantWorkspaces = async (
   items: { user_id: string; assistant_id: string; workspace_id: string }[]
 ) => {
-  const { data: createdAssistantWorkspaces, error } = await supabase
+  const { data: createdAssistantWorkspaces, error } = await db
     .from("assistant_workspaces")
     .insert(items)
     .select("*")
@@ -141,7 +144,7 @@ export const updateAssistant = async (
   assistantId: string,
   assistant: TablesUpdate<"assistants">
 ) => {
-  const { data: updatedAssistant, error } = await supabase
+  const { data: updatedAssistant, error } = await db
     .from("assistants")
     .update(assistant)
     .eq("id", assistantId)
@@ -156,10 +159,7 @@ export const updateAssistant = async (
 }
 
 export const deleteAssistant = async (assistantId: string) => {
-  const { error } = await supabase
-    .from("assistants")
-    .delete()
-    .eq("id", assistantId)
+  const { error } = await db.from("assistants").delete().eq("id", assistantId)
 
   if (error) {
     throw new Error(error.message)
@@ -172,7 +172,7 @@ export const deleteAssistantWorkspace = async (
   assistantId: string,
   workspaceId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("assistant_workspaces")
     .delete()
     .eq("assistant_id", assistantId)

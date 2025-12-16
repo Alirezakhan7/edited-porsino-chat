@@ -1,10 +1,7 @@
-// app/(auth)/login/page.tsx
 import AuthForm from "@/components/auth/auth-form"
 import AnimatedMessage from "@/components/ui/animated-message"
-import { cookies, headers } from "next/headers"
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
-import { get } from "@vercel/edge-config"
-import { Database } from "@/supabase/types"
 import { createClient } from "@/lib/supabase/server"
 import { Metadata } from "next"
 
@@ -15,9 +12,12 @@ export const metadata: Metadata = {
 export default async function Login({
   searchParams
 }: {
-  searchParams: { message?: string; mode?: string }
+  searchParams: Promise<{ message?: string; mode?: string }>
 }) {
-  const supabase = createClient()
+  // ⬅️ الزام Next 16: resolve کردن Promise
+  const sp = await searchParams
+
+  const supabase = await createClient()
 
   // بررسی سشن
   const session = (await supabase.auth.getSession()).data.session
@@ -36,15 +36,14 @@ export default async function Login({
     return redirect("/chat")
   }
 
-  // تابع ورود
   // ورود
   async function signIn(formData: FormData) {
     "use server"
     const email = formData.get("email") as string
     const password = formData.get("password") as string
-    const supabase = createClient()
+    const supabase = await createClient()
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     })
@@ -61,12 +60,11 @@ export default async function Login({
     "use server"
     const email = formData.get("email") as string
     const password = formData.get("password") as string
-    const supabase = createClient()
+    const supabase = await createClient()
 
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
-      console.error("Signup error:", error.message) // ← این خط اضافه شود
       const msg = error.message
       const friendly = msg.includes("already")
         ? "این ایمیل قبلاً ثبت‌نام شده است."
@@ -80,12 +78,12 @@ export default async function Login({
   // بازیابی رمز عبور
   async function handleResetPassword(formData: FormData) {
     "use server"
-    const origin = headers().get("origin")
+    const origin = (await headers()).get("origin")
     const email = formData.get("email") as string
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://chat.porsino.org/auth/reset-password"
+      redirectTo: `${origin}/auth/reset-password`
     })
 
     if (error) {
@@ -95,10 +93,13 @@ export default async function Login({
     }
 
     return redirect(
-      `/login?message=${encodeURIComponent("ایمیلی برای بازیابی رمز عبور ارسال شد")}`
+      `/login?message=${encodeURIComponent(
+        "ایمیلی برای بازیابی رمز عبور ارسال شد"
+      )}`
     )
   }
-  const mode = searchParams?.mode === "signup" ? "signup" : "login"
+
+  const mode = sp?.mode === "signup" ? "signup" : "login"
 
   return (
     <div
@@ -106,9 +107,7 @@ export default async function Login({
       style={{ backgroundColor: "#1E1E1E" }}
     >
       <div className="w-full max-w-md">
-        {searchParams?.message && (
-          <AnimatedMessage message={searchParams.message} />
-        )}
+        {sp?.message && <AnimatedMessage message={sp.message} />}
         <AuthForm
           signIn={signIn}
           signUp={signUp}

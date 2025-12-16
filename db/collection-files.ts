@@ -1,10 +1,13 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { TablesInsert } from "@/supabase/types"
+import type { TablesInsert } from "@/supabase/types"
+
+// قفل روی schema public برای جلوگیری از never / overload
+const db = supabase.schema("public")
 
 export const getCollectionFilesByCollectionId = async (
   collectionId: string
 ) => {
-  const { data: collectionFiles, error } = await supabase
+  const { data: collectionFiles, error } = await db
     .from("collections")
     .select(
       `
@@ -17,7 +20,7 @@ export const getCollectionFilesByCollectionId = async (
     .single()
 
   if (!collectionFiles) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Collection files not found.")
   }
 
   return collectionFiles
@@ -26,12 +29,13 @@ export const getCollectionFilesByCollectionId = async (
 export const createCollectionFile = async (
   collectionFile: TablesInsert<"collection_files">
 ) => {
-  const { data: createdCollectionFile, error } = await supabase
+  const { data: createdCollectionFile, error } = await db
     .from("collection_files")
     .insert(collectionFile)
     .select("*")
+    .single()
 
-  if (!createdCollectionFile) {
+  if (error) {
     throw new Error(error.message)
   }
 
@@ -41,13 +45,13 @@ export const createCollectionFile = async (
 export const createCollectionFiles = async (
   collectionFiles: TablesInsert<"collection_files">[]
 ) => {
-  const { data: createdCollectionFiles, error } = await supabase
+  const { data: createdCollectionFiles, error } = await db
     .from("collection_files")
     .insert(collectionFiles)
     .select("*")
 
   if (!createdCollectionFiles) {
-    throw new Error(error.message)
+    throw new Error(error?.message || "Failed to create collection files.")
   }
 
   return createdCollectionFiles
@@ -57,7 +61,7 @@ export const deleteCollectionFile = async (
   collectionId: string,
   fileId: string
 ) => {
-  const { error } = await supabase
+  const { error } = await db
     .from("collection_files")
     .delete()
     .eq("collection_id", collectionId)

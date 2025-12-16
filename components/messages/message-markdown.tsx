@@ -8,6 +8,8 @@ interface MessageMarkdownProps {
   content: string
 }
 
+type ElementWithChildren = React.ReactElement<{ children?: React.ReactNode }>
+
 export const MessageMarkdown: FC<MessageMarkdownProps> = ({ content }) => {
   return (
     <MessageMarkdownMemoized
@@ -22,24 +24,27 @@ export const MessageMarkdown: FC<MessageMarkdownProps> = ({ content }) => {
         },
         code({ node, className, children, ...props }) {
           const childArray = React.Children.toArray(children)
-          const firstChild = childArray[0] as React.ReactElement
-          const firstChildAsString = React.isValidElement(firstChild)
-            ? (firstChild as React.ReactElement).props.children
-            : firstChild
+          const firstChildNode = childArray[0] as React.ReactNode
 
-          if (firstChildAsString === "▍") {
+          const firstChildAsNode: React.ReactNode = React.isValidElement(
+            firstChildNode
+          )
+            ? (firstChildNode as ElementWithChildren).props.children
+            : firstChildNode
+
+          if (firstChildAsNode === "▍") {
             return <span className="mt-1 animate-pulse cursor-default">▍</span>
           }
 
-          if (typeof firstChildAsString === "string") {
-            childArray[0] = firstChildAsString.replace("`▍`", "▍")
+          if (typeof firstChildAsNode === "string") {
+            childArray[0] = firstChildAsNode.replace("`▍`", "▍")
           }
 
           const match = /language-(\w+)/.exec(className || "")
 
           if (
-            typeof firstChildAsString === "string" &&
-            !firstChildAsString.includes("\n")
+            typeof firstChildAsNode === "string" &&
+            !firstChildAsNode.includes("\n")
           ) {
             return (
               <code className={className} {...props}>

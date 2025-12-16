@@ -1,6 +1,5 @@
 // app/api/pardakht/create/route.ts
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import crypto from "crypto"
 
@@ -35,7 +34,9 @@ export async function POST(req: Request) {
     SECRET_KEY: process.env.DIRECTPAY_SECRET_KEY ? "✅ موجوده" : "❌ نیست",
     APP_URL: process.env.APP_URL
   })
-  const supabase = createClient()
+
+  const supabase = await createClient()
+  const db = supabase.schema("public")
 
   const app_url_env = process.env.APP_URL || "https://chat.porsino.org"
   const allowedOrigin = new URL(app_url_env).origin
@@ -48,33 +49,42 @@ export async function POST(req: Request) {
   }
 
   try {
-    // احراز هویت (مثل کد قدیمی)
+    // احراز هویت
     const {
       data: { user }
     } = await supabase.auth.getUser()
-    if (!user)
+
+    if (!user) {
       return NextResponse.json({ message: "ابتدا وارد شوید." }, { status: 401 })
+    }
 
     // فقط planId و discountCode از کلاینت
     const { planId, discountCode } = (await req.json()) as {
       planId?: keyof typeof serverPlans | string
       discountCode?: string
     }
+
     if (!planId || !(planId in serverPlans)) {
       return NextResponse.json({ message: "پلن نامعتبر است." }, { status: 400 })
     }
 
-    // محاسبه مبلغ در سرور (مثل قبل)
-    let finalAmount = planPricesRial[planId as keyof typeof serverPlans]
+    // planId را برای TS و insert کاملاً narrow می‌کنیم
+    const safePlanId = planId as keyof typeof serverPlans
+
+    // محاسبه مبلغ در سرور
+    let finalAmount = planPricesRial[safePlanId]
     if (discountCode) {
       const d = serverDiscountCodes[discountCode.trim().toUpperCase()]
       if (d) {
-        if (d.discountPercent)
+        if (d.discountPercent) {
           finalAmount = Math.round(finalAmount * (1 - d.discountPercent / 100))
-        if (d.discountAmountRial)
+        }
+        if (d.discountAmountRial) {
           finalAmount = Math.max(5_000, finalAmount - d.discountAmountRial)
+        }
       }
     }
+
     if (!Number.isFinite(finalAmount) || finalAmount < 5_000) {
       return NextResponse.json(
         { message: "مبلغ نهایی نامعتبر است." },
@@ -82,28 +92,33 @@ export async function POST(req: Request) {
       )
     }
 
-    // جلوگیری از اسپم (pending اخیر) – مثل قبل
-    const { data: recentPending } = await supabase
+    // جلوگیری از اسپم (pending اخیر)
+    const { data: recentPending, error: recentErr } = await db
       .from("transactions")
       .select("id, created_at")
       .eq("user_id", user.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
-    if (
-      recentPending?.length &&
-      Date.now() - new Date(recentPending[0].created_at).getTime() < 60_000
-    ) {
-      return NextResponse.json(
-        { message: "یک تراکنش در حال پردازش دارید. لطفاً ۱ دقیقه صبر کنید." },
-        { status: 429 }
-      )
+
+    if (recentErr) throw new Error(recentErr.message)
+
+    const createdAt = recentPending?.[0]?.created_at
+    if (createdAt) {
+      const elapsed = Date.now() - new Date(createdAt).getTime()
+      if (elapsed < 60_000) {
+        return NextResponse.json(
+          { message: "یک تراکنش در حال پردازش دارید. لطفاً ۱ دقیقه صبر کنید." },
+          { status: 429 }
+        )
+      }
     }
 
     // پیکربندی DirectPay
     const gateway_id = process.env.DIRECTPAY_GATEWAY_ID
     const sign_key = process.env.DIRECTPAY_SECRET_KEY
     const app_url = app_url_env
+
     if (!gateway_id || !sign_key) {
       throw new Error(
         "پیکربندی درگاه ناقص است. (DIRECTPAY_GATEWAY_ID / DIRECTPAY_SECRET_KEY)"
@@ -112,7 +127,6 @@ export async function POST(req: Request) {
 
     // سفارش
     const order_id = `user_${user.id.substring(0, 8)}_${Date.now()}`
-    // کال‌بک نهایی خودت (Route وریفای)
     const callback_url = `${app_url}/api/paystar/callback`
 
     // نام پرداخت‌کننده
@@ -121,7 +135,7 @@ export async function POST(req: Request) {
       user.email ||
       "کاربر پرسینو"
 
-    // امضای Create — الگوی رایج: amount#order_id#callback
+    // امضای Create — amount#order_id#callback
     const sign_data = `${finalAmount}#${order_id}#${callback_url}`
     const sign = crypto
       .createHmac("sha512", sign_key)
@@ -136,7 +150,6 @@ export async function POST(req: Request) {
       sign,
       mail: user.email,
       name: payer_name
-      // phone, description, callback_method=1 (اختیاری)
     }
 
     const response = await fetch(DP_CREATE_URL, {
@@ -165,19 +178,19 @@ export async function POST(req: Request) {
       )
     }
 
-    // ثبت تراکنش pending (مثل قبل)
-    const { error: dbError } = await supabase.from("transactions").insert({
+    // ثبت تراکنش pending
+    const { error: dbError } = await db.from("transactions").insert({
       user_id: user.id,
       order_id,
       ref_num: result.data.ref_num,
-      plan_id: planId,
+      plan_id: safePlanId,
       amount: finalAmount,
       status: "pending",
       discount_code: discountCode || null
     })
+
     if (dbError) throw new Error("خطا در ثبت اطلاعات تراکنش در دیتابیس.")
 
-    // لینک پرداخت مرحله بعد
     const paymentUrl = `https://api.directpay.click/api/pardakht/payment?token=${result.data.token}`
     return NextResponse.json({ payment_url: paymentUrl })
   } catch (error: any) {
