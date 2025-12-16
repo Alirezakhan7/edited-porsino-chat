@@ -4,15 +4,8 @@ import { motion } from "framer-motion"
 import { IconCheck, IconLock, IconStar } from "@tabler/icons-react"
 import { useRouter } from "next/navigation"
 import { clsx } from "clsx"
-import { colorThemes, ColorKey } from "@/components/material/MaterialUI"
-
-interface ChapterSection {
-  id: string
-  title: string
-  startStep: number
-  endStep: number
-  theme: ColorKey
-}
+// 1. تغییر مهم: ایمپورت کردن تایپ اصلی از فایل کانفیگ برای هماهنگی ۱۰۰٪
+import { ChapterSection } from "@/lib/lessons/config"
 
 interface LessonMapProps {
   chapterId: string
@@ -23,15 +16,16 @@ interface LessonMapProps {
   sections?: ChapterSection[]
 }
 
-// تنظیمات اختصاصی برای حالت ۳ بعدی (رنگ بدنه و رنگ لبه تیره)
+// 2. تغییر مهم: اضافه کردن رنگ‌های جدید به استایل‌های ۳ بعدی
+// تایپ کلید را string گذاشتیم تا با رنگ‌های جدید کانفیگ به مشکل نخورد
 const theme3DStyles: Record<
-  ColorKey,
+  string,
   { bg: string; border: string; shadow: string }
 > = {
   emerald: {
     bg: "bg-emerald-500",
-    border: "border-emerald-700", // لبه تیره برای سه بعدی شدن
-    shadow: "shadow-emerald-500/40" // سایه رنگی زیر دکمه
+    border: "border-emerald-700",
+    shadow: "shadow-emerald-500/40"
   },
   blue: {
     bg: "bg-blue-500",
@@ -47,6 +41,22 @@ const theme3DStyles: Record<
     bg: "bg-pink-500",
     border: "border-pink-700",
     shadow: "shadow-pink-500/40"
+  },
+  // --- رنگ‌های جدید اضافه شده ---
+  amber: {
+    bg: "bg-amber-400",
+    border: "border-amber-600",
+    shadow: "shadow-amber-400/40"
+  },
+  rose: {
+    bg: "bg-rose-500",
+    border: "border-rose-700",
+    shadow: "shadow-rose-500/40"
+  },
+  cyan: {
+    bg: "bg-cyan-500",
+    border: "border-cyan-700",
+    shadow: "shadow-cyan-500/40"
   }
 }
 
@@ -84,12 +94,13 @@ export default function LessonMap({
           const currentSection = sections?.find(
             s => stepNumber >= s.startStep && stepNumber <= s.endStep
           )
-          // پیش‌فرض emerald اگر تم پیدا نشد
-          const sectionColorKey = (currentSection?.theme ||
-            "emerald") as ColorKey
 
-          // استایل‌های ۳ بعدی مربوط به این رنگ
-          const current3D = theme3DStyles[sectionColorKey]
+          // دریافت تم رنگی سکشن (پیش‌فرض emerald)
+          const themeKey = currentSection?.theme || "emerald"
+
+          // پیدا کردن استایل ۳ بعدی مربوطه
+          // اگر رنگی تعریف نشده بود، به عنوان فال‌بک از emerald استفاده می‌کند
+          const current3D = theme3DStyles[themeKey] || theme3DStyles["emerald"]
 
           const isSectionStart = currentSection?.startStep === stepNumber
 
@@ -136,27 +147,24 @@ export default function LessonMap({
                 <button
                   onClick={() => handleStepClick(index, status)}
                   className={clsx(
-                    // استایل‌های پایه: گرد، وسط‌چین، بدون اوت‌لاین آبی (outline-none)
+                    // استایل‌های پایه
                     "w-24 h-24 rounded-[2.5rem] flex flex-col items-center justify-center transition-all relative z-20 outline-none focus:outline-none tap-highlight-transparent",
 
                     // --- 1. حالت قفل ---
                     status === "locked" &&
                       "bg-gray-200 border-b-[6px] border-gray-300 text-gray-400 cursor-not-allowed",
 
-                    // --- 2. حالت تکمیل شده (طلایی) ---
-                    // border-b-amber-600 باعث میشه لبه پایینی تیره باشه (سه بعدی)
+                    // --- 2. حالت تکمیل شده (طلایی/زرد) ---
                     status === "completed" &&
                       "bg-amber-400 border-b-[6px] border-amber-600 text-white shadow-xl shadow-amber-500/30 active:border-b-0 active:translate-y-[6px] active:shadow-none",
 
                     // --- 3. حالت جاری (Current) ---
-                    // استفاده از رنگ‌های داینامیک تعریف شده در theme3DStyles
                     status === "current" &&
                       clsx(
-                        current3D.bg, // رنگ اصلی
-                        current3D.border, // رنگ لبه تیره (مثلا border-emerald-700)
-                        current3D.shadow, // سایه رنگی زیر دکمه
+                        current3D.bg,
+                        current3D.border,
+                        current3D.shadow,
                         "border-b-[6px] text-white shadow-2xl ring-4 ring-offset-4 ring-offset-gray-50 ring-white/50",
-                        // انیمیشن کلیک: بردر حذف میشه و دکمه میاد پایین
                         "active:border-b-0 active:translate-y-[6px] active:shadow-none"
                       )
                   )}
@@ -182,7 +190,7 @@ export default function LessonMap({
                   )}
                 </button>
 
-                {/* سایه تیره زیر دکمه (روی زمین) برای عمق بیشتر */}
+                {/* سایه تیره زیر دکمه */}
                 <div
                   className={clsx(
                     "absolute -bottom-4 left-1/2 -translate-x-1/2 w-20 h-4 rounded-[100%] blur-md -z-10 transition-all",
