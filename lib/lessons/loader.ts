@@ -1,35 +1,53 @@
 // lib/lessons/loader.ts
-import { chapters, ChapterConfig } from "./config"
-import { GamifiedUnit } from "@/lib/lessons/types" // همان تایپی که قبلاً تعریف کردیم
+import { createClient } from "@/lib/supabase/server"
+import { getChapterConfig } from "./config"
+import { GamifiedUnit } from "@/lib/lessons/types"
 
 export async function loadLessonData(
   chapterId: string
 ): Promise<GamifiedUnit[] | null> {
-  const config = chapters.find(c => c.id === chapterId)
+  // 1. پیدا کردن تنظیمات فصل از روی آدرس URL
+  const config = getChapterConfig(chapterId)
 
   if (!config) {
     console.error(`Chapter config not found for id: ${chapterId}`)
     return null
   }
 
-  try {
-    // ایمپورت پویا (Dynamic Import) بر اساس آدرس پوشه
-    // نکته: آدرس دهی باید دقیق باشد. فرض بر این است که data در روت src است.
-    // اگر از Next.js استفاده می‌کنی، این روش بهینه است چون فقط فایل مورد نیاز را لود می‌کند.
+  // 2. ساخت کلاینت دیتابیس
+  const supabase = await createClient()
 
-    let data
+  // 3. دریافت محتوا از دیتابیس
+  // منطق: برو درس‌هایی را بیار که grade و chapter_number شان با کانفیگ ما یکی است
+  const { data, error } = await supabase
+    .from("lesson_contents")
+    .select(
+      `
+      content,
+      sequence_order,
+      lessons!inner (
+        grade,
+        chapter_number
+      )
+    `
+    )
+    .eq("lessons.grade", parseInt(config.grade)) // تبدیل رشته "12" به عدد 12
+    .eq("lessons.chapter_number", config.chapterNumber) // شماره فصل (1)
+    .order("sequence_order", { ascending: true })
 
-    if (config.grade === "10") {
-      data = await import(`@/data/lessons/grade_10/${config.jsonFileName}`)
-    } else if (config.grade === "11") {
-      data = await import(`@/data/lessons/grade_11/${config.jsonFileName}`)
-    } else {
-      data = await import(`@/data/lessons/grade_12/${config.jsonFileName}`)
-    }
-
-    return data.default as GamifiedUnit[]
-  } catch (error) {
-    console.error(`Failed to load JSON for chapter ${chapterId}:`, error)
+  if (error) {
+    console.error(`Database error fetching chapter ${chapterId}:`, error)
     return null
   }
+
+  if (!data || data.length === 0) {
+    console.warn(`No content found in DB for chapter ${chapterId}`)
+    return null
+  }
+
+  // 4. استخراج محتوای اصلی از دل پاسخ دیتابیس
+  // دیتابیس آرایه‌ای از { content: {...} } برمی‌گرداند، ما فقط داخل content را می‌خواهیم
+  const units = data.map((row: any) => row.content as GamifiedUnit)
+
+  return units
 }

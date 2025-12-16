@@ -5,33 +5,33 @@ export type GradeLevel = "10" | "11" | "12"
 export interface ChapterSection {
   id: string
   title: string
-  startStep: number // شروع بازه (مثلا 1)
-  endStep: number // پایان بازه (مثلا 5)
-  theme: "blue" | "purple" | "pink" | "emerald" // رنگ اختصاصی گفتار
+  startStep: number
+  endStep: number
+  theme: "blue" | "purple" | "pink" | "emerald"
 }
 
 export interface ChapterConfig {
-  id: string // شناسه یکتا (مثل biology_12_ch01)
-  grade: GradeLevel // پایه تحصیلی
-  title: string // عنوان فصل (مثل "مولکول‌های اطلاعاتی")
-  description: string // توضیح کوتاه برای زیر عنوان
-  jsonFileName: string // نام فایل جیسون در پوشه data
-  totalSteps: number // تعداد دایره‌های روی نقشه (مثلاً ۲۰ تا)
-  totalChunks: number // کل چانک‌های آموزشی (مثلاً ۱۰۰ تا)
-  themeColor: string // رنگ تم این فصل (برای خوشگلی UI)
+  id: string // شناسه URL (مثل biology_12_ch01)
+  grade: GradeLevel // پایه (برای فیلتر دیتابیس لازم است)
+  chapterNumber: number // (جدید) شماره فصل برای پیدا کردن در دیتابیس
+  title: string
+  description: string
+  // jsonFileName: string <-- حذف شد، دیگر نیاز نیست
+  totalSteps: number
+  totalChunks: number
+  themeColor: string
   sections: ChapterSection[]
 }
 
-// لیست تمام فصل‌های موجود در اپلیکیشن
 export const chapters: ChapterConfig[] = [
   {
     id: "biology_12_ch01",
     grade: "12",
+    chapterNumber: 1, // (جدید) به دیتابیس می‌گوید دنبال فصل ۱ بگرد
     title: "فصل ۱: مولکول‌های اطلاعاتی",
     description: "ماجرای کشف DNA و رمز و راز پروتئین‌ها",
-    jsonFileName: "biology_12_ch01.json",
-    totalChunks: 101, // این عدد را از طول آرایه فایل جیسون گرفتم
-    totalSteps: 20, // هر ۵ چانک = ۱ استپ (تقریبی)
+    totalChunks: 101,
+    totalSteps: 20,
     themeColor: "from-emerald-400 to-teal-500",
     sections: [
       {
