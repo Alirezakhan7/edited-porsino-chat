@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import {
   IconMicroscope,
@@ -10,15 +10,13 @@ import {
   IconStethoscope
 } from "@tabler/icons-react"
 import { motion } from "framer-motion"
-
+import { createClient } from "@/lib/supabase/client"
 import {
   MaterialTabs,
   ProgressCard,
   ChapterAccordion
 } from "@/components/material/LearningComponents"
 import type { ColorKey } from "@/components/material/MaterialUI"
-
-// ✅ تغییر: ایمپورت منطق جدید
 import { getChaptersByGrade, GradeLevel } from "@/lib/lessons/config"
 
 export default function PathPage() {
@@ -26,12 +24,54 @@ export default function PathPage() {
   const params = useParams()
   // بررسی ایمن locale
   const locale = params && "locale" in params ? params.locale : "fa"
-
+  const supabase = createClient()
   // ✅ تغییر: استفاده از کلیدهای استاندارد (10, 11, 12) به جای (دهم، یازدهم...)
   const [activeTab, setActiveTab] = useState<GradeLevel>("10")
-
+  const [progressMap, setProgressMap] = useState<Record<string, number>>({})
   // ✅ تغییر: دریافت فصل‌های واقعی از فایل کانفیگ (دیتابیس)
   const realChapters = getChaptersByGrade(activeTab)
+  useEffect(() => {
+    async function fetchProgress() {
+      const {
+        data: { user }
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      // گرفتن لیست آیدی فصل‌های موجود در این تب
+      const chapterIds = realChapters.map(c => c.id)
+
+      // کوئری به دیتابیس: پیشرفت این کاربر در این فصل‌ها رو بده
+      const { data, error } = await supabase
+        .from("user_progress")
+        .select("chapter_id, completed_steps")
+        .eq("user_id", user.id)
+        .in("chapter_id", chapterIds)
+
+      if (error) {
+        console.error("Error loading progress:", error)
+        return
+      }
+
+      // تبدیل دیتا به فرمت { "biology_12_ch01": 50, ... }
+      const newMap: Record<string, number> = {}
+
+      data.forEach(item => {
+        // پیدا کردن کانفیگ فصل برای دانستن totalSteps
+        const chapterConfig = realChapters.find(c => c.id === item.chapter_id)
+        if (chapterConfig) {
+          // فرمول درصد: (مراحل رفته / کل مراحل) * ۱۰۰
+          const percent = Math.round(
+            (item.completed_steps / chapterConfig.totalSteps) * 100
+          )
+          newMap[item.chapter_id] = percent > 100 ? 100 : percent
+        }
+      })
+
+      setProgressMap(newMap)
+    }
+
+    fetchProgress()
+  }, [activeTab]) // هر وقت تب عوض شد اجرا بشه
 
   // اطلاعات ظاهری برای هر پایه (برای حفظ ظاهر قبلی)
   const gradeInfo: Record<
@@ -90,9 +130,9 @@ export default function PathPage() {
         >
           <ProgressCard
             title={currentInfo.title}
-            learning={learningProgress}
-            mastery={masteryProgress}
-            overall={overallProgress}
+            learning={0}
+            mastery={0}
+            overall={0}
             color={currentInfo.color}
           />
 
@@ -116,17 +156,20 @@ export default function PathPage() {
                   chapter={{
                     id: chapter.id,
                     title: chapter.title,
-                    // چون در کانفیگ آیکون نداریم، چرخشی آیکون اختصاص می‌دهیم
                     icon: icons[i % icons.length],
-                    progress: 0, // فعلاً صفر
+                    // ✅ اینجا تغییر کرد: خواندن درصد از progressMap
+                    progress: progressMap[chapter.id] || 0,
                     sections: chapter.sections.map(sec => ({
                       id: sec.id,
                       title: sec.title,
-                      progress: 0
+                      // فعلا درصد گفتارها رو همون درصد کل فصل میذاریم (یا صفر)
+                      progress: progressMap[chapter.id] || 0
                     }))
                   }}
                   index={i}
-                  onSectionClick={() => handleSectionClick(chapter.id)}
+                  onSectionClick={() =>
+                    router.push(`/${locale}/lesson/${chapter.id}`)
+                  }
                 />
               ))
             )}
