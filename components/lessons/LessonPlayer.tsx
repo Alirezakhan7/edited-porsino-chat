@@ -22,6 +22,7 @@ interface LessonPlayerProps {
   userId: string
   locale: string
 }
+import { saveUserProgress } from "@/lib/actions/progress"
 
 export default function LessonPlayer({
   units,
@@ -120,6 +121,7 @@ export default function LessonPlayer({
 
   // --- 3. هندل کردن دکمه بعدی ---
   const handleNext = async () => {
+    // منطق لایتنر (بدون تغییر)
     if (currentUnit.flashcard) {
       supabase
         .from("leitner_box")
@@ -134,29 +136,30 @@ export default function LessonPlayer({
     }
 
     if (currentIndex < units.length - 1) {
+      // رفتن به اسلاید بعدی (بدون تغییر)
       setViewState("story")
       setSelectedOption(null)
       setIsCorrect(false)
       setCurrentIndex(prev => prev + 1)
     } else {
+      // 🏁 رسیدن به پایان درس (اینجا را تغییر می‌دهیم)
       try {
-        await supabase.from("user_progress").upsert(
-          {
-            user_id: userId,
-            chapter_id: chapterId,
-            completed_steps: stepNumber,
-            last_played_at: new Date().toISOString()
-          },
-          { onConflict: "user_id, chapter_id" }
-        )
+        // ✅ استفاده از سرور اکشن جدید برای ذخیره امن و باز کردن قفل مرحله بعد
+        // عدد 20 مقدار XP است که برای پایان درس در نظر گرفتیم
+        await saveUserProgress(chapterId, 20)
+
+        // رفرش کردن کش نکست (خیلی مهم برای اینکه وقتی برگشتید قفل باز شده باشد)
         router.refresh()
+
+        // بازگشت به نقشه
         router.push(`/${locale}/lesson/${chapterId}`)
       } catch (error) {
+        console.error("خطا در ذخیره پیشرفت:", error)
+        // حتی اگر خطا داد، کاربر را به نقشه برگردان تا گیر نکند
         router.push(`/${locale}/lesson/${chapterId}`)
       }
     }
   }
-
   const progressPercent = (currentIndex / units.length) * 100
 
   return (
