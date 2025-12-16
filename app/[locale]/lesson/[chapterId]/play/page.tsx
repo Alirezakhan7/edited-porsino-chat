@@ -20,40 +20,41 @@ export default async function PlayPage({
 }: PlayPageProps) {
   const { chapterId, locale } = await params
   const { step } = await searchParams
+
+  // 1. تعیین شماره مرحله (اگر نبود پیش‌فرض ۱)
   const stepNumber = parseInt(step || "1")
-  // 1. ساخت کلاینت سوپابیس سمت سرور
+
+  // 2. ساخت کلاینت سوپابیس
   const supabase = await createClient()
 
-  // 2. چک کردن یوزر (امن‌ترین روش سمت سرور)
+  // 3. چک کردن یوزر
   const {
     data: { user },
     error
   } = await supabase.auth.getUser()
 
   if (error || !user) {
-    // اگر یوزر نبود، بفرست لاگین
     redirect(`/${locale}/login`)
   }
 
-  // 3. لود کردن تنظیمات و فایل جیسون
-  const config = getChapterConfig(chapterId)
-  if (!config)
-    return <div className="p-10 text-center text-red-500">فصل پیدا نشد 🚫</div>
-
+  // 4. لود کردن کل محتوای فصل
+  // این تابع همه آیتم‌های فصل (مثلاً ۲۳ تا) را می‌آورد
   const allUnits = await loadLessonData(chapterId)
-  if (!allUnits)
+
+  if (!allUnits || allUnits.length === 0) {
     return (
-      <div className="p-10 text-center text-red-500">محتوا بارگذاری نشد 🚫</div>
+      <div className="p-10 text-center font-bold text-red-500">
+        محتوا بارگذاری نشد یا فصل خالی است 🚫
+      </div>
     )
+  }
 
-  // 4. برش زدن چانک‌ها (Slicing)
-  const CHUNKS_PER_STEP = 5
-  const startIndex = (stepNumber - 1) * CHUNKS_PER_STEP
-  const endIndex = startIndex + CHUNKS_PER_STEP
+  // 5. ✅ منطق جدید: انتخاب دقیقاً ۱ درس برای این مرحله
+  // چون آرایه از ۰ شروع می‌شود ولی step از ۱، یکی کم می‌کنیم
+  const unitIndex = stepNumber - 1
 
-  const stepUnits = allUnits.slice(startIndex, endIndex)
-
-  if (stepUnits.length === 0) {
+  // اگر مرحله‌ای که کاربر خواسته وجود ندارد (مثلاً مرحله ۳۰ در فصلی که ۲۰ درس دارد)
+  if (unitIndex < 0 || unitIndex >= allUnits.length) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
         <div className="mb-4 text-xl font-bold text-gray-700">
@@ -61,7 +62,7 @@ export default async function PlayPage({
         </div>
         <a
           href={`/${locale}/lesson/${chapterId}`}
-          className="rounded-xl bg-blue-600 px-6 py-2 text-white"
+          className="rounded-xl bg-blue-600 px-6 py-3 text-white shadow-lg transition hover:bg-blue-700"
         >
           بازگشت به نقشه
         </a>
@@ -69,10 +70,14 @@ export default async function PlayPage({
     )
   }
 
-  // 5. رندر پلیر
+  // انتخاب همان تک درس خاص
+  const targetUnit = allUnits[unitIndex]
+
+  // 6. رندر پلیر
   return (
     <LessonPlayer
-      units={stepUnits}
+      // ⚠️ نکته مهم: LessonPlayer لیست می‌خواهد، پس این تک آیتم را در آرایه می‌گذاریم
+      units={[targetUnit]}
       chapterId={chapterId}
       stepNumber={stepNumber}
       userId={user.id}
