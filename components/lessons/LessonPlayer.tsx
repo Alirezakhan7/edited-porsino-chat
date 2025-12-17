@@ -122,17 +122,23 @@ export default function LessonPlayer({
   // --- 3. هندل کردن دکمه بعدی ---
   const handleNext = async () => {
     // منطق لایتنر (بدون تغییر)
-    if (currentUnit.flashcard) {
+    if (currentUnit.flashcards && currentUnit.flashcards.length > 0) {
+      // ساخت آرایه برای ذخیره گروهی
+      const cardsData = currentUnit.flashcards.map(card => ({
+        user_id: userId,
+        flashcard_front: card.front,
+        flashcard_back: card.back,
+        source_chunk_uid: currentUnit.uid,
+        box_level: 1
+      }))
+
+      // ذخیره در دیتابیس
       supabase
         .from("leitner_box")
-        .insert({
-          user_id: userId,
-          flashcard_front: currentUnit.flashcard.front,
-          flashcard_back: currentUnit.flashcard.back,
-          source_chunk_uid: currentUnit.uid,
-          box_level: 1
+        .insert(cardsData)
+        .then(({ error }) => {
+          if (error) console.error("Error saving flashcards:", error)
         })
-        .then()
     }
 
     if (currentIndex < units.length - 1) {
