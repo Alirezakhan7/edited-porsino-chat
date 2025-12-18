@@ -1,7 +1,7 @@
 "use client"
 
 import { ReactNode, useContext, useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Dashboard } from "@/components/ui/dashboard"
 import Loading from "@/app/[locale]/loading"
@@ -22,6 +22,7 @@ import { getModelWorkspacesByWorkspaceId } from "@/db/models"
 import { getAssistantWorkspacesByWorkspaceId } from "@/db/assistants"
 import { getAssistantImageFromStorage } from "@/db/storage/assistant-images"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
+import { useMediaQuery } from "@/lib/hooks/use-media-query"
 
 interface AppShellProps {
   children: ReactNode
@@ -30,6 +31,8 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   const {
     setChatSettings,
@@ -76,11 +79,11 @@ export default function AppShell({ children }: AppShellProps) {
 
       await fetchWorkspaceData((workspace as any).id, workspace)
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchWorkspaceData = async (workspaceId: string, workspace: any) => {
     setLoading(true)
-
     setSelectedWorkspace(workspace)
 
     /* ---------- Assistants ---------- */
@@ -173,5 +176,18 @@ export default function AppShell({ children }: AppShellProps) {
     setLoading(false)
   }
 
-  return loading ? <Loading /> : <Dashboard>{children}</Dashboard>
+  if (loading) return <Loading />
+
+  // ✅ موبایل: فقط در مسیرهای /chat داشبورد (سایدبار/Drawer) را نشان بده
+  // توجه: چون مسیر شما شامل [locale] است، includes("/chat") مطمئن‌تر از startsWith("/chat") است
+  const isChatRoute = pathname?.includes("/chat")
+
+  if (isMobile && !isChatRoute) {
+    // در موبایل، سایر صفحات بدون داشبورد رندر می‌شوند
+    return <>{children}</>
+  }
+
+  // دسکتاپ: همیشه داشبورد
+  // موبایل: فقط /chat داشبورد
+  return <Dashboard>{children}</Dashboard>
 }
