@@ -139,7 +139,9 @@ export default async function RootLayout({
               {session ? <GlobalState>{children}</GlobalState> : children}
             </div>
             <div id="portals" />
-            {session && <BottomNav />}
+            {session && (
+              <BottomNav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 h-16 border-t backdrop-blur-sm md:hidden" />
+            )}
           </TranslationsProvider>
         </Providers>
         <Analytics />

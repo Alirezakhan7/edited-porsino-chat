@@ -19,7 +19,6 @@ import {
 } from "@tabler/icons-react"
 import confetti from "canvas-confetti"
 import { MaterialCard, RippleButton } from "@/components/material/MaterialUI"
-import { useRouter } from "next/navigation"
 
 // اینترفیس دیتابیس
 interface Flashcard {

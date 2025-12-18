@@ -1,6 +1,6 @@
 import AppShell from "@/components/layout/AppShell"
 
-export default function ChatLayout({
+export default function PathLayout({
   children
 }: {
   children: React.ReactNode

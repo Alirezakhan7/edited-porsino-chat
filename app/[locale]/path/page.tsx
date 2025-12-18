@@ -17,11 +17,7 @@ import {
   ChapterAccordion
 } from "@/components/material/LearningComponents"
 import type { ColorKey } from "@/components/material/MaterialUI"
-import {
-  getChaptersByGrade,
-  GradeLevel,
-  ChapterConfig
-} from "@/lib/lessons/config"
+import { getChaptersByGrade, GradeLevel } from "@/lib/lessons/config"
 
 export default function PathPage() {
   const router = useRouter()

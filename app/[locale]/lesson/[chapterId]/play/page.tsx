@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { loadLessonData } from "@/lib/lessons/loader"
-import { getChapterConfig } from "@/lib/lessons/config"
 import LessonPlayer from "@/components/lessons/LessonPlayer"
 
 interface PlayPageProps {

@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { useMediaQuery } from "@/lib/hooks/use-media-query"
 import {
   IconMessage,
   IconLayoutGrid,
@@ -11,7 +10,7 @@ import {
   IconUser
 } from "@tabler/icons-react"
 
-const navItems = [
+export const navItems = [
   { href: "/chat", label: "چت", icon: IconMessage },
   { href: "/path", label: "مسیر درسی", icon: IconLayoutGrid },
   { href: "/upload", label: "آپلود", icon: IconUpload },
@@ -19,21 +18,13 @@ const navItems = [
   { href: "/profile", label: "پروفایل", icon: IconUser }
 ]
 
-export function BottomNav() {
+export function BottomNav({ className = "" }: { className?: string }) {
   const pathname = usePathname()
-  const isMobile = useMediaQuery("(max-width: 768px)")
-
-  // اگر در دسکتاپ بود، این کامپوننت اصلاً رندر نشه
-  if (!isMobile) {
-    return null
-  }
 
   return (
-    <nav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 h-16 border-t backdrop-blur-sm md:hidden">
+    <nav className={className}>
       <div className="mx-auto grid h-full max-w-lg grid-cols-5">
         {navItems.map(item => {
-          // چک می‌کنیم که آیا لینک فعلی، صفحه فعال هست یا نه
-          // برای /chat که صفحه اصلیه، چک می‌کنیم که آیا pathname با /chat شروع می‌شه
           const isActive =
             item.href === "/chat"
               ? pathname.startsWith("/chat")
@@ -44,9 +35,7 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={`hover:bg-muted/50 inline-flex flex-col items-center justify-center px-2 ${
-                isActive
-                  ? "text-primary" // رنگ فعال
-                  : "text-muted-foreground" // رنگ غیرفعال
+                isActive ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <item.icon className="size-6" stroke={isActive ? 2 : 1.5} />
