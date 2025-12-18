@@ -16,7 +16,7 @@ import { CommandK } from "../utility/command-k"
 
 export const SIDEBAR_WIDTH = 300
 export const SIDEBAR_DESKTOP_WIDTH = 350
-export const SIDEBAR_SWITCHER_WIDTH = 60
+export const SIDEBAR_SWITCHER_WIDTH = 90
 
 interface DashboardProps {
   children: React.ReactNode
