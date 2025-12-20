@@ -15,8 +15,8 @@ import { useSelectFileHandler } from "../chat/chat-hooks/use-select-file-handler
 import { CommandK } from "../utility/command-k"
 
 export const SIDEBAR_WIDTH = 300
-export const SIDEBAR_DESKTOP_WIDTH = 350
-export const SIDEBAR_SWITCHER_WIDTH = 90
+export const SIDEBAR_DESKTOP_WIDTH = 380
+export const SIDEBAR_SWITCHER_WIDTH = 70
 
 interface DashboardProps {
   children: React.ReactNode
@@ -173,10 +173,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
                 handleCloseSidebar()
               }}
             >
-              <SidebarSwitcher
-                onContentTypeChange={setContentType}
-                setShowSidebar={setShowSidebar}
-              />
               <Sidebar contentType={contentType} showSidebar={showSidebar} />
             </Tabs>
           </div>
@@ -197,10 +193,19 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
             router.replace(`${pathname}?tab=${tabValue}`)
           }}
         >
-          <SidebarSwitcher
-            onContentTypeChange={setContentType}
-            setShowSidebar={setShowSidebar}
-          />
+          {/* 👇 این بخش را با یک div احاطه کنید */}
+          <div
+            style={{
+              width: `${SIDEBAR_SWITCHER_WIDTH}px`,
+              minWidth: `${SIDEBAR_SWITCHER_WIDTH}px`
+            }}
+          >
+            <SidebarSwitcher
+              onContentTypeChange={setContentType}
+              setShowSidebar={setShowSidebar}
+            />
+          </div>
+
           <div
             className="transition-all duration-200"
             style={{

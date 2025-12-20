@@ -11,7 +11,8 @@ import { usePathname } from "next/navigation"
 import { FC } from "react"
 import { WithTooltip } from "../ui/with-tooltip"
 
-export const SIDEBAR_ICON_SIZE = 26
+// استفاده از سایز استاندارد قبلی (معادل size-6)
+export const SIDEBAR_ICON_SIZE = 24
 
 interface SidebarSwitcherProps {
   onContentTypeChange: (contentType: ContentType) => void
@@ -24,20 +25,20 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
 }) => {
   const pathname = usePathname()
 
-  // تابع کمکی برای استایل دکمه‌ها (Paper-like card style)
+  // استایل کارتی (Paper-like) با ابعاد متناسب برای عرض 60px
   const getButtonClass = (isActive: boolean) => `
-    group relative flex aspect-square w-12 items-center justify-center 
-    rounded-2xl transition-all duration-300 ease-out
+    group relative flex aspect-square w-10 items-center justify-center 
+    rounded-xl transition-all duration-300 ease-out
     ${
       isActive
-        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-110 ring-2 ring-primary ring-offset-2 ring-offset-[#f0f2f5] dark:ring-offset-[#18181b]"
-        : "bg-white text-gray-500 shadow-md hover:-translate-y-1 hover:shadow-xl hover:text-primary dark:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white"
+        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105 ring-2 ring-primary ring-offset-2 ring-offset-[#f0f2f5] dark:ring-offset-[#18181b]"
+        : "bg-white text-gray-500 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:text-primary dark:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white"
     }
   `
 
   return (
     <div className="flex size-full flex-col items-center justify-between bg-[#f0f2f5] py-6 dark:bg-[#18181b]">
-      {/* 1. دکمه چت سایدبار (تغییر محتوا) */}
+      {/* ۱. دکمه لیست چت‌ها (Sidebar Action) */}
       <WithTooltip
         display={<div>لیست چت‌ها</div>}
         trigger={
@@ -46,14 +47,14 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
               onContentTypeChange("chats")
               setShowSidebar(true)
             }}
-            className={getButtonClass(false)} // این دکمه اکشن است، معمولا اکتیو نیست مگر اینکه لاجیک خاصی داشته باشید
+            className={getButtonClass(false)}
           >
             <IconMessage size={SIDEBAR_ICON_SIZE} stroke={1.5} />
           </button>
         }
       />
 
-      {/* 2. دکمه AI (همان چت بات) */}
+      {/* ۲. دکمه AI (لینک به صفحه چت با آیکون ربات) */}
       <WithTooltip
         display={<div>هوش مصنوعی (AI)</div>}
         trigger={
@@ -66,7 +67,7 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
         }
       />
 
-      {/* 3. مسیر درسی */}
+      {/* ۳. مسیر درسی */}
       <WithTooltip
         display={<div>مسیر درسی</div>}
         trigger={
@@ -79,7 +80,7 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
         }
       />
 
-      {/* 4. آپلود */}
+      {/* ۴. آپلود */}
       <WithTooltip
         display={<div>آپلود فایل</div>}
         trigger={
@@ -92,7 +93,7 @@ export const SidebarSwitcher: FC<SidebarSwitcherProps> = ({
         }
       />
 
-      {/* 5. پروفایل (جایگزین شده با لینک پروفایل باتم‌نو) */}
+      {/* ۵. پروفایل (جایگزین دکمه تنظیمات قبلی) */}
       <WithTooltip
         display={<div>پروفایل کاربری</div>}
         trigger={
