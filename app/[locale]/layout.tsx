@@ -141,7 +141,7 @@ export default async function RootLayout({
 
             <div id="portals" />
             {session && (
-              <BottomNav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 h-16 border-t backdrop-blur-sm md:hidden" />
+              <BottomNav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 h-16 border-t border-gray-200 backdrop-blur-sm md:hidden dark:border-slate-800" />
             )}
           </TranslationsProvider>
         </Providers>
