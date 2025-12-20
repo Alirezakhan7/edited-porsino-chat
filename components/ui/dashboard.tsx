@@ -16,7 +16,7 @@ import { CommandK } from "../utility/command-k"
 
 export const SIDEBAR_WIDTH = 300
 export const SIDEBAR_DESKTOP_WIDTH = 380
-export const SIDEBAR_SWITCHER_WIDTH = 70
+export const SIDEBAR_SWITCHER_WIDTH = 80
 
 interface DashboardProps {
   children: React.ReactNode
@@ -33,11 +33,9 @@ const ModernHamburgerButton: FC<{
       onClick={onClick}
       className={cn(
         "relative size-10 rounded-lg transition-all duration-150 ease-out",
-        // 👇 کلاس‌های جدید
         "border border-white/20 bg-white/30 shadow-md backdrop-blur-md",
         "hover:scale-105 hover:bg-white/40 hover:shadow-lg",
         "dark:border-gray-700/50 dark:bg-[#222]/30 dark:hover:bg-[#222]/40",
-        // 👆 تا اینجا تغییرات اعمال شد
         "focus:outline-none focus:ring-2 focus:ring-blue-500/30 active:scale-95",
         "transform-gpu",
         isOpen && "pointer-events-none opacity-0",
@@ -122,10 +120,12 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
   }
 
   return (
-    <div className="flex size-full">
+    // ✅ تغییر ۱: استفاده از fixed inset-0 برای ثابت کردن کل داشبورد در صفحه
+    // این کار باعث می‌شود اسکرول صفحه اصلی غیرفعال شود و ما اسکرول داخلی بسازیم
+    <div className="bg-background fixed inset-0 flex flex-row overflow-hidden">
       <CommandK />
 
-      {/* ******************** Modern Floating Hamburger Button (Mobile Only) ******************** */}
+      {/* ******************** Mobile Hamburger ******************** */}
       {isMobile && (
         <div
           className="fixed top-4 z-30 flex items-center space-x-4 transition-all duration-300 ease-out"
@@ -139,7 +139,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
           />
           <div
             className={cn(
-              // کلاس‌های ظاهری حذف شدند
               "transition-all duration-300",
               showSidebar
                 ? "translate-x-2 opacity-0"
@@ -155,7 +154,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
 
       {/* ******************** Sidebar Section ******************** */}
       {isMobile ? (
-        // Mobile Layout: Sidebar as Drawer
         <>
           <div
             className={cn(
@@ -185,16 +183,18 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         </>
       ) : (
         // Desktop Layout
+        // ✅ تغییر ۲: اضافه کردن h-full به تب‌ها برای اطمینان از پر شدن ارتفاع
         <Tabs
-          className="flex"
+          className="flex h-full shrink-0"
           value={contentType}
           onValueChange={tabValue => {
             setContentType(tabValue as ContentType)
             router.replace(`${pathname}?tab=${tabValue}`)
           }}
         >
-          {/* 👇 این بخش را با یک div احاطه کنید */}
+          {/* ✅ تغییر ۳: استفاده از Flex Column برای مرتب کردن دکمه‌های نوار باریک */}
           <div
+            className="bg-background flex h-full flex-col border-r border-gray-200 dark:border-gray-800"
             style={{
               width: `${SIDEBAR_SWITCHER_WIDTH}px`,
               minWidth: `${SIDEBAR_SWITCHER_WIDTH}px`
@@ -207,14 +207,16 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
           </div>
 
           <div
-            className="transition-all duration-200"
+            className="h-full transition-all duration-200 ease-in-out"
             style={{
               width: showSidebar
                 ? `${SIDEBAR_DESKTOP_WIDTH - SIDEBAR_SWITCHER_WIDTH}px`
-                : "0px"
+                : "0px",
+              opacity: showSidebar ? 1 : 0,
+              overflow: "hidden"
             }}
           >
-            <div className="size-full overflow-hidden border-r-2 bg-[#f0f0f0] text-white dark:border-none dark:bg-[#2c2d2f]">
+            <div className="size-full border-r-2 bg-[#f0f0f0] text-white dark:border-none dark:bg-[#2c2d2f]">
               <Sidebar contentType={contentType} showSidebar={showSidebar} />
             </div>
           </div>
@@ -222,14 +224,17 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
       )}
 
       {/* ******************** Main Content Section ******************** */}
+      {/* ✅ تغییر ۴: مدیریت اسکرول فقط برای این بخش */}
       <div
-        className="relative flex w-full grow flex-col"
+        // ✅ حذف overflow-hidden برای نمایش دکمه در لبه کناری
+        className="relative flex h-full min-w-0 grow flex-col"
         onDrop={onFileDrop}
         onDragOver={onDragOver}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
       >
-        <main className="size-full grow">
+        {/* اینجا overflow-y-auto باعث می‌شود فقط محتوا اسکرول شود نه کل صفحه */}
+        <main className="size-full overflow-y-auto scroll-smooth">
           {isDragging ? (
             <div className="flex h-full items-center justify-center bg-black/50 text-2xl text-white">
               drop file here
@@ -243,7 +248,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         {!isMobile && (
           <Button
             className={cn(
-              "bg-background hover:bg-muted absolute left-[-16px] top-[50%] z-10 size-[32px] -translate-y-1/2 cursor-pointer rounded-full border"
+              "bg-background hover:bg-muted absolute left-[-16px] top-[50%] z-10 size-[32px] -translate-y-1/2 cursor-pointer rounded-full border shadow-sm transition-transform"
             )}
             style={{
               transform: `rotate(${showSidebar ? 180 : 0}deg)`

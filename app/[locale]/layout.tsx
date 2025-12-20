@@ -135,9 +135,10 @@ export default async function RootLayout({
             resources={resources}
           >
             <Toaster richColors position="top-center" duration={3000} />
-            <div className="flex h-dvh flex-col items-center overflow-x-auto pb-16 md:pb-0">
+            <div className="min-h-dvh w-full pb-16 md:pb-0">
               {session ? <GlobalState>{children}</GlobalState> : children}
             </div>
+
             <div id="portals" />
             {session && (
               <BottomNav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 h-16 border-t backdrop-blur-sm md:hidden" />

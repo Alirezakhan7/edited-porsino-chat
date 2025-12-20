@@ -55,13 +55,12 @@ export default async function PlayPage({
   // اگر مرحله‌ای که کاربر خواسته وجود ندارد (مثلاً مرحله ۳۰ در فصلی که ۲۰ درس دارد)
   if (unitIndex < 0 || unitIndex >= allUnits.length) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
-        <div className="mb-4 text-xl font-bold text-gray-700">
-          🎉 تبریک! این فصل تمام شد.
-        </div>
+      <div className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center px-4">
+        <div className="mb-4 text-xl font-bold">🎉 تبریک! این فصل تمام شد.</div>
+
         <a
           href={`/${locale}/lesson/${chapterId}`}
-          className="rounded-xl bg-blue-600 px-6 py-3 text-white shadow-lg transition hover:bg-blue-700"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl px-6 py-3 shadow-lg transition"
         >
           بازگشت به نقشه
         </a>

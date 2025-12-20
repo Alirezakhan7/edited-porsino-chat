@@ -44,7 +44,7 @@ export default function ChatPage() {
 
           {/* END: Top-left header */}
 
-          <div className="absolute right-2 top-4 flex items-start gap-1 md:top-3">
+          <div className="absolute -right-3 top-4 flex items-center gap-1 md:top-3">
             <Announcements />
             <ChatSettings />
           </div>

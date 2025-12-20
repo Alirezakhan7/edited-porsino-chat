@@ -14,6 +14,7 @@ import {
 import confetti from "canvas-confetti"
 import { MaterialCard, colorThemes } from "@/components/material/MaterialUI"
 import type { GamifiedUnit } from "@/lib/lessons/types"
+import { saveUserProgress } from "@/lib/actions/progress"
 
 interface LessonPlayerProps {
   units: GamifiedUnit[]
@@ -22,7 +23,6 @@ interface LessonPlayerProps {
   userId: string
   locale: string
 }
-import { saveUserProgress } from "@/lib/actions/progress"
 
 export default function LessonPlayer({
   units,
@@ -33,6 +33,8 @@ export default function LessonPlayer({
 }: LessonPlayerProps) {
   const router = useRouter()
   const supabase = createClient()
+
+  // استفاده از تم رنگی برای هماهنگی با سیستم
   const theme = colorThemes.blue
 
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -41,12 +43,15 @@ export default function LessonPlayer({
   >("story")
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
   const [isCorrect, setIsCorrect] = useState<boolean>(false)
-
   const [isTipsOpen, setIsTipsOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const currentUnit = units[currentIndex]
-  const hasTips = currentUnit.konkur_tips && currentUnit.konkur_tips.length > 0
+  // جلوگیری از ارور اگر konkur_tips وجود نداشت
+  const hasTips = currentUnit?.konkur_tips && currentUnit.konkur_tips.length > 0
+  const progressPercent = ((currentIndex + 1) / units.length) * 100
 
+  // اسکرول به بالا هنگام تغییر اسلاید
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" })
     setIsTipsOpen(false)
@@ -54,17 +59,20 @@ export default function LessonPlayer({
 
   if (!units || units.length === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center font-bold text-gray-400">
+      <div className="flex min-h-screen items-center justify-center font-bold text-slate-400">
         محتوایی یافت نشد! 🚫
       </div>
     )
   }
+
   // --- 1. رندر متن و عکس ---
   const renderStoryContent = (text: string) => {
+    // تقسیم متن بر اساس تگ تصویر خاص
     const parts = text.split(/\[\[\[INSERT_IMAGE_HERE: (.*?)\]\]\]/g)
     return (
-      <div className="space-y-8 text-right text-lg font-medium leading-[2.2] text-gray-700 md:text-[1.1rem]">
+      <div className="space-y-8 text-right text-lg font-medium leading-[2.4] text-slate-700 md:text-[1.15rem] dark:text-slate-300">
         {parts.map((part, i) => {
+          // بخش‌های فرد، نام عکس هستند
           if (i % 2 === 1) {
             return (
               <motion.div
@@ -77,7 +85,7 @@ export default function LessonPlayer({
                 <img
                   src={`/images/lessons/${part.trim()}.jpg`}
                   alt="تصویر آموزشی"
-                  className="w-full max-w-xl rounded-[2rem] border-[6px] border-white shadow-2xl ring-1 ring-gray-200/50 transition-transform duration-500 hover:scale-[1.01]"
+                  className="w-full max-w-xl rounded-[2.5rem] border-[6px] border-white shadow-2xl ring-1 ring-slate-200/50 transition-transform duration-500 hover:scale-[1.01] dark:border-slate-800 dark:ring-slate-700"
                   onError={e =>
                     ((e.target as HTMLImageElement).style.display = "none")
                   }
@@ -86,7 +94,12 @@ export default function LessonPlayer({
             )
           }
           if (!part.trim()) return null
-          return <p key={i}>{part}</p>
+          // رندر پاراگراف‌ها با حفظ خطوط جدید
+          return (
+            <p key={i} className="whitespace-pre-line">
+              {part}
+            </p>
+          )
         })}
       </div>
     )
@@ -108,22 +121,21 @@ export default function LessonPlayer({
       })
     }
 
-    supabase
-      .from("activity_logs")
-      .insert({
-        user_id: userId,
-        chunk_uid: currentUnit.uid,
-        is_correct: correct,
-        time_spent_seconds: 0
-      })
-      .then()
+    // ثبت فعالیت در دیتابیس
+    await supabase.from("activity_logs").insert({
+      user_id: userId,
+      chunk_uid: currentUnit.uid,
+      is_correct: correct,
+      time_spent_seconds: 0
+    })
   }
 
   // --- 3. هندل کردن دکمه بعدی ---
   const handleNext = async () => {
-    // منطق لایتنر (بدون تغییر)
+    setLoading(true)
+
+    // منطق ذخیره لایتنر (در صورت وجود فلش‌کارت)
     if (currentUnit.flashcards && currentUnit.flashcards.length > 0) {
-      // ساخت آرایه برای ذخیره گروهی
       const cardsData = currentUnit.flashcards.map(card => ({
         user_id: userId,
         flashcard_front: card.front,
@@ -132,66 +144,52 @@ export default function LessonPlayer({
         box_level: 1
       }))
 
-      // ذخیره در دیتابیس
-      supabase
-        .from("leitner_box")
-        .insert(cardsData)
-        .then(({ error }) => {
-          if (error) console.error("Error saving flashcards:", error)
-        })
+      await supabase.from("leitner_box").insert(cardsData)
     }
 
     if (currentIndex < units.length - 1) {
-      // رفتن به اسلاید بعدی (بدون تغییر)
+      // رفتن به اسلاید بعدی
       setViewState("story")
       setSelectedOption(null)
       setIsCorrect(false)
       setCurrentIndex(prev => prev + 1)
+      setLoading(false)
     } else {
-      // 🏁 رسیدن به پایان درس (اینجا را تغییر می‌دهیم)
+      // پایان درس
       try {
-        // ✅ استفاده از سرور اکشن جدید برای ذخیره امن و باز کردن قفل مرحله بعد
-        // عدد 20 مقدار XP است که برای پایان درس در نظر گرفتیم
         await saveUserProgress(chapterId, 20)
-
-        // رفرش کردن کش نکست (خیلی مهم برای اینکه وقتی برگشتید قفل باز شده باشد)
         router.refresh()
-
-        // بازگشت به نقشه
         router.push(`/${locale}/lesson/${chapterId}`)
       } catch (error) {
-        console.error("خطا در ذخیره پیشرفت:", error)
-        // حتی اگر خطا داد، کاربر را به نقشه برگردان تا گیر نکند
+        console.error("خطا در ذخیره:", error)
         router.push(`/${locale}/lesson/${chapterId}`)
       }
     }
   }
-  const progressPercent = (currentIndex / units.length) * 100
 
   return (
-    // ✅ تغییر ۱: overflow-hidden به overflow-x-hidden تبدیل شد تا اسکرول عمودی کار کند
     <div
-      className="relative min-h-screen overflow-x-hidden bg-[#F8FAFC] font-sans text-gray-900"
+      className="relative min-h-screen overflow-x-hidden bg-slate-50 font-sans text-slate-900 transition-colors duration-500 dark:bg-slate-950 dark:text-slate-100"
       dir="rtl"
     >
       {/* پس‌زمینه متحرک */}
-      <div className="pointer-events-none fixed inset-0">
-        <div className="absolute right-[-10%] top-[-10%] size-[600px] animate-pulse rounded-full bg-blue-400/10 mix-blend-multiply blur-[100px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] size-[500px] animate-pulse rounded-full bg-purple-400/10 mix-blend-multiply blur-[100px] delay-1000" />
+      <div className="pointer-events-none fixed inset-0 opacity-40">
+        <div className="absolute right-[-10%] top-[-10%] size-[600px] animate-pulse rounded-full bg-blue-400/20 blur-[100px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] size-[500px] animate-pulse rounded-full bg-purple-400/20 blur-[100px] delay-1000" />
       </div>
 
       {/* هدر شناور */}
       <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-6">
         <div className="pointer-events-auto w-full max-w-3xl">
-          <div className="relative flex items-center gap-3 overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.03)] backdrop-blur-xl">
+          <div className="relative flex items-center gap-3 overflow-hidden rounded-[2rem] border border-white/60 bg-white/80 p-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/80">
             <button
               onClick={() => router.back()}
-              className="rounded-full border border-gray-100 bg-white p-3 text-gray-400 shadow-sm transition-all hover:bg-red-50 hover:text-red-500 active:scale-95"
+              className="rounded-full border border-slate-100 bg-white p-3 text-slate-400 shadow-sm transition-all hover:bg-red-50 hover:text-red-500 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-red-900/20"
             >
               <IconX size={20} stroke={2.5} />
             </button>
 
-            <div className="relative mx-2 h-4 flex-1 overflow-hidden rounded-full bg-gray-100/80 shadow-inner">
+            <div className="relative mx-2 h-4 flex-1 overflow-hidden rounded-full bg-slate-100 shadow-inner dark:bg-slate-800">
               <motion.div
                 className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.4)]"
                 initial={{ width: 0 }}
@@ -205,8 +203,8 @@ export default function LessonPlayer({
               disabled={!hasTips}
               className={`rounded-full border p-3 shadow-sm transition-all active:scale-95 ${
                 hasTips
-                  ? "animate-pulse cursor-pointer border-amber-200 bg-amber-100 text-amber-600 hover:bg-amber-200"
-                  : "cursor-default border-gray-100 bg-gray-100 text-gray-300"
+                  ? "animate-pulse cursor-pointer border-amber-200 bg-amber-100 text-amber-600 hover:bg-amber-200 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  : "cursor-default border-slate-100 bg-slate-100 text-slate-300 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-600"
               }`}
             >
               <IconBulb
@@ -219,7 +217,7 @@ export default function LessonPlayer({
         </div>
       </div>
 
-      {/* ✅ تغییر ۲: افزایش پدینگ پایین (pb) به ۲۵۰ پیکسل تا متن‌ها از زیر دکمه‌ها بیرون بیایند */}
+      {/* کانتینر اصلی محتوا */}
       <div className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col px-4 pb-[250px] pt-32">
         <AnimatePresence mode="wait">
           {/* --- فاز ۱: داستان --- */}
@@ -229,9 +227,9 @@ export default function LessonPlayer({
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
-              className="flex-1" // پدینگ را به والد اصلی دادیم
+              className="flex-1"
             >
-              <MaterialCard className="!rounded-[3rem] !border-white/80 !bg-white/80 !p-8 !shadow-[0_20px_60px_rgba(0,0,0,0.04)] !backdrop-blur-2xl md:!p-12">
+              <MaterialCard className="!rounded-[3rem] !border-white/80 !bg-white/90 !p-8 !shadow-xl !backdrop-blur-2xl md:!p-12 dark:!border-slate-700 dark:!bg-slate-900/90">
                 {currentUnit.is_start_of_lesson && (
                   <div className="mb-10 inline-flex -rotate-1 items-center rounded-3xl border-4 border-white/20 bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 text-sm font-black text-white shadow-xl shadow-indigo-500/20">
                     <span className="ml-3 animate-bounce text-2xl">🚀</span>
@@ -241,7 +239,7 @@ export default function LessonPlayer({
                 {renderStoryContent(currentUnit.story)}
               </MaterialCard>
 
-              {/* دکمه ادامه شناور (بالای داشبورد) */}
+              {/* ✅ دکمه ادامه دقیقاً با تنظیمات قبلی */}
               <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-6">
                 <motion.button
                   initial={{ y: 50, opacity: 0 }}
@@ -251,7 +249,8 @@ export default function LessonPlayer({
                   onClick={() => setViewState("interaction")}
                   className="pointer-events-auto flex w-full max-w-sm items-center justify-center gap-3 rounded-3xl border-b-[6px] border-blue-800 bg-gradient-to-b from-blue-500 to-blue-600 py-4 text-xl font-black text-white shadow-xl shadow-blue-500/30 transition-all active:translate-y-[6px] active:border-b-0"
                 >
-                  ادامه و چالش <IconArrowLeft size={26} stroke={3} />
+                  {loading ? "صبر کنید..." : "ادامه و چالش"}{" "}
+                  <IconArrowLeft size={26} stroke={3} />
                 </motion.button>
               </div>
             </motion.div>
@@ -265,11 +264,11 @@ export default function LessonPlayer({
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-1 flex-col"
             >
-              <MaterialCard className="relative mb-8 overflow-hidden !rounded-[3rem] !border-blue-100 !bg-white/90 !p-10 !shadow-[0_10px_40px_rgba(59,130,246,0.08)]">
+              <MaterialCard className="relative mb-8 overflow-hidden !rounded-[3rem] !border-blue-100 !bg-white/95 !p-10 !shadow-lg dark:!border-slate-800 dark:!bg-slate-900">
                 <div className="absolute right-0 top-0 p-4 opacity-[0.03]">
                   <IconBook size={150} />
                 </div>
-                <h2 className="relative z-10 text-center text-xl font-black leading-loose text-gray-800 md:text-2xl">
+                <h2 className="relative z-10 text-center text-xl font-black leading-loose text-slate-800 md:text-2xl dark:text-white">
                   {currentUnit.interaction.question}
                 </h2>
               </MaterialCard>
@@ -277,14 +276,15 @@ export default function LessonPlayer({
               <div className="space-y-5">
                 {currentUnit.interaction.options.map((option, idx) => {
                   let btnStyle =
-                    "bg-white border-gray-200 text-gray-600 border-b-[5px]"
+                    "bg-white border-slate-200 text-slate-600 border-b-[5px] dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
+
                   if (viewState === "feedback") {
                     if (idx === currentUnit.interaction.correct_index) {
                       btnStyle =
-                        "bg-emerald-500 border-emerald-700 text-white border-b-[5px] ring-4 ring-emerald-100"
+                        "bg-emerald-500 border-emerald-700 text-white border-b-[5px] ring-4 ring-emerald-100 dark:ring-emerald-900"
                     } else if (idx === selectedOption) {
                       btnStyle =
-                        "bg-rose-500 border-rose-700 text-white border-b-[5px] ring-4 ring-rose-100"
+                        "bg-rose-500 border-rose-700 text-white border-b-[5px] ring-4 ring-rose-100 dark:ring-rose-900"
                     } else {
                       btnStyle = "opacity-40 grayscale scale-95"
                     }
@@ -293,7 +293,7 @@ export default function LessonPlayer({
                       "bg-blue-500 border-blue-700 text-white border-b-[5px]"
                   } else {
                     btnStyle =
-                      "bg-white border-gray-200 border-b-[5px] text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                      "bg-white border-slate-200 border-b-[5px] text-slate-700 hover:bg-slate-50 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
                   }
 
                   return (
@@ -327,7 +327,7 @@ export default function LessonPlayer({
                 })}
               </div>
 
-              {/* فیدبک (بالای داشبورد) */}
+              {/* ✅ باکس فیدبک دقیقاً در جایگاه قبلی */}
               <AnimatePresence>
                 {viewState === "feedback" && (
                   <motion.div
@@ -335,13 +335,12 @@ export default function LessonPlayer({
                     animate={{ y: 0 }}
                     exit={{ y: "100%" }}
                     transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                    // ✅ تغییر ۳: فیدبک هم در bottom-24 قرار گرفت
-                    className={`fixed inset-x-4 bottom-24 z-50 rounded-[3rem] border border-white/20 p-8 shadow-[0_10px_60px_rgba(0,0,0,0.3)] backdrop-blur-3xl ${isCorrect ? "bg-[#ECFDF5]" : "bg-[#FFF1F2]"}`}
+                    className={`fixed inset-x-4 bottom-24 z-50 rounded-[3rem] border border-white/20 p-8 shadow-[0_10px_60px_rgba(0,0,0,0.3)] backdrop-blur-3xl ${isCorrect ? "bg-emerald-50/95 dark:bg-emerald-900/95" : "bg-rose-50/95 dark:bg-rose-900/95"}`}
                   >
                     <div className="mx-auto max-w-2xl">
                       <div className="mb-4 flex items-center gap-4">
                         <div
-                          className={`rounded-full border border-white/50 p-4 shadow-sm ${isCorrect ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}
+                          className={`rounded-full border border-white/50 p-4 shadow-sm ${isCorrect ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-800 dark:text-white" : "bg-rose-100 text-rose-600 dark:bg-rose-800 dark:text-white"}`}
                         >
                           {isCorrect ? (
                             <IconCheck size={36} stroke={3} />
@@ -350,13 +349,13 @@ export default function LessonPlayer({
                           )}
                         </div>
                         <span
-                          className={`text-3xl font-black ${isCorrect ? "text-emerald-800" : "text-rose-800"}`}
+                          className={`text-3xl font-black ${isCorrect ? "text-emerald-800 dark:text-white" : "text-rose-800 dark:text-white"}`}
                         >
                           {isCorrect ? "عالی بود! 🎉" : "ای وای! 😅"}
                         </span>
                       </div>
 
-                      <div className="mb-8 pr-2 text-lg font-medium leading-8 text-gray-800">
+                      <div className="mb-8 pr-2 text-lg font-medium leading-8 text-slate-800 dark:text-slate-100">
                         <span className="mb-1 block text-sm font-bold opacity-60">
                           توضیح:
                         </span>
@@ -367,15 +366,13 @@ export default function LessonPlayer({
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleNext}
-                        className={`w-full rounded-3xl border-b-[6px] py-5 text-xl font-black text-white shadow-xl transition-all active:translate-y-[6px] active:border-b-0 ${
-                          isCorrect
-                            ? "border-emerald-700 bg-emerald-500 shadow-emerald-400/40 hover:bg-emerald-600"
-                            : "border-rose-700 bg-rose-500 shadow-rose-400/40 hover:bg-rose-600"
-                        }`}
+                        className={`w-full rounded-3xl border-b-[6px] py-5 text-xl font-black text-white shadow-xl transition-all active:translate-y-[6px] active:border-b-0 ${isCorrect ? "border-emerald-700 bg-emerald-500 shadow-emerald-400/40 hover:bg-emerald-600" : "border-rose-700 bg-rose-500 shadow-rose-400/40 hover:bg-rose-600"}`}
                       >
-                        {currentIndex < units.length - 1
-                          ? "ادامه بده"
-                          : "پایان درس"}
+                        {loading
+                          ? "صبر کنید..."
+                          : currentIndex < units.length - 1
+                            ? "ادامه بده"
+                            : "پایان درس"}
                       </motion.button>
                     </div>
                   </motion.div>
@@ -385,70 +382,56 @@ export default function LessonPlayer({
           )}
         </AnimatePresence>
 
-        {/* ✅ مادال (کشو) نکات کنکوری - اصلاح شده */}
+        {/* ✅ مودال نکات کنکوری با پوزیشن قبلی */}
         <AnimatePresence>
           {isTipsOpen && hasTips && (
             <>
-              {/* پس‌زمینه تیره (Backdrop) */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsTipsOpen(false)}
-                // z-[60] باعث می‌شود روی هدر و دکمه‌ها بیاید
-                className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+                className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
               />
-
-              {/* باکس اصلی نکات */}
               <motion.div
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                // 👇 تغییرات مهم اینجاست:
-                // 1. bottom-24: فاصله از کف برای اینکه روی داشبورد نیفتد
-                // 2. z-[70]: بالاترین لایه
-                // 3. left-4 right-4: کمی فاصله از بغل‌ها برای زیبایی
-                // 4. rounded-[3rem]: گرد کردن تمام گوشه‌ها
-                className="fixed inset-x-4 bottom-24 z-[70] max-h-[70vh] overflow-y-auto rounded-[3rem] border-4 border-[#FDE68A] bg-[#FFFBF0] shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+                className="fixed inset-x-4 bottom-24 z-[70] max-h-[70vh] overflow-y-auto rounded-[3rem] border-4 border-[#FDE68A] bg-[#FFFBF0] shadow-2xl dark:border-amber-600 dark:bg-slate-900"
               >
-                {/* هدرِ باکس نکات (چسبنده) */}
-                <div className="relative flex items-center justify-between border-b border-amber-100 bg-[#FFFBF0] p-6 pb-4">
-                  <h3 className="flex items-center gap-2 text-2xl font-black text-amber-800">
+                <div className="relative flex items-center justify-between border-b border-amber-100 bg-[#FFFBF0] p-6 pb-4 dark:border-slate-800 dark:bg-slate-900">
+                  <h3 className="flex items-center gap-2 text-2xl font-black text-amber-800 dark:text-amber-400">
                     <IconBulb
                       size={32}
                       className="fill-amber-500 text-amber-600"
-                    />
+                    />{" "}
                     نکات طلایی
                   </h3>
                   <button
                     onClick={() => setIsTipsOpen(false)}
-                    className="rounded-full bg-amber-100 p-2 text-amber-700 transition-colors hover:bg-amber-200"
+                    className="rounded-full bg-amber-100 p-2 text-amber-700 transition-colors hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400"
                   >
                     <IconX />
                   </button>
                 </div>
 
-                {/* محتوای اسکرول‌خور */}
                 <div className="relative p-6 pb-8 pt-4">
-                  <div className="pointer-events-none absolute left-0 top-0 size-full bg-[url('/images/paper-pattern.png')] opacity-5"></div>
-
                   <ul className="relative z-10 space-y-4">
                     {currentUnit.konkur_tips.map((tip, idx) => (
                       <li
                         key={idx}
-                        className="flex items-start gap-4 rounded-3xl border-2 border-amber-100/50 bg-white/80 p-5 shadow-sm"
+                        className="flex items-start gap-4 rounded-3xl border-2 border-amber-100/50 bg-white/80 p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
                       >
                         <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-sm font-black text-white shadow-md shadow-amber-200">
                           {idx + 1}
                         </span>
-                        <p className="text-right text-lg font-bold leading-8 text-gray-800">
+                        <p className="text-right text-lg font-bold leading-8 text-slate-800 dark:text-slate-200">
                           {tip}
                         </p>
                       </li>
                     ))}
                   </ul>
-
                   <button
                     onClick={() => setIsTipsOpen(false)}
                     className="mt-8 w-full rounded-2xl border-b-[6px] border-amber-700 bg-amber-500 py-4 text-xl font-black text-white shadow-xl shadow-amber-200 transition-all active:translate-y-[6px] active:scale-95 active:border-b-0"

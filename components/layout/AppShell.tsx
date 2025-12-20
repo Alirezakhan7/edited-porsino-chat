@@ -86,7 +86,6 @@ export default function AppShell({ children }: AppShellProps) {
     setLoading(true)
     setSelectedWorkspace(workspace)
 
-    /* ---------- Assistants ---------- */
     const assistantData = (await getAssistantWorkspacesByWorkspaceId(
       workspaceId
     )) as { assistants: any[] }
@@ -95,24 +94,16 @@ export default function AppShell({ children }: AppShellProps) {
 
     for (const assistant of assistantData.assistants) {
       let url = ""
-
       if (assistant.image_path) {
         url = (await getAssistantImageFromStorage(assistant.image_path)) || ""
       }
-
       if (url) {
         const response = await fetch(url)
         const blob = await response.blob()
         const base64 = await convertBlobToBase64(blob)
-
         setAssistantImages(prev => [
           ...prev,
-          {
-            assistantId: assistant.id,
-            path: assistant.image_path,
-            base64,
-            url
-          }
+          { assistantId: assistant.id, path: assistant.image_path, base64, url }
         ])
       } else {
         setAssistantImages(prev => [
@@ -127,29 +118,21 @@ export default function AppShell({ children }: AppShellProps) {
       }
     }
 
-    /* ---------- Core Data ---------- */
     setChats(await getChatsByWorkspaceId(workspaceId))
     setFolders(await getFoldersByWorkspaceId(workspaceId))
-
     const collections = await getCollectionWorkspacesByWorkspaceId(workspaceId)
     setCollections((collections as any).collections)
-
     const files = await getFileWorkspacesByWorkspaceId(workspaceId)
     setFiles((files as any).files)
-
     const presets = await getPresetWorkspacesByWorkspaceId(workspaceId)
     setPresets((presets as any).presets)
-
     const prompts = await getPromptWorkspacesByWorkspaceId(workspaceId)
     setPrompts((prompts as any).prompts)
-
     const tools = await getToolWorkspacesByWorkspaceId(workspaceId)
     setTools((tools as any).tools)
-
     const models = await getModelWorkspacesByWorkspaceId(workspaceId)
     setModels((models as any).models)
 
-    /* ---------- Chat Settings ---------- */
     setChatSettings({
       model: (searchParams.get("model") || "bio-simple") as LLMID,
       prompt:
@@ -161,7 +144,6 @@ export default function AppShell({ children }: AppShellProps) {
         workspace.include_workspace_instructions ?? true
     })
 
-    /* ---------- Reset Chat State ---------- */
     setUserInput("")
     setChatMessages([])
     setSelectedChat(null)
@@ -178,16 +160,56 @@ export default function AppShell({ children }: AppShellProps) {
 
   if (loading) return <Loading />
 
-  // ✅ موبایل: فقط در مسیرهای /chat داشبورد (سایدبار/Drawer) را نشان بده
-  // توجه: چون مسیر شما شامل [locale] است، includes("/chat") مطمئن‌تر از startsWith("/chat") است
+  // -----------------------------------------------------------
+  // بخش اصلاح شده برای حل مشکل موبایل
+  // -----------------------------------------------------------
+
   const isChatRoute = pathname?.includes("/chat")
 
+  const isImmersiveRoute =
+    pathname?.includes("/path") ||
+    pathname?.includes("/lesson") ||
+    pathname?.includes("/play") ||
+    pathname?.includes("/profile")
+
+  // ۱. موبایل (غیر از چت):
   if (isMobile && !isChatRoute) {
-    // در موبایل، سایر صفحات بدون داشبورد رندر می‌شوند
     return <>{children}</>
   }
 
-  // دسکتاپ: همیشه داشبورد
-  // موبایل: فقط /chat داشبورد
-  return <Dashboard>{children}</Dashboard>
+  // ۲. صفحات تمام صفحه دسکتاپ
+  if (isImmersiveRoute) {
+    return (
+      <Dashboard>
+        <div className="size-full">{children}</div>
+      </Dashboard>
+    )
+  }
+
+  // ۳. داشبورد اصلی (شامل چت):
+  return (
+    <Dashboard>
+      <div
+        className={`bg-background text-foreground w-full ${
+          isChatRoute ? "flex h-full flex-col" : ""
+        }`}
+      >
+        <div
+          className={`w-full px-4 md:px-8 
+            ${
+              // ✅ تغییر ۱: حذف پدینگ بالا (py-6) فقط برای چت تا دکمه‌ها هم‌تراز شوند
+              // برای بقیه صفحات py-6 می‌ماند
+              isChatRoute ? "h-full py-0" : "py-6"
+            }
+            ${
+              // ✅ تغییر ۲: پدینگ پایین زیاد (pb-24) برای موبایل تا باکس پیام زیر نوار نرود
+              isMobile ? "pb-24" : ""
+            } 
+          `}
+        >
+          {children}
+        </div>
+      </div>
+    </Dashboard>
+  )
 }

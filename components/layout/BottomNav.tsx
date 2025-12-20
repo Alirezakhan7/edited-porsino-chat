@@ -14,7 +14,6 @@ export const navItems = [
   { href: "/chat", label: "چت", icon: IconMessage },
   { href: "/path", label: "مسیر درسی", icon: IconLayoutGrid },
   { href: "/upload", label: "آپلود", icon: IconUpload },
-  { href: "/counselor", label: "مشاور", icon: IconSparkles },
   { href: "/profile", label: "پروفایل", icon: IconUser }
 ]
 
