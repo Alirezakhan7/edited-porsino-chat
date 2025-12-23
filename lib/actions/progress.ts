@@ -4,7 +4,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
-// 1. تعریف دستی ساختار جدول (شناسنامه جدول برای تایپ‌اسکریپت)
+// 1. تعریف دستی ساختار جدول
 interface UserProgressTable {
   id?: string
   user_id: string
@@ -40,26 +40,27 @@ export async function saveUserProgress(
     return { error: "Database error" }
   }
 
-  // 3. تبدیل دیتا به تایپی که تعریف کردیم (رفع ارور property does not exist)
+  // 3. محاسبات
   const currentProgress = rawProgress as unknown as UserProgressTable | null
-
   const currentSteps = currentProgress?.completed_steps || 0
   const currentXP = currentProgress?.total_xp || 0
 
   const newSteps = isLevelUp ? currentSteps + 1 : currentSteps
   const newXP = currentXP + xpEarned
 
-  // 4. آپدیت کردن (رفع ارور never در upsert با استفاده از as any)
-  const { error: upsertError } = await supabase
-    .from("user_progress")
-    // اینجا به تایپ‌اسکریپت می‌گوییم "گیر نده، من میدونم چی میفرستم" (as any)
-    .upsert({
+  // 4. آپدیت کردن با تنظیمات دقیق (FIXED)
+  const { error: upsertError } = await supabase.from("user_progress").upsert(
+    {
       user_id: user.id,
       chapter_id: chapterId,
       completed_steps: newSteps,
       total_xp: newXP,
       last_played_at: new Date().toISOString()
-    } as any)
+    } as any,
+    // --- تغییر حیاتی اینجاست ---
+    // به سوپابیس می‌گوییم اگر ترکیب این دو ستون تکراری بود، به جای ارور دادن، آپدیت کن
+    { onConflict: "user_id, chapter_id" }
+  )
 
   if (upsertError) {
     console.error("Error saving progress:", upsertError)
@@ -67,8 +68,8 @@ export async function saveUserProgress(
   }
 
   // 5. تازه‌سازی کش
-  revalidatePath("/lesson/[chapterId]")
-  revalidatePath("/path")
+  revalidatePath("/lesson/[chapterId]", "page")
+  revalidatePath("/path", "page")
 
   return { success: true }
 }

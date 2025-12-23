@@ -1,5 +1,6 @@
 "use client"
 
+// برگشت به ایمپورت‌های استاندارد برای جلوگیری از پرش صفحه (CLS Fix)
 import { Sidebar } from "@/components/sidebar/sidebar"
 import { SidebarSwitcher } from "@/components/sidebar/sidebar-switcher"
 import { Button } from "@/components/ui/button"
@@ -120,8 +121,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
   }
 
   return (
-    // ✅ تغییر ۱: استفاده از fixed inset-0 برای ثابت کردن کل داشبورد در صفحه
-    // این کار باعث می‌شود اسکرول صفحه اصلی غیرفعال شود و ما اسکرول داخلی بسازیم
     <div className="bg-background fixed inset-0 flex flex-row overflow-hidden">
       <CommandK />
 
@@ -183,7 +182,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         </>
       ) : (
         // Desktop Layout
-        // ✅ تغییر ۲: اضافه کردن h-full به تب‌ها برای اطمینان از پر شدن ارتفاع
         <Tabs
           className="flex h-full shrink-0"
           value={contentType}
@@ -192,7 +190,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
             router.replace(`${pathname}?tab=${tabValue}`)
           }}
         >
-          {/* ✅ تغییر ۳: استفاده از Flex Column برای مرتب کردن دکمه‌های نوار باریک */}
           <div
             className="bg-background flex h-full flex-col border-r border-gray-200 dark:border-gray-800"
             style={{
@@ -224,16 +221,13 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
       )}
 
       {/* ******************** Main Content Section ******************** */}
-      {/* ✅ تغییر ۴: مدیریت اسکرول فقط برای این بخش */}
       <div
-        // ✅ حذف overflow-hidden برای نمایش دکمه در لبه کناری
         className="relative flex h-full min-w-0 grow flex-col"
         onDrop={onFileDrop}
         onDragOver={onDragOver}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
       >
-        {/* اینجا overflow-y-auto باعث می‌شود فقط محتوا اسکرول شود نه کل صفحه */}
         <main className="size-full overflow-y-auto scroll-smooth">
           {isDragging ? (
             <div className="flex h-full items-center justify-center bg-black/50 text-2xl text-white">
@@ -244,7 +238,6 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
           )}
         </main>
 
-        {/* Desktop Toggle Button */}
         {!isMobile && (
           <Button
             className={cn(

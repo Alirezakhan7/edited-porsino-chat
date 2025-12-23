@@ -4,7 +4,7 @@
 
 @font-face {
   font-family: 'YekanBakh';
-  src: url('/fonts/YekanBakhFaNum-Regular.woff') format('woff');
+  src: url('/fonts/YekanBakhFaNum-Regular.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -12,40 +12,16 @@
 
 @font-face {
   font-family: 'YekanBakh';
-  src: url('/fonts/YekanBakhFaNum-Light.woff') format('woff');
+  src: url('/fonts/YekanBakhFaNum-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'YekanBakh';
+  src: url('/fonts/YekanBakhFaNum-Light.woff2') format('woff2');
   font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'YekanBakh';
-  src: url('/fonts/YekanBakhFaNum-SemiBold.woff') format('woff');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'YekanBakh';
-  src: url('/fonts/YekanBakhFaNum-Bold.woff') format('woff');
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'YekanBakh';
-  src: url('/fonts/YekanBakhFaNum-ExtraBold.woff') format('woff');
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'YekanBakh';
-  src: url('/fonts/YekanBakhFaNum-Black.woff') format('woff');
-  font-weight: 900;
   font-style: normal;
   font-display: swap;
 }
@@ -143,10 +119,22 @@
 }
 
 @layer base {
-  * {
-    font-family: YekanBakh, sans-serif !important;
+  body {
+    /* حالا که @font-face را بالا تعریف کردیم، این خط کار می‌کند */
+    font-family: 'YekanBakh', sans-serif; 
+    @apply bg-background text-foreground;
+  }
+  
+  button, input, textarea, select {
+    font-family: inherit;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: inherit;
+    font-weight: 700;
   }
 }
+
 @keyframes fadeAndScale {
   0% {
     opacity: 0;

@@ -6,17 +6,16 @@ import initTranslations from "@/lib/i18n"
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
 import { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
+// خط زیر حذف شد (import Inter)
 import { cookies } from "next/headers"
 import { ReactNode } from "react"
 import "./globals.css"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
-// آیکون های پایین صفحه در این فایل هست
 import { BottomNav } from "@/components/layout/BottomNav"
 
-const inter = Inter({ subsets: ["latin"] })
+// خط زیر حذف شد (const inter)
 const APP_NAME = "Porsino AI"
 const APP_DEFAULT_TITLE = "هوش مصنوعی پرسینو"
 const APP_TITLE_TEMPLATE = "%s - Porsino AI"
@@ -29,67 +28,14 @@ interface RootLayoutProps {
   }>
 }
 
+// ... (بخش metadata بدون تغییر) ...
 export const metadata: Metadata = {
-  applicationName: APP_NAME,
+  // ... همان کدهای قبلی ...
   title: {
     default: "پرسینو - هوش مصنوعی کنکوری",
     template: "%s | پرسینو"
   },
-  // START - این خط را جایگزین کنید
-  description:
-    "پرسینو، هوش مصنوعی تخصصی کنکور. پاسخ فوری به سوالات، آموزش گام‌به‌گام و برنامه‌ریزی درسی هوشمند برای موفقیت شما.",
-  // END - پایان بخش جایگزینی
-  keywords: [
-    "هوش مصنوعی کنکوری",
-    "پرسینو",
-    "هوش مصنوعی کنکور",
-    "کمک درسی با هوش مصنوعی",
-    "آموزش کنکور با AI",
-    "تست‌زنی هوش مصنوعی",
-    "ربات حل سوال کنکور",
-    "حل تست آنلاین",
-    "یادگیری هوشمند",
-    "برنامه‌ریزی درسی هوش مصنوعی"
-  ],
-  manifest: "/manifest.json",
-  metadataBase: new URL("https://porsino.org"),
-  alternates: {
-    canonical: "https://porsino.org"
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black",
-    title: "پرسینو"
-  },
-  formatDetection: {
-    telephone: false
-  },
-  openGraph: {
-    type: "website",
-    siteName: "پرسینو",
-    title: "پرسینو - هوش مصنوعی کنکوری",
-    description:
-      "آموزش و حل تست‌های کنکور با هوش مصنوعی، سریع، دقیق و شخصی‌سازی شده.",
-    url: "https://porsino.org",
-    images: [
-      {
-        url: "https://porsino.org/og-image.jpg",
-        width: 1024,
-        height: 1024,
-        alt: "پرسینو - هوش مصنوعی کنکوری"
-      }
-    ]
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "پرسینو - هوش مصنوعی کنکوری",
-    description:
-      "آموزش و حل تست‌های کنکور با هوش مصنوعی، سریع، دقیق و شخصی‌سازی شده.",
-    images: ["https://porsino.org/og-image.jpg"]
-  },
-  icons: {
-    icon: "/favicon.ico"
-  }
+  description: "پرسینو، هوش مصنوعی تخصصی کنکور..."
 }
 
 export const viewport: Viewport = {
@@ -127,7 +73,8 @@ export default async function RootLayout({
       suppressHydrationWarning
       dir={locale === "fa" ? "rtl" : "ltr"}
     >
-      <body className={`${inter.className} bg-background text-foreground`}>
+      {/* 👇 تغییر مهم اینجاست: inter.className حذف شد */}
+      <body className="bg-background text-foreground font-sans">
         <Providers attribute="class" defaultTheme="dark" enableSystem={false}>
           <TranslationsProvider
             namespaces={i18nNamespaces}

@@ -1,5 +1,3 @@
-// TODO: Separate into multiple contexts, keeping simple for now
-
 "use client"
 
 import { ChatbotUIContext } from "@/context/context"
@@ -15,12 +13,7 @@ import { getPromptWorkspacesByWorkspaceId } from "@/db/prompts"
 import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
 import { getToolWorkspacesByWorkspaceId } from "@/db/tools"
 import { getWorkspacesByUserId } from "@/db/workspaces"
-import { convertBlobToBase64 } from "@/lib/blob-to-b64"
-import {
-  fetchHostedModels,
-  fetchOllamaModels,
-  fetchOpenRouterModels
-} from "@/lib/models/fetch-models"
+// import { convertBlobToBase64 } from "@/lib/blob-to-b64" // فعلا غیرفعال (شاید سنگین باشد)
 import { supabase } from "@/lib/supabase/browser-client"
 import { Tables } from "@/supabase/types"
 import {
@@ -36,6 +29,10 @@ import { AssistantImage } from "@/types/images/assistant-image"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
 import { useRouter } from "next/navigation"
 import { FC, useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
+
+// ایمپورت‌های مدل‌ها را فعلاً حذف می‌کنیم تا زنجیره وابستگی قطع شود
+// import { fetchHostedModels, ... } from "@/lib/models/fetch-models"
 
 interface GlobalStateProps {
   children: React.ReactNode
@@ -43,6 +40,7 @@ interface GlobalStateProps {
 
 export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const router = useRouter()
+  const pathname = usePathname()
 
   // PROFILE STORE
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null)
@@ -58,11 +56,6 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [prompts, setPrompts] = useState<Tables<"prompts">[]>([])
   const [tools, setTools] = useState<Tables<"tools">[]>([])
   const [workspaces, setWorkspaces] = useState<Tables<"workspaces">[]>([])
-  const [networkPhase, setNetworkPhase] = useState<
-    "idle" | "connecting" | "streaming" | "stalled" | "offline" | "done"
-  >("idle")
-  const [streamStartedAt, setStreamStartedAt] = useState<number | null>(null)
-  const [lastByteAt, setLastByteAt] = useState<number | null>(null)
 
   // MODELS STORE
   const [envKeyMap, setEnvKeyMap] = useState<Record<string, VALID_ENV_KEYS>>({})
@@ -91,8 +84,6 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [userInput, setUserInput] = useState<string>("")
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatSettings, setChatSettings] = useState<ChatSettings | null>(null)
-  const [topicSummary, setTopicSummary] = useState("")
-  const [suggestions, setSuggestions] = useState<string[]>([])
   const [selectedChat, setSelectedChat] = useState<Tables<"chats"> | null>(null)
   const [chatFileItems, setChatFileItems] = useState<Tables<"file_items">[]>([])
 
@@ -101,6 +92,11 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [firstTokenReceived, setFirstTokenReceived] = useState<boolean>(false)
   const [abortController, setAbortController] =
     useState<AbortController | null>(null)
+  const [networkPhase, setNetworkPhase] = useState<
+    "idle" | "connecting" | "streaming" | "stalled" | "offline" | "done"
+  >("idle")
+  const [streamStartedAt, setStreamStartedAt] = useState<number | null>(null)
+  const [lastByteAt, setLastByteAt] = useState<number | null>(null)
 
   // CHAT INPUT COMMAND STORE
   const [isPromptPickerOpen, setIsPromptPickerOpen] = useState(false)
@@ -124,7 +120,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [showFilesDisplay, setShowFilesDisplay] = useState<boolean>(false)
   const [isUploadingFiles, setIsUploadingFiles] = useState<boolean>(false)
 
-  // RETIEVAL STORE
+  // RETRIEVAL STORE
   const [useRetrieval, setUseRetrieval] = useState<boolean>(true)
   const [sourceCount, setSourceCount] = useState<number>(4)
 
@@ -132,130 +128,94 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [selectedTools, setSelectedTools] = useState<Tables<"tools">[]>([])
   const [toolInUse, setToolInUse] = useState<string>("none")
 
+  // NEW STATES
+  const [topicSummary, setTopicSummary] = useState("")
+  const [suggestions, setSuggestions] = useState<string[]>([])
+
+  // بارگذاری اولیه پروفایل و ورک‌اسپیس (فقط دیتای ضروری)
   useEffect(() => {
     ;(async () => {
-      const profile = await fetchStartingData()
+      const session = (await supabase.auth.getSession()).data.session
 
-      if (profile) {
-        const hostedModelRes = await fetchHostedModels(profile)
-        if (!hostedModelRes) return
+      if (session) {
+        const user = session.user
+        const profile = await getProfileByUserId(user.id)
+        setProfile(profile)
 
-        setEnvKeyMap(hostedModelRes.envKeyMap)
-        setAvailableHostedModels(hostedModelRes.hostedModels)
-
-        if (
-          profile["openrouter_api_key"] ||
-          hostedModelRes.envKeyMap["openrouter"]
-        ) {
-          const openRouterModels = await fetchOpenRouterModels()
-          if (!openRouterModels) return
-          setAvailableOpenRouterModels(openRouterModels)
+        if (!profile.has_onboarded) {
+          return router.push("/setup")
         }
-      }
 
-      if (process.env.NEXT_PUBLIC_OLLAMA_URL) {
-        const localModels = await fetchOllamaModels()
-        if (!localModels) return
-        setAvailableLocalModels(localModels)
+        const workspaces = await getWorkspacesByUserId(user.id)
+        setWorkspaces(workspaces)
+
+        if (workspaces.length > 0) {
+          setSelectedWorkspace(workspaces[0])
+        }
+
+        // بخش Fetch Models را فعلاً غیرفعال کردیم تا از ایمپورت langchain جلوگیری شود
+        // اگر برای مدل VPS خودت نیاز داری، باید دستی ست کنی نه با fetchHostedModels
       }
     })()
   }, [])
 
-  const fetchStartingData = async () => {
-    const session = (await supabase.auth.getSession()).data.session
-
-    if (session) {
-      const user = session.user
-
-      const profile = await getProfileByUserId(user.id)
-      setProfile(profile)
-
-      if (!profile.has_onboarded) {
-        return router.push("/setup")
-      }
-
-      const workspaces = await getWorkspacesByUserId(user.id)
-      setWorkspaces(workspaces)
-
-      if (workspaces.length > 0) {
-        setSelectedWorkspace(workspaces[0])
-      }
-
-      for (const workspace of workspaces) {
-        let workspaceImageUrl = ""
-
-        if (workspace.image_path) {
-          workspaceImageUrl =
-            (await getWorkspaceImageFromStorage(workspace.image_path)) || ""
-        }
-
-        if (workspaceImageUrl) {
-          const response = await fetch(workspaceImageUrl)
-          const blob = await response.blob()
-          const base64 = await convertBlobToBase64(blob)
-
-          setWorkspaceImages(prev => [
-            ...prev,
-            {
-              workspaceId: workspace.id,
-              path: workspace.image_path,
-              base64: base64,
-              url: workspaceImageUrl
-            }
-          ])
-        }
-      }
-
-      return profile
-    }
-  }
-
+  // مدیریت لودینگ دیتا در تغییر ورک‌اسپیس (بهینه‌سازی شده)
   useEffect(() => {
     const fetchWorkspaceData = async () => {
       if (selectedWorkspace) {
         const workspaceId = selectedWorkspace.id
+        const isChatSection = pathname?.includes("/chat")
+
+        const [folders, assistantsData] = await Promise.all([
+          getFoldersByWorkspaceId(workspaceId),
+          getAssistantWorkspacesByWorkspaceId(workspaceId)
+        ])
+
+        setFolders(folders)
+        setAssistants(assistantsData.assistants || [])
+
+        if (!isChatSection) {
+          setChats([])
+          setFiles([])
+          return
+        }
 
         const [
           chats,
-          folders,
           filesData,
           presetsData,
           promptsData,
           collectionsData,
-          assistantsData,
           toolsData,
           modelsData
         ] = await Promise.all([
           getChatsByWorkspaceId(workspaceId),
-          getFoldersByWorkspaceId(workspaceId),
           getFileWorkspacesByWorkspaceId(workspaceId),
           getPresetWorkspacesByWorkspaceId(workspaceId),
           getPromptWorkspacesByWorkspaceId(workspaceId),
           getCollectionWorkspacesByWorkspaceId(workspaceId),
-          getAssistantWorkspacesByWorkspaceId(workspaceId),
           getToolWorkspacesByWorkspaceId(workspaceId),
           getModelWorkspacesByWorkspaceId(workspaceId)
         ])
 
         setChats(chats)
-        setFolders(folders)
         setFiles(filesData.files || [])
         setPresets(presetsData.presets || [])
         setPrompts(promptsData.prompts || [])
         setCollections(collectionsData.collections || [])
-        setAssistants(assistantsData.assistants || [])
         setTools(toolsData.tools || [])
         setModels(modelsData.models || [])
       }
     }
 
     fetchWorkspaceData()
-  }, [selectedWorkspace])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWorkspace, pathname])
 
   return (
     <ChatbotUIContext.Provider
       value={{
-        // PROFILE STORE
+        // پاس دادن تمام استیت‌ها به کانتکست
         supabase,
         profile,
         setProfile,
@@ -267,13 +227,10 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setLastByteAt,
         firstTokenReceived,
         setFirstTokenReceived,
-        // CLASSROOM STATES
         topicSummary,
         setTopicSummary,
         suggestions,
         setSuggestions,
-
-        // ITEMS STORE
         assistants,
         setAssistants,
         collections,
@@ -294,8 +251,6 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setTools,
         workspaces,
         setWorkspaces,
-
-        // MODELS STORE
         envKeyMap,
         setEnvKeyMap,
         availableHostedModels,
@@ -304,26 +259,18 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setAvailableLocalModels,
         availableOpenRouterModels,
         setAvailableOpenRouterModels,
-
-        // WORKSPACE STORE
         selectedWorkspace,
         setSelectedWorkspace,
         workspaceImages,
         setWorkspaceImages,
-
-        // PRESET STORE
         selectedPreset,
         setSelectedPreset,
-
-        // ASSISTANT STORE
         selectedAssistant,
         setSelectedAssistant,
         assistantImages,
         setAssistantImages,
         openaiAssistants,
         setOpenaiAssistants,
-
-        // PASSIVE CHAT STORE
         userInput,
         setUserInput,
         chatMessages,
@@ -334,14 +281,10 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setSelectedChat,
         chatFileItems,
         setChatFileItems,
-
-        // ACTIVE CHAT STORE
         isGenerating,
         setIsGenerating,
         abortController,
         setAbortController,
-
-        // CHAT INPUT COMMAND STORE
         isPromptPickerOpen,
         setIsPromptPickerOpen,
         slashCommand,
@@ -366,8 +309,6 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setAtCommand,
         isAssistantPickerOpen,
         setIsAssistantPickerOpen,
-
-        // ATTACHMENT STORE
         chatFiles,
         setChatFiles,
         chatImages,
@@ -380,13 +321,10 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setShowFilesDisplay,
         isUploadingFiles,
         setIsUploadingFiles,
-        // RETRIEVAL STORE
         useRetrieval,
         setUseRetrieval,
         sourceCount,
         setSourceCount,
-
-        // TOOL STORE
         selectedTools,
         setSelectedTools,
         toolInUse,

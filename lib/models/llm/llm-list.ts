@@ -1,10 +1,7 @@
 import { LLM } from "@/types"
-import { ANTHROPIC_LLM_LIST } from "./anthropic-llm-list"
-import { GOOGLE_LLM_LIST } from "./google-llm-list"
-import { MISTRAL_LLM_LIST } from "./mistral-llm-list"
-import { GROQ_LLM_LIST } from "./groq-llm-list"
-import { OPENAI_LLM_LIST } from "./openai-llm-list"
-import { PERPLEXITY_LLM_LIST } from "./perplexity-llm-list"
+
+// ما تمام ایمپورت‌های اضافی (OpenAI, Google, etc) را حذف کردیم
+// فقط مدل‌های اختصاصی شما باقی می‌مانند
 
 export const LLM_LIST: LLM[] = [
   {
@@ -13,7 +10,7 @@ export const LLM_LIST: LLM[] = [
     provider: "custom",
     hostedId: "bio-simple",
     platformLink: "",
-    imageInput: false
+    imageInput: false // اگر مدل شما عکس قبول می‌کند این را true کنید
   },
   {
     modelId: "math-advanced",
@@ -46,21 +43,17 @@ export const LLM_LIST: LLM[] = [
     hostedId: "phys-advanced",
     platformLink: "",
     imageInput: false
-  },
-  ...OPENAI_LLM_LIST,
-  ...GOOGLE_LLM_LIST,
-  ...MISTRAL_LLM_LIST,
-  ...GROQ_LLM_LIST,
-  ...PERPLEXITY_LLM_LIST,
-  ...ANTHROPIC_LLM_LIST
+  }
 ]
 
+// این مپ را خالی می‌گذاریم چون دیگر دسته‌بندی پرووایدرها را نداریم
+// وجود این متغیر لازم است تا فایل‌های دیگر ارور ندهند (مثل fetch-models)
 export const LLM_LIST_MAP: Record<string, LLM[]> = {
-  openai: OPENAI_LLM_LIST,
-  azure: OPENAI_LLM_LIST,
-  google: GOOGLE_LLM_LIST,
-  mistral: MISTRAL_LLM_LIST,
-  groq: GROQ_LLM_LIST,
-  perplexity: PERPLEXITY_LLM_LIST,
-  anthropic: ANTHROPIC_LLM_LIST
+  openai: [],
+  azure: [],
+  google: [],
+  mistral: [],
+  groq: [],
+  perplexity: [],
+  anthropic: []
 }

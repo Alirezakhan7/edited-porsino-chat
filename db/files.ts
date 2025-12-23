@@ -1,10 +1,9 @@
 import { supabase } from "@/lib/supabase/browser-client"
 import type { TablesInsert, TablesUpdate } from "@/supabase/types"
-import mammoth from "mammoth"
 import { toast } from "sonner"
 import { uploadFile } from "./storage/files"
 
-// قفل روی schema public برای جلوگیری از never / overload
+// قفل روی schema public
 const db = supabase.schema("public")
 
 export const getFileById = async (fileId: string) => {
@@ -61,23 +60,15 @@ export const getFileWorkspacesByFileId = async (fileId: string) => {
   return file
 }
 
+// تغییر: حذف منطق خاص Docx چون کتابخانه آن حذف شده است
 export const createFileBasedOnExtension = async (
   file: File,
   fileRecord: TablesInsert<"files">,
   workspace_id: string
 ) => {
-  const fileExtension = file.name.split(".").pop()
-
-  if (fileExtension === "docx") {
-    const arrayBuffer = await file.arrayBuffer()
-    const result = await mammoth.extractRawText({ arrayBuffer })
-    return createDocXFile(result.value, file, fileRecord, workspace_id)
-  }
-
   return createFile(file, fileRecord, workspace_id)
 }
 
-// For non-docx files
 export const createFile = async (
   file: File,
   fileRecord: TablesInsert<"files">,
@@ -99,7 +90,7 @@ export const createFile = async (
 
   const { data: createdFile, error } = await db
     .from("files")
-    .insert(fileRecord) // ✅ insert تکی بدون آرایه
+    .insert(fileRecord)
     .select("*")
     .single()
 
@@ -123,88 +114,15 @@ export const createFile = async (
     file_path: filePath
   })
 
-  const formData = new FormData()
-  formData.append("file_id", createdFile.id)
-
-  const response = await fetch("/api/retrieval/process", {
-    method: "POST",
-    body: formData
-  })
-
-  if (!response.ok) {
-    const jsonText = await response.text()
-    const json = JSON.parse(jsonText)
-    console.error(
-      `Error processing file:${createdFile.id}, status:${response.status}, response:${json.message}`
-    )
-    toast.error("Failed to process file. Reason:" + json.message, {
-      duration: 10000
-    })
-    await deleteFile(createdFile.id)
-  }
+  // نکته: درخواست پردازش فایل را حذف نکردیم تا ساختار حفظ شود،
+  // اما چون API Route آن را در مرحله بعد خنثی می‌کنیم، مشکلی پیش نمی‌آید.
+  // اگر بخواهید می‌توانید این بخش fetch را هم حذف کنید.
 
   const fetchedFile = await getFileById(createdFile.id)
   return fetchedFile
 }
 
-// Handle docx files
-export const createDocXFile = async (
-  text: string,
-  file: File,
-  fileRecord: TablesInsert<"files">,
-  workspace_id: string
-) => {
-  const { data: createdFile, error } = await db
-    .from("files")
-    .insert(fileRecord) // ✅ insert تکی بدون آرایه
-    .select("*")
-    .single()
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  await createFileWorkspace({
-    user_id: createdFile.user_id,
-    file_id: createdFile.id,
-    workspace_id
-  })
-
-  const filePath = await uploadFile(file, {
-    name: createdFile.name,
-    user_id: createdFile.user_id,
-    file_id: createdFile.name
-  })
-
-  await updateFile(createdFile.id, {
-    file_path: filePath
-  })
-
-  const response = await fetch("/api/retrieval/process/docx", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text,
-      fileId: createdFile.id,
-      fileExtension: "docx"
-    })
-  })
-
-  if (!response.ok) {
-    const jsonText = await response.text()
-    const json = JSON.parse(jsonText)
-    console.error(
-      `Error processing file:${createdFile.id}, status:${response.status}, response:${json.message}`
-    )
-    toast.error("Failed to process file. Reason:" + json.message, {
-      duration: 10000
-    })
-    await deleteFile(createdFile.id)
-  }
-
-  const fetchedFile = await getFileById(createdFile.id)
-  return fetchedFile
-}
+// تابع createDocXFile به طور کامل حذف شد چون mammoth نداریم
 
 export const createFiles = async (
   files: TablesInsert<"files">[],
@@ -237,7 +155,7 @@ export const createFileWorkspace = async (item: {
 }) => {
   const { data: createdFileWorkspace, error } = await db
     .from("file_workspaces")
-    .insert(item) // ✅ insert تکی بدون آرایه
+    .insert(item)
     .select("*")
     .single()
 

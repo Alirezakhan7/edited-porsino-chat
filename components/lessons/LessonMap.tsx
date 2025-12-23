@@ -90,9 +90,16 @@ export default function LessonMap({
           const current3D = theme3DStyles[themeKey] || theme3DStyles["emerald"]
           const isSectionStart = currentSection?.startStep === stepNumber
 
-          let status: "completed" | "current" | "locked" = "locked"
-          if (index < completedSteps) status = "completed"
-          else if (index === completedSteps) status = "current"
+          let status: "completed" | "current" | "locked" | "open" = "locked"
+
+          if (index < completedSteps) {
+            status = "completed"
+          } else if (index === completedSteps) {
+            status = "current"
+          } else if (isSectionStart) {
+            // اگر شروع گفتار باشد، باز می‌شود
+            status = "open"
+          }
 
           const xOffset = (index % 2 === 0 ? 1 : -1) * 75
 
@@ -135,12 +142,22 @@ export default function LessonMap({
                       "bg-amber-400 border-b-[6px] border-amber-600 text-white shadow-lg shadow-amber-500/20 active:border-b-0 active:translate-y-[6px]",
 
                     // ۳. حالت جاری (Current)
+                    // ۳. حالت جاری (Current)
                     status === "current" &&
                       clsx(
                         current3D.bg,
                         current3D.border,
                         current3D.shadow,
                         "border-b-[6px] text-white shadow-2xl ring-4 ring-white/50 dark:ring-slate-800/50",
+                        "active:border-b-0 active:translate-y-[6px]"
+                      ),
+
+                    // ۴. (جدید) حالت باز برای شروع گفتار
+                    status === "open" &&
+                      clsx(
+                        current3D.bg,
+                        current3D.border,
+                        "opacity-90 hover:opacity-100 border-b-[6px] text-white shadow-md cursor-pointer",
                         "active:border-b-0 active:translate-y-[6px]"
                       )
                   )}
@@ -149,6 +166,9 @@ export default function LessonMap({
                     <IconCheck size={42} stroke={4} />
                   ) : status === "locked" ? (
                     <IconLock size={30} />
+                  ) : status === "open" ? (
+                    // آیکون برای حالت باز شده (ستاره کوچک)
+                    <IconStar size={32} fill="white" className="opacity-80" />
                   ) : (
                     <IconStar
                       size={46}

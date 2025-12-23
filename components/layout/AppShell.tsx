@@ -1,16 +1,13 @@
+// components/layout/AppShell.tsx
 "use client"
 
-import { ReactNode, useContext, useEffect, useState } from "react"
+import { ReactNode, useContext, useEffect, useState, useRef } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-
 import { Dashboard } from "@/components/ui/dashboard"
 import Loading from "@/app/[locale]/loading"
-
 import { ChatbotUIContext } from "@/context/context"
-import { supabase } from "@/lib/supabase/browser-client"
 import { LLMID } from "@/types"
-
-import { getHomeWorkspace } from "@/db/workspaces"
+// ایمپورت‌های دیتابیس
 import { getChatsByWorkspaceId } from "@/db/chats"
 import { getFoldersByWorkspaceId } from "@/db/folders"
 import { getCollectionWorkspacesByWorkspaceId } from "@/db/collections"
@@ -21,18 +18,21 @@ import { getToolWorkspacesByWorkspaceId } from "@/db/tools"
 import { getModelWorkspacesByWorkspaceId } from "@/db/models"
 import { getAssistantWorkspacesByWorkspaceId } from "@/db/assistants"
 import { getAssistantImageFromStorage } from "@/db/storage/assistant-images"
-import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { useMediaQuery } from "@/lib/hooks/use-media-query"
 
 interface AppShellProps {
   children: ReactNode
+  workspaceData: any
 }
 
-export default function AppShell({ children }: AppShellProps) {
+export default function AppShell({ children, workspaceData }: AppShellProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const isMobile = useMediaQuery("(max-width: 768px)")
+
+  // این رفرنس کمک می‌کند تا از فچ تکراری جلوگیری کنیم
+  const dataFetchedRef = useRef(false)
 
   const {
     setChatSettings,
@@ -59,125 +59,130 @@ export default function AppShell({ children }: AppShellProps) {
     setShowFilesDisplay
   } = useContext(ChatbotUIContext)
 
-  const [loading, setLoading] = useState(true)
-
   useEffect(() => {
-    ;(async () => {
-      const session = (await supabase.auth.getSession()).data.session
+    if (workspaceData) {
+      setSelectedWorkspace(workspaceData)
 
-      if (!session) {
-        router.push("/login")
-        return
+      setChatSettings({
+        model: (searchParams.get("model") || "bio-simple") as LLMID,
+        prompt:
+          workspaceData.default_prompt ||
+          "You are a friendly, helpful AI assistant.",
+        temperature: workspaceData.default_temperature || 0.5,
+        contextLength: workspaceData.default_context_length || 4096,
+        includeProfileContext: workspaceData.include_profile_context ?? true,
+        includeWorkspaceInstructions:
+          workspaceData.include_workspace_instructions ?? true
+      })
+
+      // ریست کردن مقادیر چت (این بخش سبک است و مشکلی ندارد)
+      setUserInput("")
+      setChatMessages([])
+      setSelectedChat(null)
+      setIsGenerating(false)
+      setFirstTokenReceived(false)
+      setChatFiles([])
+      setChatImages([])
+      setNewMessageFiles([])
+      setNewMessageImages([])
+      setShowFilesDisplay(false)
+
+      // --- تغییر حیاتی اینجاست ---
+      // شرط: آیا کاربر در صفحه چت است؟
+      const isChatPage = pathname?.includes("/chat")
+
+      // اگر در صفحه چت هستیم و قبلا دیتا را نگرفته‌ایم -> بگیر
+      if (isChatPage && !dataFetchedRef.current) {
+        fetchPrimaryData(workspaceData.id)
+        dataFetchedRef.current = true
       }
-
-      const workspace = await getHomeWorkspace()
-
-      if (!workspace || typeof (workspace as any).id !== "string") {
-        router.push("/login")
-        return
-      }
-
-      await fetchWorkspaceData((workspace as any).id, workspace)
-    })()
+      // اگر در صفحه path یا upload هستیم -> هیچ کاری نکن (CPU آزاد می‌ماند)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [workspaceData, pathname]) // pathname اضافه شد تا اگر نویگیت کرد به چت، دیتا لود شود
 
-  const fetchWorkspaceData = async (workspaceId: string, workspace: any) => {
-    setLoading(true)
-    setSelectedWorkspace(workspace)
+  const fetchPrimaryData = async (workspaceId: string) => {
+    try {
+      const [chats, folders, assistantData] = await Promise.all([
+        getChatsByWorkspaceId(workspaceId),
+        getFoldersByWorkspaceId(workspaceId),
+        getAssistantWorkspacesByWorkspaceId(workspaceId)
+      ])
 
-    const assistantData = (await getAssistantWorkspacesByWorkspaceId(
-      workspaceId
-    )) as { assistants: any[] }
+      setChats(chats)
+      setFolders(folders)
+      setAssistants((assistantData as any).assistants)
+      processAssistantImages((assistantData as any).assistants)
 
-    setAssistants(assistantData.assistants)
+      // لود دیتای ثانویه با تاخیر
+      setTimeout(() => fetchSecondaryData(workspaceId), 2000)
+    } catch (e) {
+      console.error("Error fetching primary data", e)
+    }
+  }
 
-    for (const assistant of assistantData.assistants) {
+  const fetchSecondaryData = async (workspaceId: string) => {
+    try {
+      const [collections, files, presets, prompts, tools, models] =
+        await Promise.all([
+          getCollectionWorkspacesByWorkspaceId(workspaceId),
+          getFileWorkspacesByWorkspaceId(workspaceId),
+          getPresetWorkspacesByWorkspaceId(workspaceId),
+          getPromptWorkspacesByWorkspaceId(workspaceId),
+          getToolWorkspacesByWorkspaceId(workspaceId),
+          getModelWorkspacesByWorkspaceId(workspaceId)
+        ])
+
+      setCollections((collections as any).collections)
+      setFiles((files as any).files)
+      setPresets((presets as any).presets)
+      setPrompts((prompts as any).prompts)
+      setTools((tools as any).tools)
+      setModels((models as any).models)
+    } catch (e) {
+      console.error("Error fetching secondary data", e)
+    }
+  }
+
+  const processAssistantImages = async (assistants: any[]) => {
+    for (const assistant of assistants) {
       let url = ""
       if (assistant.image_path) {
         url = (await getAssistantImageFromStorage(assistant.image_path)) || ""
       }
-      if (url) {
-        const response = await fetch(url)
-        const blob = await response.blob()
-        const base64 = await convertBlobToBase64(blob)
-        setAssistantImages(prev => [
-          ...prev,
-          { assistantId: assistant.id, path: assistant.image_path, base64, url }
-        ])
-      } else {
-        setAssistantImages(prev => [
-          ...prev,
-          {
-            assistantId: assistant.id,
-            path: assistant.image_path,
-            base64: "",
-            url: ""
-          }
-        ])
-      }
+      setAssistantImages(prev => [
+        ...prev,
+        {
+          assistantId: assistant.id,
+          path: assistant.image_path,
+          base64: "",
+          url
+        }
+      ])
     }
-
-    setChats(await getChatsByWorkspaceId(workspaceId))
-    setFolders(await getFoldersByWorkspaceId(workspaceId))
-    const collections = await getCollectionWorkspacesByWorkspaceId(workspaceId)
-    setCollections((collections as any).collections)
-    const files = await getFileWorkspacesByWorkspaceId(workspaceId)
-    setFiles((files as any).files)
-    const presets = await getPresetWorkspacesByWorkspaceId(workspaceId)
-    setPresets((presets as any).presets)
-    const prompts = await getPromptWorkspacesByWorkspaceId(workspaceId)
-    setPrompts((prompts as any).prompts)
-    const tools = await getToolWorkspacesByWorkspaceId(workspaceId)
-    setTools((tools as any).tools)
-    const models = await getModelWorkspacesByWorkspaceId(workspaceId)
-    setModels((models as any).models)
-
-    setChatSettings({
-      model: (searchParams.get("model") || "bio-simple") as LLMID,
-      prompt:
-        workspace.default_prompt || "You are a friendly, helpful AI assistant.",
-      temperature: workspace.default_temperature || 0.5,
-      contextLength: workspace.default_context_length || 4096,
-      includeProfileContext: workspace.include_profile_context ?? true,
-      includeWorkspaceInstructions:
-        workspace.include_workspace_instructions ?? true
-    })
-
-    setUserInput("")
-    setChatMessages([])
-    setSelectedChat(null)
-    setIsGenerating(false)
-    setFirstTokenReceived(false)
-    setChatFiles([])
-    setChatImages([])
-    setNewMessageFiles([])
-    setNewMessageImages([])
-    setShowFilesDisplay(false)
-
-    setLoading(false)
   }
 
-  if (loading) return <Loading />
-
-  // -----------------------------------------------------------
-  // بخش اصلاح شده برای حل مشکل موبایل
-  // -----------------------------------------------------------
+  if (!workspaceData) return <Loading />
 
   const isChatRoute = pathname?.includes("/chat")
 
+  // مسیرهایی که نیاز به دشبورد و سایدبار ندارند (Immersive)
   const isImmersiveRoute =
     pathname?.includes("/path") ||
     pathname?.includes("/lesson") ||
     pathname?.includes("/play") ||
-    pathname?.includes("/profile")
+    pathname?.includes("/profile") ||
+    pathname?.includes("/upload") // اضافه شد طبق درخواستت
 
-  // ۱. موبایل (غیر از چت):
+  // لاجیک نمایش موبایل
   if (isMobile && !isChatRoute) {
     return <>{children}</>
   }
 
-  // ۲. صفحات تمام صفحه دسکتاپ
+  // لاجیک نمایش دسکتاپ برای صفحات تمام صفحه (مثل درس)
+  // نکته: اینجا قبلا Dashboard رندر می‌شد که سایدبار داشت
+  // الان هم رندر می‌شود اما چون دیتا فچ نشده، سایدبار خالی است (که مشکلی نیست چون دیده نمی‌شود یا کمتر دیده می‌شود)
+  // اما اگر می‌خواهی کلا Dashboard هم رندر نشود، می‌توانی اینجا شرط بگذاری
   if (isImmersiveRoute) {
     return (
       <Dashboard>
@@ -186,7 +191,6 @@ export default function AppShell({ children }: AppShellProps) {
     )
   }
 
-  // ۳. داشبورد اصلی (شامل چت):
   return (
     <Dashboard>
       <div
@@ -196,15 +200,8 @@ export default function AppShell({ children }: AppShellProps) {
       >
         <div
           className={`w-full px-4 md:px-8 
-            ${
-              // ✅ تغییر ۱: حذف پدینگ بالا (py-6) فقط برای چت تا دکمه‌ها هم‌تراز شوند
-              // برای بقیه صفحات py-6 می‌ماند
-              isChatRoute ? "h-full py-0" : "py-6"
-            }
-            ${
-              // ✅ تغییر ۲: پدینگ پایین زیاد (pb-24) برای موبایل تا باکس پیام زیر نوار نرود
-              isMobile ? "pb-24" : ""
-            } 
+            ${isChatRoute ? "h-full py-0" : "py-6"}
+            ${isMobile ? "pb-24" : ""} 
           `}
         >
           {children}

@@ -15,6 +15,11 @@ import confetti from "canvas-confetti"
 import { MaterialCard, colorThemes } from "@/components/material/MaterialUI"
 import type { GamifiedUnit } from "@/lib/lessons/types"
 import { saveUserProgress } from "@/lib/actions/progress"
+import { useTextSelection } from "@/lib/hooks/use-text-selection"
+import ActionMenu from "@/components/lessons/ActionMenu"
+import FlashcardModal from "@/components/lessons/FlashcardModal"
+import { toast } from "sonner"
+import QuickAiModal from "@/components/lessons/QuickAiModal"
 
 interface LessonPlayerProps {
   units: GamifiedUnit[]
@@ -45,12 +50,126 @@ export default function LessonPlayer({
   const [isCorrect, setIsCorrect] = useState<boolean>(false)
   const [isTipsOpen, setIsTipsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const { clientRect, isCollapsed, textContent } = useTextSelection()
+  const handleCreateFlashcard = () => {
+    // بستن منوی سلکشن با کلیک کردن (یک هک کوچک برای اینکه منوی مشکی بسته شود)
+    document.getSelection()?.removeAllRanges()
+
+    setSelectedTextForCard(textContent) // متنی که از هوک گرفتیم
+    setIsFlashcardModalOpen(true)
+  }
+  const handleAskAI = () => {
+    // بستن منوی سلکشن
+    document.getSelection()?.removeAllRanges()
+
+    setSelectedTextForAi(textContent) // ذخیره متن انتخاب شده
+    setIsAiModalOpen(true) // باز کردن مدال
+  }
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false)
+  const [selectedTextForAi, setSelectedTextForAi] = useState("")
 
   const currentUnit = units[currentIndex]
   // جلوگیری از ارور اگر konkur_tips وجود نداشت
   const hasTips = currentUnit?.konkur_tips && currentUnit.konkur_tips.length > 0
   const progressPercent = ((currentIndex + 1) / units.length) * 100
 
+  const [isFlashcardModalOpen, setIsFlashcardModalOpen] = useState(false)
+  const [selectedTextForCard, setSelectedTextForCard] = useState("")
+  const onSaveFlashcard = async (front: string, back: string) => {
+    try {
+      const { error } = await supabase.from("leitner_box").insert({
+        user_id: userId,
+        flashcard_front: front,
+        flashcard_back: back,
+        source_chunk_uid: currentUnit.uid, // وصل کردن به همین اسلاید درس
+        box_level: 1, // خانه اول لایتنر
+        next_review_at: new Date().toISOString() // زمان مرور همین الان
+      })
+
+      if (error) throw error
+
+      toast.success("به جعبه لایتنر اضافه شد")
+    } catch (error) {
+      console.error(error)
+      toast.error("خطا در ذخیره فلش‌کارت")
+    }
+  }
+
+  // این تابع بعداً به سرور پایتون وصل می‌شود
+  // تابع اتصال به هوش مصنوعی سریع
+  const handleAiRequest = async (question: string, context: string) => {
+    try {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+      if (!session) {
+        toast.error("لطفا ابتدا وارد حساب خود شوید.")
+        return "خطای دسترسی"
+      }
+
+      // 2. آدرس سرور پایتون (لوکال یا پروداکشن)
+      // اگر روی سرور هستید آدرس واقعی را بگذارید، مثلا: https://api.porsino.org/quick-ask
+      const CHAT_URL = "https://api.porsino.org/chat"
+
+      // 3. ارسال درخواست
+      // 2. ارسال درخواست به صف
+      // ما اینجا از مدل gpt-4o-mini استفاده می‌کنیم که سریع و ارزان است
+      const startRes = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          message: question,
+          context: context, // ارسال متن انتخاب شده
+          customModelId: "gpt-4o-mini",
+          workspaceId: "lesson-mode", // یک ID فرضی یا واقعی
+          // اگر chatId نداریم، نال می‌فرستیم تا چت جدید نسازد یا مدیریت کند
+          chatId: null
+        })
+      })
+
+      if (!startRes.ok) {
+        const err = await startRes.json()
+        throw new Error(err.detail || "خطا در ارسال درخواست")
+      }
+
+      const { job_id } = await startRes.json()
+
+      // 3. انتظار برای نتیجه (Polling)
+      // چون سرور ما استریم واقعی نمیکند و نتیجه را یکجا میدهد، باید صبر کنیم تا job تمام شود
+      const RESULT_URL = `https://api.porsino.org/chat/result/${job_id}`
+
+      while (true) {
+        const res = await fetch(RESULT_URL, {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        })
+
+        if (!res.ok) throw new Error("خطا در دریافت نتیجه")
+
+        // سرور ما نتیجه را به صورت استریم کاراکتر برمی‌گرداند، ما آن را کامل می‌خوانیم
+        const text = await res.text()
+
+        try {
+          const json = JSON.parse(text)
+          if (json.status === "processing") {
+            await new Promise(r => setTimeout(r, 1000))
+            continue
+          }
+
+          if (json.answer) {
+            return json.answer
+          }
+        } catch (e) {}
+        break
+      }
+    } catch (error: any) {
+      console.error("AI Error:", error)
+      toast.error("مشکلی پیش آمد: " + error.message)
+      return "متاسفانه ارتباط برقرار نشد."
+    }
+  }
   // اسکرول به بالا هنگام تغییر اسلاید
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -65,27 +184,28 @@ export default function LessonPlayer({
     )
   }
 
-  // --- 1. رندر متن و عکس ---
+  // --- 1. رندر متن و عکس با استایل حرفه‌ای آموزشی ---
   const renderStoryContent = (text: string) => {
-    // تقسیم متن بر اساس تگ تصویر خاص
+    // تقسیم متن بر اساس تگ تصویر
     const parts = text.split(/\[\[\[INSERT_IMAGE_HERE: (.*?)\]\]\]/g)
+
     return (
-      <div className="space-y-8 text-right text-lg font-medium leading-[2.4] text-slate-700 md:text-[1.15rem] dark:text-slate-300">
+      <div className="w-full">
         {parts.map((part, i) => {
-          // بخش‌های فرد، نام عکس هستند
+          // --- بخش تصاویر ---
           if (i % 2 === 1) {
             return (
               <motion.div
                 key={i}
-                initial={{ scale: 0.95, opacity: 0 }}
+                initial={{ scale: 0.98, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 100 }}
-                className="my-10 flex justify-center"
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="my-12 flex justify-center"
               >
                 <img
                   src={`/images/lessons/${part.trim()}.jpg`}
                   alt="تصویر آموزشی"
-                  className="w-full max-w-xl rounded-[2.5rem] border-[6px] border-white shadow-2xl ring-1 ring-slate-200/50 transition-transform duration-500 hover:scale-[1.01] dark:border-slate-800 dark:ring-slate-700"
+                  className="w-full rounded-2xl shadow-lg transition-transform hover:shadow-xl md:max-w-lg dark:brightness-90"
                   onError={e =>
                     ((e.target as HTMLImageElement).style.display = "none")
                   }
@@ -93,10 +213,20 @@ export default function LessonPlayer({
               </motion.div>
             )
           }
+
+          // --- بخش متن (پاراگراف‌ها) ---
           if (!part.trim()) return null
-          // رندر پاراگراف‌ها با حفظ خطوط جدید
+
           return (
-            <p key={i} className="whitespace-pre-line">
+            <p
+              key={i}
+              className="
+                mb-8 whitespace-pre-line text-justify 
+                text-lg font-medium leading-[2.2] tracking-normal text-slate-800 
+                md:text-[1.25rem] md:leading-[2.5] 
+                dark:text-slate-200
+              "
+            >
               {part}
             </p>
           )
@@ -169,7 +299,8 @@ export default function LessonPlayer({
 
   return (
     <div
-      className="relative min-h-screen overflow-x-hidden bg-slate-50 font-sans text-slate-900 transition-colors duration-500 dark:bg-slate-950 dark:text-slate-100"
+      // تغییر: حذف overflow-x-hidden تا sticky کار کند
+      className="relative min-h-screen bg-slate-50 font-sans text-slate-900 transition-colors duration-500 dark:bg-slate-950 dark:text-slate-100"
       dir="rtl"
     >
       {/* پس‌زمینه متحرک */}
@@ -179,7 +310,7 @@ export default function LessonPlayer({
       </div>
 
       {/* هدر شناور */}
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-6">
+      <div className="pointer-events-none sticky top-0 z-50 flex justify-center px-4 pt-6">
         <div className="pointer-events-auto w-full max-w-3xl">
           <div className="relative flex items-center gap-3 overflow-hidden rounded-[2rem] border border-white/60 bg-white/80 p-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/80">
             <button
@@ -218,7 +349,8 @@ export default function LessonPlayer({
       </div>
 
       {/* کانتینر اصلی محتوا */}
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col px-4 pb-[250px] pt-32">
+      {/* تغییر: کاهش pt-32 به pt-4 چون هدر الان فضا می‌گیرد */}
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-4 pb-[250px] pt-4">
         <AnimatePresence mode="wait">
           {/* --- فاز ۱: داستان --- */}
           {viewState === "story" && (
@@ -227,7 +359,8 @@ export default function LessonPlayer({
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
-              className="flex-1"
+              // تغییر: flex flex-col برای اینکه mt-auto روی دکمه کار کند
+              className="flex min-h-[60vh] flex-1 flex-col"
             >
               <MaterialCard className="!rounded-[3rem] !border-white/80 !bg-white/90 !p-8 !shadow-xl !backdrop-blur-2xl md:!p-12 dark:!border-slate-700 dark:!bg-slate-900/90">
                 {currentUnit.is_start_of_lesson && (
@@ -240,7 +373,7 @@ export default function LessonPlayer({
               </MaterialCard>
 
               {/* ✅ دکمه ادامه دقیقاً با تنظیمات قبلی */}
-              <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-6">
+              <div className="sticky bottom-6 z-40 mt-auto flex w-full justify-center px-6 pb-6 pt-4 md:bottom-10">
                 <motion.button
                   initial={{ y: 50, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
@@ -335,7 +468,13 @@ export default function LessonPlayer({
                     animate={{ y: 0 }}
                     exit={{ y: "100%" }}
                     transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                    className={`fixed inset-x-4 bottom-24 z-50 rounded-[3rem] border border-white/20 p-8 shadow-[0_10px_60px_rgba(0,0,0,0.3)] backdrop-blur-3xl ${isCorrect ? "bg-emerald-50/95 dark:bg-emerald-900/95" : "bg-rose-50/95 dark:bg-rose-900/95"}`}
+                    className={`
+                      fixed inset-x-4 bottom-24 z-50 rounded-[3rem] border border-white/20 p-8 shadow-[0_10px_60px_rgba(0,0,0,0.3)] backdrop-blur-3xl
+                      ${isCorrect ? "bg-emerald-50/95 dark:bg-emerald-900/95" : "bg-rose-50/95 dark:bg-rose-900/95"}
+                      
+                      {/* --- تغییرات دسکتاپ: تبدیل به پاپ‌آپ وسط صفحه --- */}
+                      md:inset-0 md:m-auto md:h-fit md:max-w-xl
+                    `}
                   >
                     <div className="mx-auto max-w-2xl">
                       <div className="mb-4 flex items-center gap-4">
@@ -398,7 +537,8 @@ export default function LessonPlayer({
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed inset-x-4 bottom-24 z-[70] max-h-[70vh] overflow-y-auto rounded-[3rem] border-4 border-[#FDE68A] bg-[#FFFBF0] shadow-2xl dark:border-amber-600 dark:bg-slate-900"
+                // تغییرات جدید: در دسکتاپ (md) وسط‌چین می‌شود و عرضش محدود می‌گردد
+                className="fixed inset-x-4 bottom-24 z-[70] max-h-[70vh] overflow-y-auto rounded-[3rem] border-4 border-[#FDE68A] bg-[#FFFBF0] shadow-2xl md:inset-0 md:m-auto md:h-fit md:max-w-2xl dark:border-amber-600 dark:bg-slate-900"
               >
                 <div className="relative flex items-center justify-between border-b border-amber-100 bg-[#FFFBF0] p-6 pb-4 dark:border-slate-800 dark:bg-slate-900">
                   <h3 className="flex items-center gap-2 text-2xl font-black text-amber-800 dark:text-amber-400">
@@ -444,6 +584,28 @@ export default function LessonPlayer({
           )}
         </AnimatePresence>
       </div>
+      {/* منوی شناور انتخاب متن */}
+      {!isCollapsed && clientRect && (
+        <ActionMenu
+          position={clientRect}
+          onFlashcard={handleCreateFlashcard}
+          onAskAI={handleAskAI}
+        />
+      )}
+      {/* ✅ مودال ساخت فلش‌کارت (جدید) */}
+      <FlashcardModal
+        isOpen={isFlashcardModalOpen}
+        onClose={() => setIsFlashcardModalOpen(false)}
+        initialText={selectedTextForCard} // ✅ تغییر به initialText
+        onSave={onSaveFlashcard}
+      />
+      {/* ✅ مدال چت هوشمند (جدید) */}
+      <QuickAiModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        contextText={selectedTextForAi}
+        onAsk={handleAiRequest}
+      />
     </div>
   )
 }

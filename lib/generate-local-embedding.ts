@@ -1,17 +1,6 @@
-import { pipeline } from "@xenova/transformers"
+// این فایل دیگر کاربردی ندارد چون transformers حذف شده است.
+// یک تابع خالی می‌گذاریم تا ارور ایمپورت در جاهای دیگر نگیرید.
 
 export async function generateLocalEmbedding(content: string) {
-  const generateEmbedding = await pipeline(
-    "feature-extraction",
-    "Xenova/all-MiniLM-L6-v2"
-  )
-
-  const output = await generateEmbedding(content, {
-    pooling: "mean",
-    normalize: true
-  })
-
-  const embedding = Array.from(output.data)
-
-  return embedding
+  return []
 }

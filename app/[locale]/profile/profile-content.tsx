@@ -1,17 +1,12 @@
-import AppShell from "@/components/layout/AppShell"
+// app/[locale]/profile/profile-content.tsx
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { Database } from "@/supabase/types"
+import ProfileClient from "./profile-client"
 
-export default async function LessonLayout({
-  children
-}: {
-  children: React.ReactNode
-}) {
+export default async function ProfileContent({ locale }: { locale: string }) {
   const cookieStore = await cookies()
-
-  // 1. ساخت کلاینت سوپابیس
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -24,27 +19,24 @@ export default async function LessonLayout({
     }
   )
 
-  // 2. چک کردن سشن
   const {
     data: { session }
   } = await supabase.auth.getSession()
 
   if (!session) {
-    return redirect("/login")
+    redirect(`/${locale}/login`)
   }
 
-  // 3. دریافت ورک‌اسپیس
-  const { data: homeWorkspace } = await supabase
-    .from("workspaces")
+  // دریافت پروفایل مستقیماً از دیتابیس
+  const { data: profile } = await supabase
+    .from("profiles")
     .select("*")
     .eq("user_id", session.user.id)
-    .eq("is_home", true)
     .single()
 
-  if (!homeWorkspace) {
-    return redirect("/setup")
+  if (!profile) {
+    return <div>خطا در بارگذاری پروفایل</div>
   }
 
-  // 4. پاس دادن دیتا به AppShell
-  return <AppShell workspaceData={homeWorkspace}>{children}</AppShell>
+  return <ProfileClient initialProfile={profile} />
 }

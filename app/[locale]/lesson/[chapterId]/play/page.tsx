@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
-import { loadLessonData } from "@/lib/lessons/loader"
-import LessonPlayer from "@/components/lessons/LessonPlayer"
+// app/[locale]/lesson/[chapterId]/play/page.tsx
+
+import { Suspense } from "react"
+import PlayContent from "./play-content"
 
 interface PlayPageProps {
   params: Promise<{
@@ -20,66 +20,43 @@ export default async function PlayPage({
   const { chapterId, locale } = await params
   const { step } = await searchParams
 
-  // 1. تعیین شماره مرحله (اگر نبود پیش‌فرض ۱)
+  // 1. تعیین شماره مرحله
   const stepNumber = parseInt(step || "1")
 
-  // 2. ساخت کلاینت سوپابیس
-  const supabase = await createClient()
-
-  // 3. چک کردن یوزر
-  const {
-    data: { user },
-    error
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
-    redirect(`/${locale}/login`)
-  }
-
-  // 4. لود کردن کل محتوای فصل
-  // این تابع همه آیتم‌های فصل (مثلاً ۲۳ تا) را می‌آورد
-  const allUnits = await loadLessonData(chapterId)
-
-  if (!allUnits || allUnits.length === 0) {
-    return (
-      <div className="p-10 text-center font-bold text-red-500">
-        محتوا بارگذاری نشد یا فصل خالی است 🚫
-      </div>
-    )
-  }
-
-  // 5. ✅ منطق جدید: انتخاب دقیقاً ۱ درس برای این مرحله
-  // چون آرایه از ۰ شروع می‌شود ولی step از ۱، یکی کم می‌کنیم
-  const unitIndex = stepNumber - 1
-
-  // اگر مرحله‌ای که کاربر خواسته وجود ندارد (مثلاً مرحله ۳۰ در فصلی که ۲۰ درس دارد)
-  if (unitIndex < 0 || unitIndex >= allUnits.length) {
-    return (
-      <div className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center px-4">
-        <div className="mb-4 text-xl font-bold">🎉 تبریک! این فصل تمام شد.</div>
-
-        <a
-          href={`/${locale}/lesson/${chapterId}`}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl px-6 py-3 shadow-lg transition"
-        >
-          بازگشت به نقشه
-        </a>
-      </div>
-    )
-  }
-
-  // انتخاب همان تک درس خاص
-  const targetUnit = allUnits[unitIndex]
-
-  // 6. رندر پلیر
   return (
-    <LessonPlayer
-      // ⚠️ نکته مهم: LessonPlayer لیست می‌خواهد، پس این تک آیتم را در آرایه می‌گذاریم
-      units={[targetUnit]}
-      chapterId={chapterId}
-      stepNumber={stepNumber}
-      userId={user.id}
-      locale={locale}
-    />
+    // در اینجا ما یک پس‌زمینه ساده می‌گذاریم تا حس پرش وجود نداشته باشد
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <Suspense fallback={<PlayerSkeleton />}>
+        <PlayContent
+          chapterId={chapterId}
+          locale={locale}
+          stepNumber={stepNumber}
+        />
+      </Suspense>
+    </div>
+  )
+}
+
+// یک لودینگ شبیه به پلیر واقعی می‌سازیم تا UX بهتر شود
+function PlayerSkeleton() {
+  return (
+    <div className="flex min-h-screen animate-pulse flex-col bg-slate-50 dark:bg-slate-950">
+      {/* هدر */}
+      <div className="h-16 w-full border-b border-slate-200 bg-white/50 dark:border-slate-800 dark:bg-slate-900/50" />
+
+      {/* بدنه اصلی */}
+      <div className="flex flex-1 flex-col items-center justify-center p-4">
+        {/* کارت سوال */}
+        <div className="h-[400px] w-full max-w-2xl rounded-3xl bg-slate-200 dark:bg-slate-800" />
+
+        {/* گزینه‌ها */}
+        <div className="mt-8 grid w-full max-w-2xl grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="h-16 rounded-xl bg-slate-200 dark:bg-slate-800" />
+          <div className="h-16 rounded-xl bg-slate-200 dark:bg-slate-800" />
+          <div className="h-16 rounded-xl bg-slate-200 dark:bg-slate-800" />
+          <div className="h-16 rounded-xl bg-slate-200 dark:bg-slate-800" />
+        </div>
+      </div>
+    </div>
   )
 }
