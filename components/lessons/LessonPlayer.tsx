@@ -41,7 +41,7 @@ export default function LessonPlayer({
 
   // استفاده از تم رنگی برای هماهنگی با سیستم
   const theme = colorThemes.blue
-
+  const [userWorkspaceId, setUserWorkspaceId] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [viewState, setViewState] = useState<
     "story" | "interaction" | "feedback"
@@ -67,7 +67,36 @@ export default function LessonPlayer({
   }
   const [isAiModalOpen, setIsAiModalOpen] = useState(false)
   const [selectedTextForAi, setSelectedTextForAi] = useState("")
+  // ✅ دریافت ورک‌اسپیس پیش‌فرض (Home) کاربر برای استفاده در چت
+  useEffect(() => {
+    const fetchHomeWorkspace = async () => {
+      if (!userId) return
 
+      // تلاش برای پیدا کردن ورک‌اسپیس اصلی (Home)
+      const { data } = await supabase
+        .from("workspaces")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_home", true)
+        .maybeSingle() // استفاده از maybeSingle امن‌تر است تا اگر نبود ارور ندهد
+
+      if (data) {
+        setUserWorkspaceId(data.id)
+      } else {
+        // اگر ورک‌اسپیس Home نداشت، اولین ورک‌اسپیس موجود را بگیر
+        const { data: firstWs } = await supabase
+          .from("workspaces")
+          .select("id")
+          .eq("user_id", userId)
+          .limit(1)
+          .maybeSingle()
+
+        if (firstWs) setUserWorkspaceId(firstWs.id)
+      }
+    }
+
+    fetchHomeWorkspace()
+  }, [userId, supabase])
   const currentUnit = units[currentIndex]
   // جلوگیری از ارور اگر konkur_tips وجود نداشت
   const hasTips = currentUnit?.konkur_tips && currentUnit.konkur_tips.length > 0
@@ -98,6 +127,11 @@ export default function LessonPlayer({
   // این تابع بعداً به سرور پایتون وصل می‌شود
   // تابع اتصال به هوش مصنوعی سریع
   const handleAiRequest = async (question: string, context: string) => {
+    // اگر هنوز ورک‌اسپیس لود نشده، خطا بده یا صبر کن
+    if (!userWorkspaceId) {
+      toast.error("در حال بارگذاری اطلاعات کاربر... لطفا مجدد تلاش کنید.")
+      return "Not ready"
+    }
     try {
       const {
         data: { session }
@@ -124,7 +158,7 @@ export default function LessonPlayer({
           message: question,
           context: context, // ارسال متن انتخاب شده
           customModelId: "gpt-4o-mini",
-          workspaceId: "lesson-mode", // یک ID فرضی یا واقعی
+          workspaceId: userWorkspaceId, // یک ID فرضی یا واقعی
           // اگر chatId نداریم، نال می‌فرستیم تا چت جدید نسازد یا مدیریت کند
           chatId: null
         })
