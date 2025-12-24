@@ -1,3 +1,4 @@
+// components/material/MaterialUI.tsx
 "use client"
 
 import { motion } from "framer-motion"
@@ -10,12 +11,12 @@ function cn(...inputs: ClassValue[]) {
 }
 
 /* -----------------------------------------
-   1) تم‌های رنگی
+   1) تم‌های رنگی (اضافه کردن رنگ نارنجی برای رفع ارور)
 ----------------------------------------- */
 export const colorThemes = {
   blue: {
     gradient: "from-blue-500 to-indigo-600",
-    light: "bg-blue-50/50 dark:bg-blue-500/20", // روشن‌تر کردن پس‌زمینه در شب
+    light: "bg-blue-50/50 dark:bg-blue-500/20",
     text: "text-blue-700 dark:text-blue-200",
     border: "border-blue-200/50 dark:border-blue-400/30",
     glow: "shadow-blue-500/20 dark:shadow-blue-500/40",
@@ -44,13 +45,22 @@ export const colorThemes = {
     border: "border-emerald-200/50 dark:border-emerald-400/30",
     glow: "shadow-emerald-500/20 dark:shadow-emerald-500/40",
     bg: "bg-emerald-600"
+  },
+  // ✅ رنگ نارنجی (Orange) اضافه شد تا ارور برطرف شود
+  orange: {
+    gradient: "from-orange-400 to-amber-600",
+    light: "bg-orange-50/50 dark:bg-orange-500/20",
+    text: "text-orange-700 dark:text-orange-200",
+    border: "border-orange-200/50 dark:border-orange-400/30",
+    glow: "shadow-orange-500/20 dark:shadow-orange-500/40",
+    bg: "bg-orange-500"
   }
 }
 
 export type ColorKey = keyof typeof colorThemes
 
 /* -----------------------------------------
-   2) MaterialCard (اصلاح کنتراست شب)
+   2) MaterialCard
 ----------------------------------------- */
 export function MaterialCard({
   children,
@@ -71,13 +81,8 @@ export function MaterialCard({
       className={cn(
         "relative overflow-hidden rounded-3xl border backdrop-blur-xl transition-all duration-300",
         elevation > 1 ? "shadow-md" : "shadow-sm",
-
-        // حالت روز
         "border-white/40 bg-white/60",
-
-        // حالت شب (اصلاح شده): استفاده از slate-800 به جای 900 برای دیده شدن روی زمینه مشکی
         "dark:border-white/10 dark:bg-slate-800/60 dark:shadow-2xl dark:shadow-black/50",
-
         onClick ? "cursor-pointer" : "",
         className
       )}
@@ -97,7 +102,9 @@ export function IconWrapper({
   icon: any
   color: ColorKey
 }) {
-  const theme = colorThemes[color]
+  // ✅ یک محافظ (Fallback) اضافه می‌کنیم که اگر رنگ پیدا نشد، ارور ندهد و آبی را نشان دهد
+  const theme = colorThemes[color] || colorThemes.blue
+
   if (!Icon) return null
 
   return (
@@ -114,32 +121,46 @@ export function IconWrapper({
 }
 
 /* -----------------------------------------
-   4) RippleButton
+   4) RippleButton (آپدیت شده با قابلیت disabled)
 ----------------------------------------- */
 export function RippleButton({
   children,
   className = "",
-  onClick
+  onClick,
+  disabled = false // ✅ اضافه شدن ویژگی disabled
 }: {
   children: React.ReactNode
   className?: string
   onClick?: (e: any) => void
+  disabled?: boolean // ✅ تعریف تایپ
 }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onClick}
+      whileHover={disabled ? undefined : { scale: 1.02 }} // اگر غیرفعال بود، انیمیشن هاور نداشته باشد
+      whileTap={disabled ? undefined : { scale: 0.95 }} // اگر غیرفعال بود، انیمیشن کلیک نداشته باشد
+      onClick={disabled ? undefined : onClick} // اگر غیرفعال بود، کلیک کار نکند
+      disabled={disabled} // ویژگی استاندارد HTML
       className={cn(
-        "relative overflow-hidden rounded-xl px-6 py-3 font-medium text-white shadow-lg transition-all hover:shadow-xl hover:brightness-110",
+        "relative overflow-hidden rounded-xl px-6 py-3 font-medium text-white shadow-lg transition-all",
+        // استایل‌های پایه
         !className.includes("bg-") && "bg-blue-600",
+
+        // استایل‌های حالت فعال (فقط وقتی disabled نباشد)
+        !disabled && "hover:shadow-xl hover:brightness-110",
+
+        // استایل‌های حالت غیرفعال (Disabled)
+        disabled && "cursor-not-allowed opacity-50 grayscale",
+
         className
       )}
     >
       <div className="relative z-10 flex items-center justify-center gap-2">
         {children}
       </div>
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+      {/* افکت شیشه‌ای فقط وقتی فعال است نمایش داده شود */}
+      {!disabled && (
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+      )}
     </motion.button>
   )
 }

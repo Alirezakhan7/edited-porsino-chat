@@ -44,7 +44,33 @@ export type Database = {
           }
           Relationships: []
         }
-          
+      activity_logs: {
+        Row: {
+          id: string
+          user_id: string
+          chunk_uid: string
+          is_correct: boolean
+          time_spent_seconds: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          chunk_uid: string
+          is_correct: boolean
+          time_spent_seconds?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          chunk_uid?: string
+          is_correct?: boolean
+          time_spent_seconds?: number | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }    
       assistant_collections: {
         Row: {
           assistant_id: string
@@ -1070,6 +1096,9 @@ export type Database = {
           user_id: string
           user_profile: string | null
           username: string
+          referral_code: string | null // ✅ کد معرف اختصاصی (مثلاً "123456")
+          referred_by: string | null   // شناسه کسی که ما را دعوت کرده
+          wallet_balance: number | null // موجودی کیف پول
         }
         Insert: {
           anthropic_api_key?: string | null
@@ -1103,6 +1132,9 @@ export type Database = {
           user_id: string
           user_profile?: string | null
           username: string
+          referral_code?: string | null
+          referred_by?: string | null
+          wallet_balance?: number | null
         }
         Update: {
           anthropic_api_key?: string | null
@@ -1136,8 +1168,20 @@ export type Database = {
           user_id?: string
           user_profile?: string | null
           username?: string
+          referral_code?: string | null
+          referred_by?: string | null
+          wallet_balance?: number | null
         }
-        Relationships: []
+        Relationships: [
+          // 👇👇👇 (اختیاری) اگر می‌خواهید ریلیشن را هم دقیق تعریف کنید، این را اضافه کنید
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       prompt_workspaces: {
         Row: {
@@ -1447,6 +1491,15 @@ export type Database = {
           p_sequence_number: number
         }
         Returns: undefined
+      }
+      get_referral_stats: {
+        Args: {
+          target_user_id: string
+        }
+        Returns: {
+          total_invited: number
+          total_paid: number
+        }
       }
       delete_messages_including_and_after: {
         Args: {

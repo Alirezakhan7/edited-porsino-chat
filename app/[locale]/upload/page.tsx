@@ -29,31 +29,6 @@ export default async function UploadPage(props: UploadPageProps) {
       </div>
 
       <main className="container mx-auto max-w-7xl px-4 py-6 md:py-12">
-        {/* هدر دسکتاپ (استاتیک و سریع) */}
-        <div className="mb-8 hidden items-center justify-between md:flex">
-          <div>
-            <h1 className="flex items-center gap-3 text-3xl font-black text-slate-900 md:text-4xl dark:text-white">
-              <IconSchool
-                className="text-blue-600 dark:text-blue-400"
-                size={40}
-              />
-              جعبه لایتنر هوشمند
-            </h1>
-            <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
-              مرور کارت‌های حافظه و تثبیت مطالب در ذهن
-            </p>
-          </div>
-          <div className="flex gap-3">
-            {/* دکمه غیرفعال تا لود شدن کلاینت */}
-            <RippleButton className="pointer-events-none bg-blue-600 opacity-50">
-              <span className="flex items-center gap-2">
-                <IconPlus size={18} />
-                کارت جدید
-              </span>
-            </RippleButton>
-          </div>
-        </div>
-
         {/* لود محتوای اصلی با Suspense */}
         <Suspense fallback={<UploadSkeleton />}>
           <UploadContent locale={locale} />
