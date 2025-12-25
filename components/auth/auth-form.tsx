@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/ui/submit-button"
 import { Label } from "@/components/ui/label"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
+import { useEffect } from "react"
 
 interface Props {
   signIn: (formData: FormData) => Promise<{ message?: string } | void>
@@ -32,6 +33,23 @@ export default function AuthForm({
   // مراحل ثبت‌نام: 1=گرفتن شماره، 2=گرفتن کد تایید و رمز
   const [signupStep, setSignupStep] = useState<1 | 2>(1)
   const [mobileForSignup, setMobileForSignup] = useState("")
+  const [timer, setTimer] = useState(0)
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer(prev => prev - 1)
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [timer])
+
+  // تبدیل ثانیه به فرمت 02:00
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+  }
 
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -73,6 +91,7 @@ export default function AuthForm({
       if (res.success) {
         setMobileForSignup(mobile)
         setSignupStep(2)
+        setTimer(120)
         toast.success(res.message)
       } else {
         setError(res.message)
@@ -148,13 +167,15 @@ export default function AuthForm({
           {mode === "login" && (
             <>
               <Label htmlFor="login-identifier" className="text-[#D6D6D6]">
-                شماره موبایل یا ایمیل
+                شماره موبایل
               </Label>
               <Input
+                type="tel" // تغییر به tel برای کیبورد موبایل
                 name="identifier"
                 id="login-identifier"
-                placeholder="مثلاً: 0912... یا email@..."
-                className="mb-4 mt-1 w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6] placeholder:text-gray-500"
+                placeholder="0912xxxxxxx" // تغییر Placeholder
+                className="mb-4 mt-1 w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-left text-[#D6D6D6] placeholder:text-right placeholder:text-gray-500"
+                dir="ltr" // چپ‌چین شدن اعداد
                 required
               />
               <Label htmlFor="password" className="text-[#D6D6D6]">
@@ -189,6 +210,7 @@ export default function AuthForm({
           )}
 
           {/* --- حالت ثبت نام (مرحله ۲) --- */}
+          {/* --- حالت ثبت نام (مرحله ۲) --- */}
           {mode === "signup" && signupStep === 2 && (
             <>
               <div className="mb-4 text-center text-sm text-gray-400">
@@ -200,6 +222,28 @@ export default function AuthForm({
                 >
                   (ویرایش شماره)
                 </button>
+              </div>
+              {/* 👇 نمایش تایمر یا دکمه ارسال مجدد */}
+              <div className="mb-4 text-center">
+                {timer > 0 ? (
+                  <span className="text-sm text-[#D6D6D6]">
+                    ارسال مجدد کد تا {formatTime(timer)} دیگر
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // برای ارسال مجدد باید دوباره فانکشن sendOtp را صدا بزنیم
+                      // چون اینجا فرم‌دیتا نداریم، بهتر است کاربر را به مرحله 1 برگردانیم
+                      // یا یک دکمه Resend اختصاصی بسازیم.
+                      // ساده‌ترین راه:
+                      setSignupStep(1)
+                    }}
+                    className="cursor-pointer text-sm text-yellow-400 hover:underline"
+                  >
+                    ارسال مجدد کد تایید
+                  </button>
+                )}
               </div>
 
               <Label className="text-[#D6D6D6]">کد تایید پیامک شده</Label>

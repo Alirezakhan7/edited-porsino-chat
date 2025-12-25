@@ -20,30 +20,35 @@ function getAdminClient() {
 }
 
 // ----------------------------------------------------------------
-// 1️⃣ تابع ورود (Login)
+// 1️⃣ تابع ورود (Login) - فقط با موبایل
 // ----------------------------------------------------------------
 export async function signIn(formData: FormData) {
   const identifier = formData.get("identifier") as string
   const password = formData.get("password") as string
   const supabase = await createClient()
 
-  let emailToLogin = identifier
-
-  // اگر ورودی شماره موبایل بود
-  if (/^09[0-9]{9}$/.test(identifier)) {
-    const supabaseAdmin = getAdminClient()
-
-    const { data: profile } = await (supabaseAdmin.from("profiles") as any)
-      .select("user_id")
-      .eq("mobile", identifier)
-      .single()
-
-    if (!profile) {
-      return { message: "کاربری با این شماره موبایل یافت نشد." }
-    }
-
-    emailToLogin = `${identifier}@porsino.ir`
+  // 1. چک کردن فرمت موبایل
+  // اگر ورودی دقیقاً فرمت موبایل ایران را نداشت، بلافاصله خطا می‌دهیم
+  if (!/^09[0-9]{9}$/.test(identifier)) {
+    return { message: "لطفاً یک شماره موبایل معتبر وارد کنید." }
   }
+
+  const supabaseAdmin = getAdminClient()
+
+  // 2. پیدا کردن کاربر بر اساس موبایل
+  const { data: profile } = await (supabaseAdmin.from("profiles") as any)
+    .select("user_id")
+    .eq("mobile", identifier)
+    .single()
+
+  if (!profile) {
+    return {
+      message: "کاربری با این شماره موبایل یافت نشد. ابتدا ثبت‌نام کنید."
+    }
+  }
+
+  // 3. ساخت ایمیل فیک برای لاگین
+  const emailToLogin = `${identifier}@porsino.ir`
 
   const { error } = await supabase.auth.signInWithPassword({
     email: emailToLogin,
@@ -51,7 +56,7 @@ export async function signIn(formData: FormData) {
   })
 
   if (error) {
-    return { message: "اطلاعات ورود نادرست است" }
+    return { message: "رمز عبور اشتباه است" } // پیام کلی برای امنیت
   }
 
   return redirect("/chat")
@@ -60,11 +65,14 @@ export async function signIn(formData: FormData) {
 // ----------------------------------------------------------------
 // 2️⃣ تابع ارسال کد OTP
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// 2️⃣ تابع ارسال کد OTP (اصلاح شده)
+// ----------------------------------------------------------------
 export async function sendOtp(formData: FormData) {
   const mobile = formData.get("mobile") as string
   const supabaseAdmin = getAdminClient()
 
-  // 1. چک کردن کاربر
+  // 1. چک کردن اینکه آیا کاربر از قبل وجود دارد؟
   const { data: existingUser } = await (supabaseAdmin.from("profiles") as any)
     .select("id")
     .eq("mobile", mobile)
@@ -77,7 +85,7 @@ export async function sendOtp(formData: FormData) {
     }
   }
 
-  // 2. محدودیت زمانی (Rate Limit)
+  // 2. محدودیت زمانی (Cooldown) - هر ۲ دقیقه یکبار
   const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
 
   const { data: recentCode } = await (
@@ -97,19 +105,39 @@ export async function sendOtp(formData: FormData) {
     }
   }
 
-  // 3. تولید و ذخیره کد
-  const code = Math.floor(10000 + Math.random() * 90000).toString()
+  // 3. محدودیت تعداد (Rate Limit) - حداکثر ۵ بار در ساعت
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
 
+  const { count } = await (supabaseAdmin.from("verification_codes") as any)
+    .select("*", { count: "exact", head: true })
+    .eq("mobile", mobile)
+    .gt("created_at", oneHourAgo)
+
+  if (count !== null && count >= 5) {
+    return {
+      success: false,
+      message:
+        "تعداد درخواست‌های شما بیش از حد مجاز است. لطفاً یک ساعت دیگر تلاش کنید."
+    }
+  }
+
+  // 4. پاکسازی کدهای خیلی قدیمی (مثلاً قدیمی‌تر از ۲ ساعت) برای جلوگیری از شلوغی دیتابیس
+  // نکته: کدهای زیر ۱ ساعت را پاک نمی‌کنیم تا بتوانیم محدودیت تعداد را چک کنیم
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
   await (supabaseAdmin.from("verification_codes") as any)
     .delete()
     .eq("mobile", mobile)
+    .lt("created_at", twoHoursAgo)
+
+  // 5. تولید و ذخیره کد جدید
+  const code = Math.floor(10000 + Math.random() * 90000).toString()
 
   const { error: dbError } = await (
     supabaseAdmin.from("verification_codes") as any
   ).insert({
     mobile,
     code,
-    expires_at: new Date(Date.now() + 2 * 60 * 1000).toISOString()
+    expires_at: new Date(Date.now() + 2 * 60 * 1000).toISOString() // اعتبار: ۲ دقیقه
   })
 
   if (dbError) {
@@ -117,7 +145,7 @@ export async function sendOtp(formData: FormData) {
     return { success: false, message: "خطا در سرور داخلی" }
   }
 
-  // 4. ارسال پیامک
+  // 6. ارسال پیامک
   try {
     const res = await fetch("https://api.sms.ir/v1/send/verify", {
       method: "POST",
@@ -135,9 +163,12 @@ export async function sendOtp(formData: FormData) {
     const result = await res.json()
     if (result.status !== 1) {
       console.error("SMS Error:", result)
+      // اگر پیامک نرفت، رکورد دیتابیس را پاک کنیم که کاربر بلاک نشود
       await (supabaseAdmin.from("verification_codes") as any)
         .delete()
         .eq("mobile", mobile)
+        .eq("code", code)
+
       return { success: false, message: "خطا در ارسال پیامک." }
     }
 
@@ -151,6 +182,9 @@ export async function sendOtp(formData: FormData) {
 // ----------------------------------------------------------------
 // 3️⃣ تابع تایید و ثبت نام
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// 3️⃣ تابع تایید و ثبت نام (نسخه امنیتی و اصلاح شده)
+// ----------------------------------------------------------------
 export async function verifyAndSignUp(formData: FormData) {
   const mobile = formData.get("mobile") as string
   const code = formData.get("otp") as string
@@ -160,23 +194,58 @@ export async function verifyAndSignUp(formData: FormData) {
   const supabase = await createClient()
   const supabaseAdmin = getAdminClient()
 
-  // 1. چک کردن کد
+  // 1. دریافت رکورد کد تایید
+  // ما اینجا کد را در شرط eq نمی گذاریم تا بتوانیم رکورد را پیدا کنیم و تعداد تلاش را چک کنیم
   const { data: verifyRecord } = await (
     supabaseAdmin.from("verification_codes") as any
   )
     .select("*")
     .eq("mobile", mobile)
-    .eq("code", code)
-    .gt("expires_at", new Date().toISOString())
+    .gt("expires_at", new Date().toISOString()) // فقط کدهایی که هنوز وقت دارند
     .single()
 
+  // اگر رکوردی پیدا نشد (یعنی یا تایم تمام شده یا کلا درخواستی نبوده)
   if (!verifyRecord) {
-    return { success: false, message: "کد وارد شده اشتباه یا منقضی شده است." }
+    return {
+      success: false,
+      message: "کد منقضی شده یا درخواست معتبر وجود ندارد."
+    }
   }
+
+  // 2. بررسی صحت کد و مدیریت تلاش‌ها (Brute-force Protection)
+  if (verifyRecord.code !== code) {
+    const newAttempts = (verifyRecord.attempts || 0) + 1
+
+    // اگر بیش از ۳ بار اشتباه زد، کد را بسوزان (پاک کن)
+    if (newAttempts >= 3) {
+      await (supabaseAdmin.from("verification_codes") as any)
+        .delete()
+        .eq("id", verifyRecord.id)
+
+      return {
+        success: false,
+        message:
+          "تعداد تلاش‌های ناموفق بیش از حد مجاز بود. کد باطل شد. مجدد درخواست دهید."
+      }
+    }
+
+    // اگر هنوز شانس دارد، تعداد تلاش را آپدیت کن
+    await (supabaseAdmin.from("verification_codes") as any)
+      .update({ attempts: newAttempts })
+      .eq("id", verifyRecord.id)
+
+    return {
+      success: false,
+      message: `کد وارد شده اشتباه است. (${3 - newAttempts} تلاش باقی‌مانده)`
+    }
+  }
+
+  // --- اگر کد درست بود، ادامه مراحل ---
 
   const fakeEmail = `${mobile}@porsino.ir`
 
-  // 2. ثبت نام در Auth
+  // 3. ثبت نام در Auth
+  // نکته: چون ایمیل فیک است، تایید ایمیل را باید در تنظیمات Supabase خاموش کرده باشید
   const { data: authData, error: signupError } = await supabase.auth.signUp({
     email: fakeEmail,
     password: password,
@@ -215,7 +284,8 @@ export async function verifyAndSignUp(formData: FormData) {
       }
     }
 
-    // ج) پاک کردن کد تایید
+    // ج) پاک کردن کد تایید (Cleanup)
+    // کد استفاده شده را حتما پاک می کنیم
     await (supabaseAdmin.from("verification_codes") as any)
       .delete()
       .eq("mobile", mobile)

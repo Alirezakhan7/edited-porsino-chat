@@ -75,7 +75,7 @@ export default async function RootLayout({
     >
       {/* 👇 تغییر مهم اینجاست: inter.className حذف شد */}
       <body className="bg-background text-foreground font-sans">
-        <Providers attribute="class" defaultTheme="dark" enableSystem={false}>
+        <Providers attribute="class" defaultTheme="light" enableSystem={false}>
           <TranslationsProvider
             namespaces={i18nNamespaces}
             locale={locale}

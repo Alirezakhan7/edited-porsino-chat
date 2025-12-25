@@ -208,7 +208,7 @@ export default function SetupPage() {
                 disabled={loading}
                 className="w-full rounded-full bg-[#ACACAC] py-3 font-semibold text-[#1E1E1E] transition-colors hover:bg-[#8F8F8F] disabled:opacity-50"
               >
-                {loading ? "در حال ذخیره..." : "شروع کنید"}
+                {loading ? "...در حال ذخیره" : "شروع کنید"}
               </button>
             </motion.form>
           )}
