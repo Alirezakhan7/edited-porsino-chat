@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { supabase } from "@/lib/supabase/browser-client"
-// import { updateProfile } from "@/db/profile" // 👈 این را حذف یا کامنت کنید، مستقیم می‌نویسیم
 import { motion, AnimatePresence } from "framer-motion"
 
 export default function SetupPage() {
@@ -13,15 +12,52 @@ export default function SetupPage() {
 
   // استیت‌های فرم
   const [fullName, setFullName] = useState("")
-  const [email, setEmail] = useState("") // ایمیل واقعی کاربر
+  const [email, setEmail] = useState("")
   const [userProfile, setUserProfile] = useState("")
   const [userGrade, setUserGrade] = useState("")
   const [error, setError] = useState<string | null>(null)
+
+  // ✅ لیست سیاه دامنه‌های ایمیل موقت و فیک معروف
+  const blockedDomains = [
+    "tempmail.com",
+    "10minutemail.com",
+    "mailinator.com",
+    "yopmail.com",
+    "guerrillamail.com",
+    "throwawaymail.com",
+    "test.com",
+    "example.com"
+  ]
+
+  // ✅ تابع اعتبارسنجی ایمیل
+  const validateEmail = (email: string) => {
+    // 1. بررسی فرمت کلی ایمیل (Regex استاندارد)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    if (!emailRegex.test(email)) {
+      return "فرمت ایمیل وارد شده صحیح نیست."
+    }
+
+    // 2. بررسی دامنه‌های فیک
+    const domain = email.split("@")[1].toLowerCase()
+    if (blockedDomains.includes(domain)) {
+      return "استفاده از سرویس‌های ایمیل موقت مجاز نیست."
+    }
+
+    return null // یعنی خطایی وجود ندارد
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
+
+    // ✅ اجرای اعتبارسنجی ایمیل قبل از ارسال
+    const emailError = validateEmail(email)
+    if (emailError) {
+      setError(emailError)
+      setLoading(false)
+      return
+    }
 
     const session = (await supabase.auth.getSession()).data.session
     if (!session) {
@@ -30,12 +66,11 @@ export default function SetupPage() {
     }
 
     try {
-      // ✅ ذخیره مستقیم در جدول profiles
-      // ما از as any استفاده می‌کنیم تا به تغییرات جدید تایپ‌اسکریپت گیر ندهد
+      // ذخیره مستقیم در جدول profiles
       const { error: dbError } = await (supabase.from("profiles") as any)
         .update({
           full_name: fullName,
-          email: email, // 👈 ایمیل اینجا ذخیره می‌شود (فقط به عنوان متن)
+          email: email.toLowerCase(), // ✅ تبدیل به حروف کوچک برای یکدستی
           user_profile: userProfile,
           user_grade: userGrade,
           has_onboarded: true,
@@ -72,9 +107,9 @@ export default function SetupPage() {
               className="text-center"
             >
               <div className="mb-4 text-4xl font-bold text-[#D6D6D6]">
-                به پرسینو خوش اومدی 🎉
+                🎉 به پرسینو خوش اومدی
               </div>
-              <p className="text-gray-400">در حال انتقال به پنل...</p>
+              <p className="text-gray-400">...در حال انتقال به پنل</p>
             </motion.div>
           ) : (
             <motion.form
@@ -105,16 +140,17 @@ export default function SetupPage() {
                 />
               </div>
 
-              {/* ✅ فیلد ایمیل (فقط ذخیره می‌شود) */}
+              {/* ✅ فیلد ایمیل (اجباری شده) */}
               <div>
                 <label className="mb-2 block text-right text-lg text-[#D6D6D6]">
-                  ایمیل (اختیاری - جهت اطلاع‌رسانی)
+                  ایمیل <span className="text-sm text-red-500">*</span>
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="example@gmail.com"
+                  required // ✅ اینپوت اجباری شد
                   className="w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6] focus:outline-none focus:ring-2 focus:ring-[#ACACAC]"
                 />
               </div>
