@@ -199,10 +199,9 @@ export default function AppShell({ children, workspaceData }: AppShellProps) {
         }`}
       >
         <div
-          className={`w-full px-4 md:px-8 
-            ${isChatRoute ? "h-full py-0" : "py-6"}
-            
-            {/* 👇 تغییر این خط: فقط اگر در صفحه چت نیستیم پدینگ بده */}
+          // 👇 اصلاح مهم: مدیریت هوشمند پدینگ‌ها
+          className={`w-full 
+            ${isChatRoute ? "h-full p-0" : "px-4 py-6 md:px-8"}
             ${isMobile && !isChatRoute ? "pb-24" : ""} 
           `}
         >
