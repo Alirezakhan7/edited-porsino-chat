@@ -18,17 +18,25 @@ function getAdminClient() {
     }
   )
 }
+// تابع تبدیل اعداد فارسی/عربی به انگلیسی
+function toEnglishDigits(str: string) {
+  if (!str) return str
+  return str
+    .replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString())
+    .replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString())
+}
 
 // ----------------------------------------------------------------
 // 1️⃣ تابع ورود (Login) - فقط با موبایل
 // ----------------------------------------------------------------
 export async function signIn(formData: FormData) {
-  const identifier = formData.get("identifier") as string
+  const rawIdentifier = formData.get("identifier") as string
+  const identifier = toEnglishDigits(rawIdentifier) // نرمال‌سازی
+
   const password = formData.get("password") as string
   const supabase = await createClient()
 
-  // 1. چک کردن فرمت موبایل
-  // اگر ورودی دقیقاً فرمت موبایل ایران را نداشت، بلافاصله خطا می‌دهیم
+  // حالا چک کردن فرمت درست کار می‌کند
   if (!/^09[0-9]{9}$/.test(identifier)) {
     return { message: "لطفاً یک شماره موبایل معتبر وارد کنید." }
   }
@@ -69,7 +77,9 @@ export async function signIn(formData: FormData) {
 // 2️⃣ تابع ارسال کد OTP (اصلاح شده)
 // ----------------------------------------------------------------
 export async function sendOtp(formData: FormData) {
-  const mobile = formData.get("mobile") as string
+  const rawMobile = formData.get("mobile") as string
+  const mobile = toEnglishDigits(rawMobile)
+
   const supabaseAdmin = getAdminClient()
 
   // 1. چک کردن اینکه آیا کاربر از قبل وجود دارد؟
@@ -186,10 +196,15 @@ export async function sendOtp(formData: FormData) {
 // 3️⃣ تابع تایید و ثبت نام (نسخه امنیتی و اصلاح شده)
 // ----------------------------------------------------------------
 export async function verifyAndSignUp(formData: FormData) {
-  const mobile = formData.get("mobile") as string
-  const code = formData.get("otp") as string
+  const rawMobile = formData.get("mobile") as string
+  const mobile = toEnglishDigits(rawMobile)
+
+  const rawCode = formData.get("otp") as string
+  const code = toEnglishDigits(rawCode) // مهم: کاربر ممکن است کد تایید را هم فارسی بزند
+
   const password = formData.get("password") as string
-  const referralCode = formData.get("referral-code") as string
+  const rawReferral = formData.get("referral-code") as string
+  const referralCode = toEnglishDigits(rawReferral)
 
   const supabase = await createClient()
   const supabaseAdmin = getAdminClient()
