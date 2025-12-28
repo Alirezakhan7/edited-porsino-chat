@@ -1,11 +1,11 @@
-// فایل: components/models/model-icon.tsx (نسخه کامل و اصلاح شده)
+// فایل: components/models/model-icon.tsx
 
 import { cn } from "@/lib/utils"
 import mistral from "@/public/providers/mistral.png"
 import groq from "@/public/providers/groq.png"
 import perplexity from "@/public/providers/perplexity.png"
 import { ModelProvider } from "@/types"
-import { IconSparkles } from "@tabler/icons-react"
+// import { IconSparkles } from "@tabler/icons-react" // ❌ دیگر نیازی به این نیست
 import { useTheme } from "next-themes"
 import Image from "next/image"
 import { forwardRef, HTMLAttributes } from "react"
@@ -19,12 +19,10 @@ interface ModelIconProps extends HTMLAttributes<HTMLDivElement> {
   width: number
 }
 
-// ❗️ کامپوننت با forwardRef بازنویسی شده است
 export const ModelIcon = forwardRef<HTMLDivElement, ModelIconProps>(
   ({ provider, height, width, ...props }, ref) => {
     const { theme } = useTheme()
 
-    // ❗️ کل خروجی داخل یک div قرار گرفته تا ref را دریافت کند
     return (
       <div ref={ref} {...props}>
         {(() => {
@@ -108,13 +106,27 @@ export const ModelIcon = forwardRef<HTMLDivElement, ModelIconProps>(
                       : "border-DEFAULT border-black"
                   )}
                   src={perplexity.src}
-                  alt="Perplexity" // Mistral -> Perplexity
+                  alt="Perplexity"
                   width={width}
                   height={height}
                 />
               )
+
+            // ✅ تغییر اصلی اینجاست: جایگزینی ستاره با لوگوی شما
             default:
-              return <IconSparkles size={width} />
+              return (
+                <Image
+                  className={cn(
+                    "rounded-sm", // اگر می‌خواهید کمی گوشه‌هایش گرد شود
+                    theme === "dark" ? "" : ""
+                  )}
+                  src="/favicon-32x32.png" // مسیر لوگوی شما
+                  alt="Model Icon"
+                  width={width}
+                  height={height}
+                  unoptimized // برای کیفیت بهتر آیکون‌های کوچک
+                />
+              )
           }
         })()}
       </div>
@@ -122,5 +134,4 @@ export const ModelIcon = forwardRef<HTMLDivElement, ModelIconProps>(
   }
 )
 
-// ❗️ این خط برای دیباگ کردن بهتر است
 ModelIcon.displayName = "ModelIcon"
