@@ -189,9 +189,11 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   return (
     <div className="relative flex h-full flex-col items-center overflow-hidden">
       {/* هدر موبایل (بدون تغییر) */}
-      <div className="absolute inset-x-0 top-0 z-10 h-16 bg-white/30 backdrop-blur-xl md:hidden dark:bg-black/20"></div>
-      <div className="absolute right-4 top-4 z-30 flex items-center space-x-2 rounded-xl bg-white/30 px-2 py-1 shadow-md backdrop-blur-md dark:bg-[#222]/30">
-        <ChatSecondaryButtons />
+      <div className="absolute inset-x-0 top-0 z-30 flex h-16 w-full items-center justify-end border-b border-white/20 bg-white/60 px-4 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-black/40">
+        {/* دکمه‌های سمت راست */}
+        <div className="flex items-center space-x-2">
+          <ChatSecondaryButtons />
+        </div>
       </div>
 
       {/* 👇 تغییر ۱: افزایش فضای خالی پایین (padding-bottom) برای موبایل */}

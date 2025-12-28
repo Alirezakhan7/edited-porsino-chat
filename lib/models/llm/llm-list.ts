@@ -6,7 +6,7 @@ import { LLM } from "@/types"
 export const LLM_LIST: LLM[] = [
   {
     modelId: "bio-simple",
-    modelName: "Biology Simple",
+    modelName: "Porsino AI",
     provider: "custom",
     hostedId: "bio-simple",
     platformLink: "",
