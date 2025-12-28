@@ -232,7 +232,7 @@ function ProfilePageContent({ initialProfile, stats }: ProfileClientProps) {
           </div>
 
           <h2 className="text-center text-2xl font-black text-slate-800 dark:text-white">
-            {profile.display_name || "کاربر جدید"}
+            {profile.display_name || "کاربر"}
           </h2>
           <p
             className="mt-1 text-sm font-bold text-blue-600 dark:text-blue-400"
