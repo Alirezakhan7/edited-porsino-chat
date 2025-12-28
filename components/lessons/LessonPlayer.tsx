@@ -269,8 +269,7 @@ export default function LessonPlayer({
     )
   }
 
-  // --- 2. انتخاب گزینه ---
-  // --- 2. انتخاب گزینه ---
+  // --- 2. انتخاب گزینه (نهایی و بدون خطا) ---
   const handleOptionClick = async (index: number) => {
     setSelectedOption(index)
     const correct = index === currentUnit.interaction.correct_index
@@ -286,32 +285,26 @@ export default function LessonPlayer({
       })
     }
 
-    // 🔍 دیباگ: چاپ کل آبجکت درس برای دیدن نام ستون‌ها
-    console.log("🔥 FULL UNIT DATA:", currentUnit)
-
-    // اینجا موقتاً یک رشته ثابت می‌گذاریم تا فقط لاگ را ببینیم و برنامه کرش نکند
-    // بعد از اینکه در کنسول نام درست را پیدا کردیم، این خط را اصلاح می‌کنیم
+    // 👇 اینجا با (currentUnit as any) مشکل تایپ‌اسکریپت را دور می‌زنیم
     const realId =
       currentUnit.uid ||
-      (currentUnit as any).id ||
-      (currentUnit as any).chunk_id
+      (currentUnit as any).source_uids?.join(",") ||
+      "unknown_chunk"
 
-    console.log("🆔 Found ID:", realId)
-
-    if (!realId) {
-      console.error("❌ هیچی پیدا نشد! نه uid، نه id")
-      return // ادامه نده تا ارور دیتابیس نگیریم
-    }
+    // اگر شناسه نبود، ادامه نده
+    if (realId === "unknown_chunk") return
 
     // ثبت فعالیت در دیتابیس
     const { error } = await supabase.from("activity_logs").insert({
       user_id: userId,
-      chunk_uid: realId, // استفاده از آی‌دی پیدا شده
+      chunk_uid: realId,
       is_correct: correct,
       time_spent_seconds: 0
     })
 
-    if (error) console.error("❌ Save Error:", error)
+    if (error) {
+      console.error("DB Error:", error.message)
+    }
   }
 
   // --- 3. هندل کردن دکمه بعدی (اصلاح شده) ---
