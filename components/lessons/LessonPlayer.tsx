@@ -286,12 +286,28 @@ export default function LessonPlayer({
     }
 
     // ثبت فعالیت در دیتابیس
-    await supabase.from("activity_logs").insert({
-      user_id: userId,
-      chunk_uid: currentUnit.uid,
-      is_correct: correct,
-      time_spent_seconds: 0
-    })
+    // 👇 کد اصلاح شده برای پیدا کردن خطا
+    const { data, error } = await supabase
+      .from("activity_logs")
+      .insert({
+        user_id: userId,
+        chunk_uid: currentUnit.uid,
+        is_correct: correct,
+        time_spent_seconds: 0
+      })
+      .select()
+
+    if (error) {
+      console.error(
+        "❌ ERROR SAVING LOG:",
+        error.message,
+        error.details,
+        error.hint
+      )
+      toast.error("خطا در ذخیره: " + error.message)
+    } else {
+      console.log("✅ LOG SAVED:", data)
+    }
   }
 
   // --- 3. هندل کردن دکمه بعدی (اصلاح شده) ---
