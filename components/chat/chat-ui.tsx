@@ -208,24 +208,12 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 👇 تغییر ۲: بالا آوردن کادر ورودی در موبایل */}
-
-      <div className="absolute inset-x-0 bottom-20 w-full md:bottom-0">
-        {/* پس‌زمینه محو (Blur) */}
-        <div
-          className="
-            absolute inset-x-0 bottom-0 mx-auto h-24
-            min-w-[300px] 
-            rounded-t-2xl bg-white/10 backdrop-blur-xl sm:w-[90%] md:w-4/5
-            lg:w-[70%] xl:w-[65%]
-            dark:bg-[hsla(210_3%_13%_/_0.3)] 
-          "
-        ></div>
+      {/* 👇 بخش ورودی متن (اصلاح شده) */}
+      <div className="absolute inset-x-0 bottom-[5.5rem] w-full md:bottom-0">
+        {/* ❌ آن دیو (div) پس‌زمینه h-24 که باعث می‌شد کادر بالا به نظر برسد را حذف کردیم */}
 
         {/* محتوای اصلی */}
-        <div className="relative z-10 pb-4">
-          {" "}
-          {/* تغییر: اضافه کردن pb-4 برای فاصله ایمن */}
+        <div className="relative z-10 px-2">
           <div
             className="
             mx-auto min-w-[300px]
