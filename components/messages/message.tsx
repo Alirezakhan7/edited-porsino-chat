@@ -371,13 +371,13 @@ export const Message: FC<MessageProps> = ({
                   <WithTooltip
                     display={<div>{MODEL_DATA?.modelName}</div>}
                     trigger={
-                      // ✅ تغییر: استفاده از آیکون اختصاصی شما
                       <Image
-                        src="/favicon.ico" // اشاره به فایل داخل پوشه public
+                        src="/favicon-32x32.png" // ✅ استفاده از PNG که کیفیت و سرعت بهتری دارد
                         alt="AI Logo"
                         width={ICON_SIZE}
                         height={ICON_SIZE}
-                        className="rounded-sm" // کمی گرد کردن گوشه‌ها (اختیاری)
+                        className="rounded-sm"
+                        unoptimized // (اختیاری) اگر آیکون خیلی کوچک است و تار می‌شود، این خط را اضافه کنید
                       />
                     }
                   />
