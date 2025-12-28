@@ -371,10 +371,13 @@ export const Message: FC<MessageProps> = ({
                   <WithTooltip
                     display={<div>{MODEL_DATA?.modelName}</div>}
                     trigger={
-                      <ModelIcon
-                        provider={modelDetails?.provider || "custom"}
-                        height={ICON_SIZE}
+                      // ✅ تغییر: استفاده از آیکون اختصاصی شما
+                      <Image
+                        src="/favicon-32x32.png" // اشاره به فایل داخل پوشه public
+                        alt="AI Logo"
                         width={ICON_SIZE}
+                        height={ICON_SIZE}
+                        className="rounded-sm" // کمی گرد کردن گوشه‌ها (اختیاری)
                       />
                     }
                   />
@@ -455,16 +458,7 @@ export const Message: FC<MessageProps> = ({
             />
           ) : (
             <div className="rtl text-right">
-              {(() => {
-                try {
-                  const parsed = JSON.parse(message.content)
-                  return renderStructuredMessage(
-                    parsed.response || message.content
-                  )
-                } catch {
-                  return renderStructuredMessage(message.content)
-                }
-              })()}
+              <MessageMarkdown content={message.content} />
             </div>
           )}
         </div>
