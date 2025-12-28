@@ -85,12 +85,18 @@ export default function ChatPage() {
           </div>
 
           {/* Section 1: Main Title */}
-          <div className="mt-20 flex flex-1 flex-col items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-lg font-light tracking-tight md:text-3xl">
-                هر سؤالی داری،{" "}
-                <span className="text-xl font-semibold md:text-4xl">
-                  من اینجام
+          <div className="mt-10 flex flex-1 flex-col items-center justify-center md:mt-20">
+            <div className="px-4 text-center">
+              <h1 className="text-2xl font-light tracking-tight text-slate-800 md:text-5xl dark:text-slate-200">
+                <span className="text-3xl font-black text-blue-600 md:text-6xl dark:text-blue-500">
+                  ، پرسینو{" "}
+                </span>
+                آماده‌ست
+              </h1>
+              <h2 className="mt-3 text-lg font-light tracking-tight text-slate-600 md:text-3xl dark:text-slate-400">
+                امروز چه چیزی می‌خوای چه سوالی می‌خوای ازش{" "}
+                <span className="text-xl font-semibold text-slate-800 md:text-4xl dark:text-slate-200">
+                  یاد بگیری؟ بپرسی؟
                 </span>
               </h2>
             </div>

@@ -10,14 +10,15 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false)
   const [finished, setFinished] = useState(false)
 
-  // استیت‌های فرم
-  const [fullName, setFullName] = useState("")
+  // ✅ تغییر ۱: جدا کردن استیت‌های نام و نام خانوادگی
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+
   const [email, setEmail] = useState("")
   const [userProfile, setUserProfile] = useState("")
   const [userGrade, setUserGrade] = useState("")
   const [error, setError] = useState<string | null>(null)
 
-  // ✅ لیست سیاه دامنه‌های ایمیل موقت و فیک معروف
   const blockedDomains = [
     "tempmail.com",
     "10minutemail.com",
@@ -29,21 +30,16 @@ export default function SetupPage() {
     "example.com"
   ]
 
-  // ✅ تابع اعتبارسنجی ایمیل
   const validateEmail = (email: string) => {
-    // 1. بررسی فرمت کلی ایمیل (Regex استاندارد)
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
     if (!emailRegex.test(email)) {
       return "فرمت ایمیل وارد شده صحیح نیست."
     }
-
-    // 2. بررسی دامنه‌های فیک
     const domain = email.split("@")[1].toLowerCase()
     if (blockedDomains.includes(domain)) {
       return "استفاده از سرویس‌های ایمیل موقت مجاز نیست."
     }
-
-    return null // یعنی خطایی وجود ندارد
+    return null
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +47,6 @@ export default function SetupPage() {
     setError(null)
     setLoading(true)
 
-    // ✅ اجرای اعتبارسنجی ایمیل قبل از ارسال
     const emailError = validateEmail(email)
     if (emailError) {
       setError(emailError)
@@ -65,12 +60,15 @@ export default function SetupPage() {
       return
     }
 
+    // ✅ تغییر ۲: ترکیب نام‌ها برای ساختن نام کامل
+    const finalFullName = `${firstName} ${lastName}`.trim()
+
     try {
-      // ذخیره مستقیم در جدول profiles
       const { error: dbError } = await (supabase.from("profiles") as any)
         .update({
-          full_name: fullName,
-          email: email.toLowerCase(), // ✅ تبدیل به حروف کوچک برای یکدستی
+          full_name: finalFullName, // ذخیره در ستون full_name (طبق درخواست شما)
+          display_name: finalFullName, // ذخیره در display_name (برای نمایش در پروفایل)
+          email: email.toLowerCase(),
           user_profile: userProfile,
           user_grade: userGrade,
           has_onboarded: true,
@@ -80,7 +78,6 @@ export default function SetupPage() {
 
       if (dbError) throw dbError
 
-      // پایان کار
       setFinished(true)
       setTimeout(() => router.push("/chat"), 3000)
     } catch (err: any) {
@@ -126,21 +123,35 @@ export default function SetupPage() {
                 تکمیل اطلاعات کاربری
               </h2>
 
-              {/* نام و نام خانوادگی */}
-              <div>
-                <label className="mb-2 block text-right text-lg text-[#D6D6D6]">
-                  نام و نام خانوادگی
-                </label>
-                <input
-                  value={fullName}
-                  onChange={e => setFullName(e.target.value)}
-                  placeholder="مثلاً سارا محمدی"
-                  required
-                  className="w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6] focus:outline-none focus:ring-2 focus:ring-[#ACACAC]"
-                />
+              {/* ✅ تغییر ۳: ایجاد دو ورودی جداگانه کنار هم */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-2 block text-right text-lg text-[#D6D6D6]">
+                    نام
+                  </label>
+                  <input
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    placeholder="مثلاً سارا"
+                    required
+                    className="w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6] focus:outline-none focus:ring-2 focus:ring-[#ACACAC]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-right text-lg text-[#D6D6D6]">
+                    نام خانوادگی
+                  </label>
+                  <input
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    placeholder="محمدی"
+                    required
+                    className="w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6] focus:outline-none focus:ring-2 focus:ring-[#ACACAC]"
+                  />
+                </div>
               </div>
 
-              {/* ✅ فیلد ایمیل (اجباری شده) */}
+              {/* ایمیل */}
               <div>
                 <label className="mb-2 block text-right text-lg text-[#D6D6D6]">
                   ایمیل <span className="text-sm text-red-500">*</span>
@@ -150,7 +161,7 @@ export default function SetupPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="example@gmail.com"
-                  required // ✅ اینپوت اجباری شد
+                  required
                   className="w-full rounded-xl bg-[#1E1E1E]/80 px-4 py-3 text-[#D6D6D6] focus:outline-none focus:ring-2 focus:ring-[#ACACAC]"
                 />
               </div>
