@@ -373,7 +373,7 @@ export const Message: FC<MessageProps> = ({
                     trigger={
                       // ✅ تغییر: استفاده از آیکون اختصاصی شما
                       <Image
-                        src="/favicon-32x32.png" // اشاره به فایل داخل پوشه public
+                        src="/favicon.png" // اشاره به فایل داخل پوشه public
                         alt="AI Logo"
                         width={ICON_SIZE}
                         height={ICON_SIZE}
