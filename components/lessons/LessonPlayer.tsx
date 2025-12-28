@@ -270,6 +270,7 @@ export default function LessonPlayer({
   }
 
   // --- 2. انتخاب گزینه ---
+  // --- 2. انتخاب گزینه ---
   const handleOptionClick = async (index: number) => {
     setSelectedOption(index)
     const correct = index === currentUnit.interaction.correct_index
@@ -285,29 +286,32 @@ export default function LessonPlayer({
       })
     }
 
-    // ثبت فعالیت در دیتابیس
-    // 👇 کد اصلاح شده برای پیدا کردن خطا
-    const { data, error } = await supabase
-      .from("activity_logs")
-      .insert({
-        user_id: userId,
-        chunk_uid: currentUnit.uid,
-        is_correct: correct,
-        time_spent_seconds: 0
-      })
-      .select()
+    // 🔍 دیباگ: چاپ کل آبجکت درس برای دیدن نام ستون‌ها
+    console.log("🔥 FULL UNIT DATA:", currentUnit)
 
-    if (error) {
-      console.error(
-        "❌ ERROR SAVING LOG:",
-        error.message,
-        error.details,
-        error.hint
-      )
-      toast.error("خطا در ذخیره: " + error.message)
-    } else {
-      console.log("✅ LOG SAVED:", data)
+    // اینجا موقتاً یک رشته ثابت می‌گذاریم تا فقط لاگ را ببینیم و برنامه کرش نکند
+    // بعد از اینکه در کنسول نام درست را پیدا کردیم، این خط را اصلاح می‌کنیم
+    const realId =
+      currentUnit.uid ||
+      (currentUnit as any).id ||
+      (currentUnit as any).chunk_id
+
+    console.log("🆔 Found ID:", realId)
+
+    if (!realId) {
+      console.error("❌ هیچی پیدا نشد! نه uid، نه id")
+      return // ادامه نده تا ارور دیتابیس نگیریم
     }
+
+    // ثبت فعالیت در دیتابیس
+    const { error } = await supabase.from("activity_logs").insert({
+      user_id: userId,
+      chunk_uid: realId, // استفاده از آی‌دی پیدا شده
+      is_correct: correct,
+      time_spent_seconds: 0
+    })
+
+    if (error) console.error("❌ Save Error:", error)
   }
 
   // --- 3. هندل کردن دکمه بعدی (اصلاح شده) ---
