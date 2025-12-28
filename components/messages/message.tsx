@@ -457,8 +457,10 @@ export const Message: FC<MessageProps> = ({
               maxRows={20}
             />
           ) : (
-            <div className="rtl text-right">
-              <MessageMarkdown content={message.content} />
+            <div className="text-right" dir="rtl">
+              <div className="leading-loose [&_ol]:list-decimal [&_ol]:pr-5 [&_ul]:list-disc [&_ul]:pr-5">
+                <MessageMarkdown content={message.content} />
+              </div>
             </div>
           )}
         </div>
