@@ -209,13 +209,12 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       </div>
 
       {/* 👇 تغییر ۲: بالا آوردن کادر ورودی در موبایل */}
-      {/* کلاس bottom-20 را اضافه کردیم تا ۸۰ پیکسل بالاتر بیاید (فقط در موبایل) */}
-      {/* در دسکتاپ (md:bottom-0) سر جای خودش برمی‌گردد */}
+
       <div className="absolute inset-x-0 bottom-20 w-full md:bottom-0">
-        {/* این div برای افکت بلر پشت اینپوت است */}
+        {/* پس‌زمینه محو (Blur) */}
         <div
           className="
-            absolute inset-x-0 bottom-0 mx-auto h-28
+            absolute inset-x-0 bottom-0 mx-auto h-24
             min-w-[300px] 
             rounded-t-2xl bg-white/10 backdrop-blur-xl sm:w-[90%] md:w-4/5
             lg:w-[70%] xl:w-[65%]
@@ -223,8 +222,10 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
           "
         ></div>
 
-        {/* محتوای اصلی (ورودی متن) */}
-        <div className="relative z-10">
+        {/* محتوای اصلی */}
+        <div className="relative z-10 pb-4">
+          {" "}
+          {/* تغییر: اضافه کردن pb-4 برای فاصله ایمن */}
           <div
             className="
             mx-auto min-w-[300px]
@@ -233,10 +234,6 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
           >
             <ChatInput />
           </div>
-
-          <p className="mt-2 pb-2 text-center text-xs text-gray-500 dark:text-gray-400">
-            امکان وجود خطا در پاسخ‌ها وجود دارد. لطفاً با دقت بررسی نمایید
-          </p>
         </div>
       </div>
     </div>

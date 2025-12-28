@@ -144,7 +144,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
                 : "translate-x-0 opacity-100"
             )}
           >
-            <span className="text-lg font-bold text-gray-800 drop-shadow-sm dark:text-white">
+            <span className="hidden text-lg font-bold text-gray-800 drop-shadow-sm sm:inline dark:text-white">
               Porsino AI
             </span>
           </div>
