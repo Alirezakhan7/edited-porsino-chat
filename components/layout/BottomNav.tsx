@@ -44,7 +44,9 @@ export const navItems = [
 
 export function BottomNav({ className = "" }: { className?: string }) {
   const pathname = usePathname()
-
+  if (pathname.includes("/play")) {
+    return null
+  }
   return (
     <nav
       className={cn(

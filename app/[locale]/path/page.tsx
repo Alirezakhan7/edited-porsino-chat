@@ -35,11 +35,8 @@ export default async function PathPage({ params }: PathPageProps) {
                 className="text-blue-600 dark:text-blue-400"
                 size={36}
               />
-              مسیر یادگیری هوشمند
+              کلاس درس هوشمند
             </h1>
-            <p className="text-muted-foreground mt-2">
-              پیشرفت خود را در دروس زیست‌شناسی دنبال کنید
-            </p>
           </div>
         </div>
 

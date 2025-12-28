@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import {
   IconArrowUp,
   IconBolt,
-  IconCalculator,
+  IconPhoto,
   IconPaperclip,
   IconPlayerStopFilled
 } from "@tabler/icons-react"
@@ -381,19 +381,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
               </div>
 
               <div className="flex items-center gap-4 ">
-                <button
-                  className={cn(
-                    "cursor-pointer rounded-full p-2 shadow-sm transition-all",
-                    showMathKeyboard
-                      ? "bg-white text-[#7dcfb6] dark:bg-[#7dcfb6] dark:text-[#3c3c3c]"
-                      : "bg-white text-[#7dcfb6] hover:bg-[#f2f2f2] dark:bg-[#3c3c3c] dark:text-[#ffe066] dark:hover:bg-[#2c2c2c]"
-                  )}
-                  onClick={() => setShowMathKeyboard(prev => !prev)}
-                  type="button"
-                  title="صفحه‌کلید ریاضی"
-                >
-                  <IconCalculator size={22} />
-                </button>
+                {/* دکمه آپلود عکس */}
                 <button
                   className="
                     cursor-pointer 
@@ -410,9 +398,9 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
                     dark:hover:bg-[#2c2c2c]
                   "
                   onClick={() => fileInputRef.current?.click()}
-                  title="افزودن فایل"
+                  title="ارسال تصویر" // ✅ تغییر عنوان
                 >
-                  <IconPaperclip size={22} />
+                  <IconPhoto size={22} /> {/* ✅ تغییر آیکون به عکس */}
                 </button>
               </div>
             </div>
@@ -425,57 +413,9 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
             onChange={e => {
               if (e.target.files) handleSelectDeviceFile(e.target.files[0])
             }}
-            accept={filesToAccept}
+            // ✅ فقط فرمت‌های رایج تصویر
+            accept="image/png, image/jpeg, image/jpg, image/webp, image/heic"
           />
-
-          <div
-            className={cn(
-              "overflow-hidden transition-all duration-300 ease-in-out",
-              showMathKeyboard ? "mt-2 max-h-[500px]" : "max-h-0"
-            )}
-          >
-            <div className="rounded-xl border bg-gray-100/90 p-3 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/90">
-              <div className="flex justify-around border-b border-gray-300 dark:border-gray-600">
-                {MATH_KEYBOARD_DATA.tabs.map(
-                  (tab: { id: string; label: string }) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveMathTab(tab.id)}
-                      className={cn(
-                        "w-full py-2 text-center text-sm tracking-widest text-gray-500 transition-colors hover:text-black dark:text-gray-300 dark:hover:text-white",
-                        activeMathTab === tab.id &&
-                          "border-b-2 border-blue-500 text-black dark:text-white"
-                      )}
-                    >
-                      {tab.label}
-                    </button>
-                  )
-                )}
-              </div>
-
-              <div className="grid grid-cols-10 gap-x-3 gap-y-2 p-2 pt-3">
-                {MATH_KEYBOARD_DATA.symbols[
-                  activeMathTab as keyof typeof MATH_KEYBOARD_DATA.symbols
-                ].map((symbol: string, idx: number) => (
-                  <button
-                    key={`${activeMathTab}-${idx}`}
-                    onClick={() => insertSymbol(symbol)}
-                    className={cn(
-                      "flex size-12 items-center justify-center rounded-2xl text-xl font-semibold shadow-md transition-all duration-150",
-                      "bg-gray-100 hover:bg-blue-100 active:scale-95 dark:bg-gray-700 dark:text-white dark:hover:bg-blue-800",
-                      "ring-1 ring-gray-200 dark:ring-gray-700",
-                      activeMathTab === "basic" &&
-                        "0123456789".includes(symbol) &&
-                        "bg-orange-500/90 font-extrabold text-white shadow-lg hover:bg-orange-600"
-                    )}
-                    style={{ transition: "box-shadow 0.2s, background 0.2s" }}
-                  >
-                    {symbol}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </>

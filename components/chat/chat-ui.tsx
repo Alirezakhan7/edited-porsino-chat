@@ -188,21 +188,16 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
   return (
     <div className="relative flex h-screen flex-col items-center overflow-hidden">
-      {/* 👇 بخش ۱: افزودن هدر فقط برای موبایل */}
+      {/* هدر موبایل (بدون تغییر) */}
       <div className="absolute inset-x-0 top-0 z-10 h-16 bg-white/30 backdrop-blur-xl md:hidden dark:bg-black/20"></div>
-      <div
-        className="
-        absolute right-4 top-4 z-30 flex items-center space-x-2
-        rounded-xl bg-white/30 px-2 py-1
-        shadow-md backdrop-blur-md dark:bg-[#222]/30
-      "
-      >
+      <div className="absolute right-4 top-4 z-30 flex items-center space-x-2 rounded-xl bg-white/30 px-2 py-1 shadow-md backdrop-blur-md dark:bg-[#222]/30">
         <ChatSecondaryButtons />
       </div>
 
-      {/* 👇 بخش ۲: افزودن فاصله از بالا (padding-top) فقط برای موبایل */}
+      {/* 👇 تغییر ۱: افزایش فضای خالی پایین (padding-bottom) برای موبایل */}
+      {/* قبلاً pb-24 بود، الان pb-44 کردیم تا وقتی اینپوت بالا می‌آید، پیام‌ها دیده شوند */}
       <div
-        className="fade-mask flex size-full flex-col overflow-auto pb-24 pt-16 md:pt-0"
+        className="fade-mask flex size-full flex-col overflow-auto pb-44 pt-16 md:pb-24 md:pt-0"
         onScroll={handleScroll}
       >
         <div ref={messagesStartRef} />
@@ -213,26 +208,26 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* این بخش بدون تغییر باقی می‌ماند */}
-      <div className="absolute inset-x-0 bottom-0 w-full">
-        {/* 👇 این div جدید فقط برای نمایش پس‌زمینه blur است */}
+      {/* 👇 تغییر ۲: بالا آوردن کادر ورودی در موبایل */}
+      {/* کلاس bottom-20 را اضافه کردیم تا ۸۰ پیکسل بالاتر بیاید (فقط در موبایل) */}
+      {/* در دسکتاپ (md:bottom-0) سر جای خودش برمی‌گردد */}
+      <div className="absolute inset-x-0 bottom-20 w-full md:bottom-0">
+        {/* این div برای افکت بلر پشت اینپوت است */}
         <div
           className="
             absolute inset-x-0 bottom-0 mx-auto h-28
             min-w-[300px] 
             rounded-t-2xl bg-white/10 backdrop-blur-xl sm:w-[90%] md:w-4/5
-
             lg:w-[70%] xl:w-[65%]
             dark:bg-[hsla(210_3%_13%_/_0.3)] 
           "
         ></div>
 
-        {/* 👇 محتوای اصلی (ورودی متن و...) که روی پس‌زمینه blur قرار می‌گیرد */}
+        {/* محتوای اصلی (ورودی متن) */}
         <div className="relative z-10">
           <div
             className="
             mx-auto min-w-[300px]
-            
             sm:w-[90%] md:w-4/5 lg:w-[70%] xl:w-[65%]
           "
           >

@@ -10,29 +10,22 @@ import { Announcement } from "@/types/announcement"
 import { IconExternalLink, IconSpeakerphone, IconX } from "@tabler/icons-react"
 import { FC, useEffect, useState } from "react"
 
-const SIDEBAR_ICON_SIZE = 22 // Define the size if it's not imported
+const SIDEBAR_ICON_SIZE = 22
 
-// Your initial announcements data
+// داده‌های جدید طبق درخواست شما
 const initialAnnouncementsData: Omit<Announcement, "read">[] = [
   {
-    id: "v0.13",
-    title: "بروزرسانی نسخه v0.13",
-    content: "پشتیبانی از استریم برای پاسخ‌ها و بهبود Agent دسته‌بندی.",
-    date: "2025-07-07"
+    id: "v0.9-update",
+    title: "بروزرسانی نسخه 0.9",
+    content: "کتاب درسی زیست شناسی به سیستم اضافه شد.",
+    date: "2025-07-08"
   },
   {
-    id: "form-discount",
-    title: "۵۰٪ تخفیف برای کاربران اولیه",
-    content: "با پر کردن فرم ثبت‌نام، به مدت یک‌سال کد تخفیف دریافت کنید.",
+    id: "form-discount-25",
+    title: "۲۵٪ تخفیف برای کاربران اولیه",
+    content: "با پر کردن فرم ثبت‌نام، کد تخفیف ویژه دریافت کنید.",
     date: "2025-07-06",
     link: "https://docs.google.com/forms/d/e/1FAIpQLSfYtegINbTbweUImTQRDuQIygS7Qzzo0I0LJ-jlKJzsWxte_A/viewform?usp=header"
-  },
-
-  {
-    id: "bio-simple-model",
-    title: "مدل زیست‌شناسی ساده",
-    content: "در فاز تست، فقط مدل bio-simple برای پاسخ‌دهی فعال است.",
-    date: "2025-07-05"
   }
 ]
 
@@ -47,12 +40,9 @@ export const Announcements: FC = () => {
       ? JSON.parse(storedAnnouncementsRaw)
       : []
 
-    // Combine initial data with stored data
     const updatedAnnouncements = initialAnnouncementsData.map(initialAnn => {
       const storedAnn = storedAnnouncements.find(sa => sa.id === initialAnn.id)
-      return storedAnn
-        ? storedAnn // If found in storage, use its read status
-        : { ...initialAnn, read: false } // Otherwise, it's a new, unread announcement
+      return storedAnn ? storedAnn : { ...initialAnn, read: false }
     })
 
     setAnnouncements(updatedAnnouncements)
@@ -78,6 +68,14 @@ export const Announcements: FC = () => {
     saveToStorage(updated)
   }
 
+  // ✅ تغییر ۱: تابعی برای مدیریت باز و بسته شدن منو
+  const handleOpenChange = (open: boolean) => {
+    // وقتی منو بسته می‌شود (!open)، همه پیام‌ها را خوانده شده تلقی کن
+    if (!open && unreadCount > 0) {
+      markAllAsRead()
+    }
+  }
+
   const openModal = (url: string) => {
     setModalUrl(url)
     setModalOpen(true)
@@ -88,122 +86,120 @@ export const Announcements: FC = () => {
     setModalUrl("")
   }
 
-  // ... (The rest of your component logic: markAllAsUnread, etc.)
-
   return (
     <>
-      <Popover>
+      {/* ✅ تغییر ۱: اضافه کردن onOpenChange به Popover */}
+      <Popover onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <div className="group relative cursor-pointer">
-            <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-2 shadow-lg transition-all duration-300 hover:scale-105 hover:from-slate-100 hover:to-slate-200 hover:shadow-xl dark:from-slate-800 dark:to-slate-900 dark:hover:from-slate-700 dark:hover:to-slate-800">
-              <IconSpeakerphone
-                size={SIDEBAR_ICON_SIZE}
-                className="text-slate-600 transition-colors duration-300 group-hover:text-blue-600 dark:text-slate-300 dark:group-hover:text-blue-400"
-              />
+            {/* ✅ تغییر ۲: حذف گرادیانت و ساده‌سازی دکمه زنگ */}
+            <div className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 shadow-sm transition-all duration-300 hover:bg-slate-50 hover:text-blue-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-blue-400">
+              <IconSpeakerphone size={SIDEBAR_ICON_SIZE} stroke={1.5} />
             </div>
             {unreadCount > 0 && (
-              <div className="absolute -right-1 -top-1 flex size-5 animate-pulse items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-[10px] font-bold text-white shadow-lg">
+              <div className="absolute -right-1 -top-1 flex size-4 animate-bounce items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm">
                 {unreadCount}
               </div>
             )}
           </div>
         </PopoverTrigger>
         <PopoverContent
-          className="rtl mb-2 w-80 rounded-2xl border-0 bg-white/95 p-0 shadow-2xl backdrop-blur-xl dark:bg-slate-900/95"
+          className="rtl mb-2 w-80 rounded-xl border border-slate-200 bg-white p-0 shadow-xl dark:border-slate-800 dark:bg-slate-950"
           side="top"
           align="end"
         >
-          <div className="rounded-t-2xl bg-gradient-to-r from-blue-500 to-purple-600 p-4">
-            <div className="flex flex-row-reverse items-center justify-between">
-              <div
-                className="flex items-center gap-2 text-lg font-bold text-white"
-                dir="rtl"
-              >
-                <IconSpeakerphone size={20} />
-                اطلاعیه‌ها
-              </div>
-              {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  className="h-auto rounded-xl p-2 text-white transition-all duration-200 hover:bg-white/20"
-                  onClick={markAllAsRead}
-                >
-                  خواندم
-                </Button>
-              )}
+          {/* ✅ تغییر ۲: هدر ساده و بدون گرادیانت */}
+          <div className="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-900">
+            <div
+              className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100"
+              dir="rtl"
+            >
+              <IconSpeakerphone size={18} className="text-blue-600" />
+              اطلاعیه‌ها
             </div>
+            {unreadCount > 0 && (
+              <span className="text-xs text-slate-400">
+                {unreadCount} پیام جدید
+              </span>
+            )}
           </div>
 
-          <div className="p-4">
+          <div className="p-0">
             <div
-              className="scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 max-h-96 space-y-3 overflow-y-auto"
+              className="scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 max-h-96 overflow-y-auto"
               dir="rtl"
             >
               {announcements.length > 0 ? (
                 announcements.map((a: Announcement) => (
                   <div
                     key={a.id}
-                    className={`group relative overflow-hidden rounded-xl border border-slate-200 p-4 transition-all duration-300 hover:shadow-lg dark:border-slate-700 ${
-                      !a.read
-                        ? "border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50 dark:border-blue-800 dark:from-blue-950/30 dark:to-purple-950/30"
-                        : "dark:hover:bg-slate-750 bg-white hover:bg-slate-50 dark:bg-slate-800"
+                    className={`group relative border-b border-slate-50 p-4 transition-colors last:border-0 hover:bg-slate-50 dark:border-slate-900 dark:hover:bg-slate-900/50 ${
+                      !a.read ? "bg-blue-50/40 dark:bg-blue-900/10" : ""
                     }`}
                   >
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="text-right text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {a.title}
+                    <div className="mb-2 flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        {/* نقطه آبی برای پیام‌های خوانده نشده */}
+                        {!a.read && (
+                          <div className="size-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50" />
+                        )}
+                        <div
+                          className={`text-sm font-medium ${
+                            !a.read
+                              ? "text-slate-900 dark:text-white"
+                              : "text-slate-600 dark:text-slate-400"
+                          }`}
+                        >
+                          {a.title}
+                        </div>
                       </div>
-
-                      <div className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                      <span className="text-[10px] text-slate-400">
                         {a.date}
-                      </div>
+                      </span>
                     </div>
-                    <div className="mb-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+
+                    <div className="mb-4 pr-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                       {a.content}
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        className={`h-8 rounded-lg text-xs font-medium transition-all duration-200 ${
-                          a.read
-                            ? "cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
-                            : "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:scale-105 hover:from-green-600 hover:to-emerald-600 hover:shadow-xl"
-                        }`}
-                        size="sm"
-                        onClick={() => markAsRead(a.id)}
-                        disabled={a.read}
-                      >
-                        {a.read ? "خوانده شده" : "خوانده شد"}
-                      </Button>
+                    <div className="flex gap-2 pr-4">
+                      {/* ✅ تغییر ۲: دکمه‌های ساده و مینیمال */}
+                      {!a.read && (
+                        <Button
+                          className="h-7 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 shadow-sm hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => markAsRead(a.id)}
+                        >
+                          خواندم
+                        </Button>
+                      )}
 
                       {a.link && (
                         <Button
                           variant="outline"
-                          className="h-8 rounded-lg border-slate-300 text-xs font-medium transition-all duration-200 hover:scale-105 hover:border-transparent hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-500 hover:text-white dark:border-slate-600"
+                          className="h-7 rounded-md border-blue-100 bg-blue-50 px-3 text-xs text-blue-600 hover:bg-blue-100 hover:text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
                           size="sm"
                           onClick={() => openModal(a.link!)}
                         >
-                          بیشتر...
-                          <IconExternalLink className="mr-1" size={14} />
+                          مشاهده
+                          <IconExternalLink className="mr-1" size={12} />
                         </Button>
                       )}
                     </div>
-
-                    {!a.read && (
-                      <div className="absolute right-2 top-2 size-2 animate-pulse rounded-full bg-gradient-to-r from-blue-500 to-purple-500"></div>
-                    )}
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center">
-                  <div className="mb-2 text-slate-400 dark:text-slate-500">
+                <div className="py-12 text-center">
+                  <div className="mb-3 text-slate-300 dark:text-slate-700">
                     <IconSpeakerphone
-                      size={48}
-                      className="mx-auto opacity-50"
+                      size={40}
+                      className="mx-auto"
+                      stroke={1}
                     />
                   </div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400">
-                    هیچ اطلاعیه جدیدی وجود ندارد.
+                  <div className="text-xs text-slate-400">
+                    هیچ اطلاعیه‌ای وجود ندارد
                   </div>
                 </div>
               )}
@@ -212,26 +208,28 @@ export const Announcements: FC = () => {
         </PopoverContent>
       </Popover>
 
-      {/* Modal */}
+      {/* Modal - طراحی ساده‌تر */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/20 backdrop-blur-sm dark:bg-black/60"
             onClick={closeModal}
           ></div>
-          <div className="relative z-10 mx-4 max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-blue-500 to-purple-600 p-4 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-white">مشاهده محتوا</h3>
+          <div className="relative z-10 w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                جزئیات
+              </h3>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={closeModal}
-                className="rounded-xl text-white hover:bg-white/20"
+                className="size-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
               >
-                <IconX size={20} />
+                <IconX size={18} />
               </Button>
             </div>
-            <div className="h-[70vh]">
+            <div className="h-[70vh] bg-slate-50 dark:bg-slate-950">
               <iframe
                 src={modalUrl}
                 className="size-full"

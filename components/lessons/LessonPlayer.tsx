@@ -294,40 +294,55 @@ export default function LessonPlayer({
     })
   }
 
-  // --- 3. هندل کردن دکمه بعدی ---
+  // --- 3. هندل کردن دکمه بعدی (اصلاح شده) ---
   const handleNext = async () => {
+    // اگر در حال لودینگ هستیم، اجازه کلیک مجدد نده (جلوگیری در سمت فرانت‌اند)
+    if (loading) return
     setLoading(true)
 
-    // منطق ذخیره لایتنر (در صورت وجود فلش‌کارت)
-    if (currentUnit.flashcards && currentUnit.flashcards.length > 0) {
-      const cardsData = currentUnit.flashcards.map(card => ({
-        user_id: userId,
-        flashcard_front: card.front,
-        flashcard_back: card.back,
-        source_chunk_uid: currentUnit.uid,
-        box_level: 1
-      }))
+    try {
+      // 1. منطق ذخیره لایتنر (هوشمند و بدون تکرار)
+      if (currentUnit.flashcards && currentUnit.flashcards.length > 0) {
+        // قدم اول: چک کردن اینکه آیا قبلاً اضافه شده یا نه
+        const { count } = await supabase
+          .from("leitner_box")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("source_chunk_uid", currentUnit.uid)
 
-      await supabase.from("leitner_box").insert(cardsData)
-    }
+        // قدم دوم: فقط اگر قبلاً وجود نداشت (count === 0) اضافه کن
+        if (count === 0 || count === null) {
+          const cardsData = currentUnit.flashcards.map(card => ({
+            user_id: userId,
+            flashcard_front: card.front,
+            flashcard_back: card.back,
+            source_chunk_uid: currentUnit.uid,
+            box_level: 1
+          }))
 
-    if (currentIndex < units.length - 1) {
-      // رفتن به اسلاید بعدی
-      setViewState("story")
-      setSelectedOption(null)
-      setIsCorrect(false)
-      setCurrentIndex(prev => prev + 1)
-      setLoading(false)
-    } else {
-      // پایان درس
-      try {
+          await supabase.from("leitner_box").insert(cardsData)
+        }
+      }
+
+      // 2. ادامه مسیر (رفتن به اسلاید بعد یا پایان)
+      if (currentIndex < units.length - 1) {
+        setViewState("story")
+        setSelectedOption(null)
+        setIsCorrect(false)
+        setCurrentIndex(prev => prev + 1)
+        // مهم: لودینگ را فقط وقتی به اسلاید بعد رفتیم خاموش می‌کنیم
+        setLoading(false)
+      } else {
+        // پایان درس
         await saveUserProgress(chapterId, 20)
         router.refresh()
         router.push(`/${locale}/lesson/${chapterId}`)
-      } catch (error) {
-        console.error("خطا در ذخیره:", error)
-        router.push(`/${locale}/lesson/${chapterId}`)
+        // اینجا لودینگ را فالس نمی‌کنیم چون داریم صفحه را عوض می‌کنیم
       }
+    } catch (error) {
+      console.error("خطا در عملیات:", error)
+      setLoading(false) // اگر ارور داد، لودینگ را بردار تا کاربر دوباره تلاش کند
+      toast.error("مشکلی پیش آمد. لطفا مجدد تلاش کنید.")
     }
   }
 
@@ -539,6 +554,7 @@ export default function LessonPlayer({
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleNext}
+                        disabled={loading}
                         className={`w-full rounded-3xl border-b-[6px] py-5 text-xl font-black text-white shadow-xl transition-all active:translate-y-[6px] active:border-b-0 ${isCorrect ? "border-emerald-700 bg-emerald-500 shadow-emerald-400/40 hover:bg-emerald-600" : "border-rose-700 bg-rose-500 shadow-rose-400/40 hover:bg-rose-600"}`}
                       >
                         {loading

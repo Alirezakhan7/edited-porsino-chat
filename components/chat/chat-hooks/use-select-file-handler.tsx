@@ -115,10 +115,12 @@ export const useSelectFileHandler = () => {
 
   const handleSelectDeviceFile = async (file: File) => {
     if (!profile || !selectedWorkspace) return
-    const MAX_FILE_SIZE_MB = 10
+    const MAX_FILE_SIZE_MB = 5
     const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      toast.error(`File is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`)
+      toast.error(
+        ".حجم فایل انتخابی بیش از حد مجاز است. حداکثر حجم مجاز ۵ مگابایت می‌باشد"
+      )
       return
     }
     setShowFilesDisplay(true)

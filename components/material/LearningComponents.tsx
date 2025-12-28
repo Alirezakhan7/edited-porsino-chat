@@ -70,45 +70,48 @@ export function ProgressCard({
 
   return (
     <MaterialCard className="group mb-8 !rounded-[2rem]">
-      <div className="relative z-10 flex flex-col gap-8 p-8 md:flex-row md:items-center">
-        <div className="flex-1 space-y-6" dir="rtl">
+      {/* پدینگ را کم کردیم تا در فضاهای کوچک بهتر جا شود */}
+      <div className="relative z-10 flex flex-col gap-6 p-5">
+        {/* بخش بالایی: نمودار و تیترها */}
+        <div className="flex items-center justify-between" dir="rtl">
           <div className="space-y-1">
-            <h2 className="text-2xl font-black text-slate-800 dark:text-white">
+            <h2 className="text-xl font-black text-slate-800 dark:text-white">
               {title}
             </h2>
-            <p className="font-medium text-slate-500 dark:text-slate-400">
-              مسیر یادگیری هوشمند
-            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <StatBadge
-              label="یادگیری"
-              value={learning}
-              icon={IconBrain}
-              color="blue"
+          {/* نمودار دایره‌ای */}
+          <div className="relative flex shrink-0 scale-75 items-center justify-center">
+            <div
+              className={`absolute inset-0 bg-gradient-to-br opacity-20 blur-2xl ${theme.gradient}`}
             />
-            <StatBadge
-              label="تسلط"
-              value={mastery}
-              icon={IconTrophy}
-              color="emerald"
+            <CircularProgress
+              value={overall}
+              color={color}
+              size={100} // سایز را کمی کوچک کردیم
+              strokeWidth={10}
             />
           </div>
         </div>
 
-        <div className="relative flex shrink-0 items-center justify-center">
-          <div
-            className={`absolute inset-0 bg-gradient-to-br opacity-20 blur-3xl ${theme.gradient}`}
+        {/* بخش پایینی: آمارها - تغییر مهم: grid-cols-1 */}
+        {/* این باعث می‌شود آیتم‌ها زیر هم قرار بگیرند و فضا داشته باشند */}
+        <div className="grid grid-cols-1 gap-3">
+          <StatBadge
+            label="یادگیری"
+            value={learning}
+            icon={IconBrain}
+            color="blue"
           />
-          <CircularProgress
-            value={overall}
-            color={color}
-            size={140}
-            strokeWidth={12}
+          <StatBadge
+            label="تسلط"
+            value={mastery}
+            icon={IconTrophy}
+            color="emerald"
           />
         </div>
       </div>
+
       <div
         className={`absolute inset-x-0 bottom-0 h-1.5 bg-gradient-to-r ${theme.gradient} opacity-80`}
       />
@@ -119,23 +122,23 @@ export function ProgressCard({
 function StatBadge({ label, value, icon: Icon, color }: any) {
   const theme = colorThemes[color as ColorKey]
   return (
-    // در اینجا پس‌زمینه را در شب روشن‌تر کردیم (slate-800/50 به جای transparent)
     <div
-      className={`flex w-full min-w-0 items-center gap-3 rounded-2xl border p-3 transition-all ${theme.light} border-white/20 dark:border-white/10 dark:bg-slate-700/30`}
+      className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 transition-all ${theme.light} border-white/20 dark:border-white/10 dark:bg-slate-700/30`}
     >
-      <div
-        className={`flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md ${theme.gradient}`}
-      >
-        <Icon size={20} />
-      </div>
-      <div className="flex min-w-0 flex-col text-right">
-        <span className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-500 opacity-80 dark:text-slate-300">
+      {/* سمت راست: آیکون و عنوان */}
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm ${theme.gradient}`}
+        >
+          <Icon size={20} />
+        </div>
+        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
           {label}
         </span>
-        <span className={`text-base font-bold leading-tight ${theme.text}`}>
-          ٪{value}
-        </span>
       </div>
+
+      {/* سمت چپ: درصد */}
+      <span className={`text-lg font-black ${theme.text}`}>٪{value}</span>
     </div>
   )
 }

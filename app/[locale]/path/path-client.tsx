@@ -135,9 +135,8 @@ export default function PathClient({
                 درباره این پایه
               </h4>
               <p className="text-muted-foreground mt-2 text-xs italic leading-relaxed">
-                {currentInfo.description}. در این بخش شما{" "}
-                {processedChapters.length} فصل و ده‌ها زیرمجموعه آموزشی را پشت
-                سر خواهید گذاشت.
+                در این بخش شما {processedChapters.length} فصل و ده‌ها زیرمجموعه
+                آموزشی را پشت سر خواهید گذاشت.
               </p>
             </div>
           </motion.div>
