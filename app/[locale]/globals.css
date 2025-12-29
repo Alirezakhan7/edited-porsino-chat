@@ -196,3 +196,93 @@
     -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
   }
 }
+
+/* --- استایل‌های اختصاصی راهنما (Tour) - نسخه اصلاح شده --- */
+.driver-popover.driverjs-theme {
+  background-color: rgba(255, 255, 255, 0.95); /* کمی غلیظ‌تر برای خوانایی */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  padding: 24px; /* فضای بیشتر */
+  direction: rtl;
+  text-align: right;
+  font-family: inherit;
+}
+
+/* عنوان و توضیحات */
+.driver-popover.driverjs-theme .driver-popover-title {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #1e293b;
+  margin-bottom: 12px;
+  margin-left: 20px; /* فاصله از دکمه ضربدر */
+}
+
+.driver-popover.driverjs-theme .driver-popover-description {
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: #475569;
+  margin-bottom: 20px;
+}
+
+/* ✅ اصلاح جایگاه دکمه ضربدر (Close Button) */
+.driver-popover.driverjs-theme .driver-popover-close-btn {
+  right: auto !important; /* حذف موقعیت راست پیش‌فرض */
+  left: 20px !important;  /* انتقال به چپ */
+  top: 20px !important;
+  color: #94a3b8 !important;
+  background: #f1f5f9;
+  border-radius: 50%;
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.driver-popover.driverjs-theme .driver-popover-close-btn:hover {
+  background: #e2e8f0;
+  color: #ef4444 !important; /* قرمز در هاور */
+}
+
+/* ✅ اصلاح متن شمارنده صفحات (2 of 3) */
+.driver-popover.driverjs-theme .driver-popover-progress-text {
+  direction: ltr !important; /* انگلیسی کردن جهت فقط برای اعداد */
+  font-family: sans-serif; /* فونت ساده برای اعداد */
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-right: auto; /* هل دادن به سمت چپ فوتر */
+}
+
+/* دکمه‌ها */
+.driver-popover.driverjs-theme button {
+  border-radius: 14px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.driver-popover.driverjs-theme .driver-popover-next-btn {
+  background-color: #3b82f6 !important;
+  color: white !important;
+  text-shadow: none;
+  border: none;
+}
+
+.driver-popover.driverjs-theme .driver-popover-prev-btn {
+  color: #64748b !important;
+  border: 1px solid #cbd5e1;
+  text-shadow: none;
+}
+
+/* دارک مود */
+.dark .driver-popover.driverjs-theme {
+  background-color: rgba(15, 23, 42, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.dark .driver-popover.driverjs-theme .driver-popover-title { color: #f1f5f9; }
+.dark .driver-popover.driverjs-theme .driver-popover-description { color: #94a3b8; }
+.dark .driver-popover.driverjs-theme .driver-popover-close-btn { background: #1e293b; }

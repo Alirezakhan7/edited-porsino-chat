@@ -20,6 +20,7 @@ import ActionMenu from "@/components/lessons/ActionMenu"
 import FlashcardModal from "@/components/lessons/FlashcardModal"
 import { toast } from "sonner"
 import QuickAiModal from "@/components/lessons/QuickAiModal"
+import { useTour } from "@/lib/hooks/use-tour"
 
 interface LessonPlayerProps {
   units: GamifiedUnit[]
@@ -101,6 +102,35 @@ export default function LessonPlayer({
   // جلوگیری از ارور اگر konkur_tips وجود نداشت
   const hasTips = currentUnit?.konkur_tips && currentUnit.konkur_tips.length > 0
   const progressPercent = ((currentIndex + 1) / units.length) * 100
+
+  // داخل کامپوننت LessonPlayer
+  const tourSteps = [
+    {
+      element: "#tips-button",
+      popover: {
+        title: "نکات کنکوری 💡",
+        description:
+          "اینجا کلیک کن تا نکات مهم و تستی مربوط به همین صفحه رو ببینی."
+      }
+    },
+    {
+      element: "#lesson-content-area", // اشاره به کل متن درس
+      popover: {
+        title: "!هر جا نفهمیدی بپرس",
+        description:
+          "هر قسمتی از متن درس رو که انتخاب (Select) کنی، یه منوی جادویی ظاهر میشه. می‌تونی همون لحظه اون متن رو به فلش‌کارت تبدیل کنی یا بدی هوش مصنوعی برات توضیحش بده!"
+      }
+    },
+    // مرحله آخر بدون element (وسط صفحه نمایش داده میشه)
+    {
+      popover: {
+        title: "آماده‌ای؟ ",
+        description: "حالا با دقت متن رو بخون و برو جلو. موفق باشی!"
+      }
+    }
+  ]
+
+  useTour("lesson_tour_v2", tourSteps, userId) // ورژن رو v2 کردم که اگه قبلی رو دیدی، دوباره این جدید رو ببینی
 
   const [isFlashcardModalOpen, setIsFlashcardModalOpen] = useState(false)
   const [selectedTextForCard, setSelectedTextForCard] = useState("")
@@ -224,7 +254,7 @@ export default function LessonPlayer({
     const parts = text.split(/\[\[\[INSERT_IMAGE_HERE: (.*?)\]\]\]/g)
 
     return (
-      <div className="w-full">
+      <div id="lesson-content-area" className="w-full">
         {parts.map((part, i) => {
           // --- بخش تصاویر ---
           if (i % 2 === 1) {
@@ -382,7 +412,10 @@ export default function LessonPlayer({
               <IconX size={20} stroke={2.5} />
             </button>
 
-            <div className="relative mx-2 h-4 flex-1 overflow-hidden rounded-full bg-slate-100 shadow-inner dark:bg-slate-800">
+            <div
+              id="lesson-progress"
+              className="relative mx-2 h-4 flex-1 overflow-hidden rounded-full bg-slate-100 shadow-inner dark:bg-slate-800"
+            >
               <motion.div
                 className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.4)]"
                 initial={{ width: 0 }}
@@ -401,6 +434,7 @@ export default function LessonPlayer({
               }`}
             >
               <IconBulb
+                id="tips-button"
                 size={20}
                 stroke={2.5}
                 className={hasTips ? "fill-amber-500" : ""}
