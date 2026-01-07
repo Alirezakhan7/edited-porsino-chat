@@ -8,6 +8,7 @@ const MERCHANT_ID = process.env.ZARINPAL_MERCHANT_ID
 const APP_URL = process.env.APP_URL || "http://localhost:3000"
 const CALLBACK_URL = `${APP_URL}/api/zarinpal/verify`
 
+// آدرس‌های نسخه ۴ زرین‌پال
 const ZARINPAL_REQUEST_URL =
   "https://payment.zarinpal.com/pg/v4/payment/request.json"
 const ZARINPAL_GATEWAY_URL = "https://payment.zarinpal.com/pg/StartPay/"
@@ -21,6 +22,7 @@ const serverPlans = {
   bio_9m: { priceRial: 22_950_000, name: "زیست نه‌ماهه" }
 } as const
 
+// اگر نمی‌خواهید کد تخفیف فعالی باشد، این لیست را خالی کنید
 const serverDiscountCodes: Record<
   string,
   { percent?: number; amount?: number }
@@ -56,7 +58,6 @@ export async function POST(req: Request) {
     const selectedPlan = serverPlans[planId as keyof typeof serverPlans]
 
     // ۳. محاسبه قیمت (ریال)
-    // تغییر مهم: اضافه کردن : number برای اینکه بتوانیم قیمت را تغییر دهیم
     let amountRial: number = selectedPlan.priceRial
 
     if (discountCode) {
@@ -76,19 +77,31 @@ export async function POST(req: Request) {
     }
 
     // ۴. درخواست به زرین‌پال
+    // --- استخراج موبایل از ایمیل فیک (مثلاً 0912...@porsino.ir) ---
+    const zarinpalMetadata: Record<string, string> = {
+      email: user.email || ""
+    }
+
+    if (user.email && user.email.includes("@")) {
+      // ایمیل را با "@" تکه می‌کنیم و قسمت اول را برمی‌داریم
+      const emailParts = user.email.split("@")
+      const potentialMobile = emailParts[0]
+
+      // اگر قسمت اول فقط شامل اعداد بود، آن را موبایل فرض کن
+      // (مثلاً اگر ایمیل 09391402427@porsino.ir باشد، اینجا 09391402427 استخراج می‌شود)
+      if (/^\d+$/.test(potentialMobile)) {
+        zarinpalMetadata.mobile = potentialMobile
+      }
+    }
+    // -----------------------------------------------------------
+
     const payload = {
       merchant_id: MERCHANT_ID,
       amount: amountRial,
       currency: "IRR",
       callback_url: CALLBACK_URL,
       description: `خرید اشتراک ${selectedPlan.name}`,
-      metadata: {
-        // اصلاح مهم: تبدیل صریح به String
-        mobile: user.user_metadata?.phone
-          ? String(user.user_metadata.phone)
-          : "",
-        email: user.email || ""
-      }
+      metadata: zarinpalMetadata
     }
 
     const zarinResponse = await fetch(ZARINPAL_REQUEST_URL, {
@@ -104,8 +117,10 @@ export async function POST(req: Request) {
     const { data, errors } = zarinResult
 
     if (!data || data.code !== 100) {
-      console.error("Zarinpal Request Error:", errors)
-      throw new Error("خطا در ارتباط با درگاه پرداخت")
+      console.error("Zarinpal Request Error:", errors || zarinResult)
+      throw new Error(
+        "خطا در ارتباط با درگاه پرداخت: " + (errors?.message || "Unknown")
+      )
     }
 
     const authority = data.authority
@@ -116,16 +131,18 @@ export async function POST(req: Request) {
     const { error: dbError } = await supabase.from("transactions").insert({
       user_id: user.id,
       plan_id: planId,
-      amount: amountRial, // حالا که amountRial را نامبر کردیم، اینجا مشکلی ندارد
+      amount: amountRial,
       discount_code: discountCode || null,
       order_id: orderId,
       ref_num: authority,
       status: "pending"
-    } as any) // as any برای جلوگیری از خطای mismatch با تایپ دیتابیس
+    } as any) // جلوگیری از ارور تایپ‌اسکریپت
 
     if (dbError) {
-      console.error("DB Error:", dbError)
-      // بهتر است اینجا هم خطا پرتاب شود تا فرانت متوجه شود
+      console.error("DB Insert Error:", dbError)
+      // اینجا خطا را لاگ می‌کنیم اما چون لینک پرداخت گرفته شده، شاید بخواهید کاربر ادامه دهد
+      // اما امن‌تر است که خطا دهیم:
+      throw new Error("خطا در ثبت سفارش در سیستم")
     }
 
     // ۶. بازگشت لینک پرداخت
