@@ -8,7 +8,6 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 const MERCHANT_ID = process.env.ZARINPAL_MERCHANT_ID
-// طبق مستندات ارسالی:
 const ZARINPAL_VERIFY_URL =
   "https://payment.zarinpal.com/pg/v4/payment/verify.json"
 const APP_URL = process.env.APP_URL || "http://localhost:3000"
@@ -27,7 +26,6 @@ export async function GET(req: NextRequest) {
   const authority = url.searchParams.get("Authority")
   const status = url.searchParams.get("Status")
 
-  // تابع کمکی ریدایرکت
   const redirectToResult = (
     resultStatus: "success" | "failed",
     msg?: string,
@@ -36,7 +34,7 @@ export async function GET(req: NextRequest) {
     const params = new URLSearchParams()
     params.set("status", resultStatus)
     if (msg) params.set("message", msg)
-    if (refId) params.set("order_id", refId) // اینجا order_id نمایشی همان RefID بانک است
+    if (refId) params.set("order_id", refId)
     return NextResponse.redirect(
       `${APP_URL}/payment-result?${params.toString()}`
     )
@@ -46,16 +44,14 @@ export async function GET(req: NextRequest) {
     return redirectToResult("failed", "تنظیمات سمت سرور ناقص است.")
   }
 
-  // طبق مستندات: اگر Status برابر NOK باشد یعنی لغو شده
   if (status !== "OK") {
     return redirectToResult("failed", "عملیات پرداخت توسط کاربر لغو شد.")
   }
 
-  // اتصال به دیتابیس با دسترسی ادمین
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
   try {
-    // ۱. یافتن تراکنش بر اساس Authority
+    // ۱. یافتن تراکنش
     const { data: transaction, error: fetchErr } = await supabase
       .from("transactions")
       .select("*")
@@ -66,11 +62,11 @@ export async function GET(req: NextRequest) {
     if (fetchErr || !transaction) {
       return redirectToResult(
         "failed",
-        "تراکنش یافت نشد یا قبلاً تعیین تکلیف شده است."
+        "تراکنش یافت نشد یا قبلاً پردازش شده است."
       )
     }
 
-    // ۲. ارسال درخواست Verify به زرین‌پال
+    // ۲. وریفای زرین‌پال
     const verifyResponse = await fetch(ZARINPAL_VERIFY_URL, {
       method: "POST",
       headers: {
@@ -79,60 +75,77 @@ export async function GET(req: NextRequest) {
       },
       body: JSON.stringify({
         merchant_id: MERCHANT_ID,
-        amount: transaction.amount, // مبلغ ریالی از دیتابیس
+        amount: transaction.amount,
         authority: authority
       })
     })
 
     const verifyJson = await verifyResponse.json()
-    const { data, errors } = verifyJson
+    const { data } = verifyJson
 
-    // طبق مستندات: کد ۱۰۰ یعنی موفق، کد ۱۰۱ یعنی قبلا وریفای شده
     if (!data || (data.code !== 100 && data.code !== 101)) {
-      // تراکنش ناموفق شد
       await supabase
         .from("transactions")
-        .update({ status: "failed" })
+        .update({ status: "failed" } as any)
         .eq("id", transaction.id)
-      return redirectToResult("failed", "تایید پرداخت از سمت بانک ناموفق بود.")
+      return redirectToResult("failed", "تایید پرداخت ناموفق بود.")
     }
 
     const refId = data.ref_id
 
-    // ۳. تراکنش موفق است - بروزرسانی دیتابیس
+    // ۳. ثبت تراکنش موفق
     await supabase
       .from("transactions")
       .update({
         status: "success",
         ref_num: String(refId),
         verified_at: new Date().toISOString()
-      } as any) // <--- اینجا هم as any اضافه کن اگر زیرش قرمز شد
+      } as any)
       .eq("id", transaction.id)
 
     // ۴. اعمال مزایا (شارژ اکانت)
     const plan = PLAN_BENEFITS[transaction.plan_id]
-    if (plan) {
-      // بروزرسانی توکن
-      await supabase.from("token_usage").upsert(
-        {
-          user_id: transaction.user_id,
-          limit_tokens: plan.tokens,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: "user_id" }
-      )
 
-      // بروزرسانی انقضای اشتراک
+    if (plan) {
+      // الف) آپدیت پروفایل (اشتراک)
       const expires = new Date()
       expires.setDate(expires.getDate() + plan.durationDays)
 
-      await supabase
+      // اول پروفایل را آپدیت می‌کنیم و همزمان ایمیل کاربر را می‌گیریم
+      const { data: updatedProfile, error: profileErr } = await supabase
         .from("profiles")
         .update({
-          subscription_status: "active",
+          subscription_status: "active", // مطابق با constraint دیتابیس شما
           subscription_expires_at: expires.toISOString()
-        })
+        } as any)
         .eq("user_id", transaction.user_id)
+        .select("email") // ایمیل را برمی‌گردانیم تا برای توکن استفاده کنیم
+        .single()
+
+      if (profileErr) {
+        console.error("Profile Update Error:", profileErr)
+      }
+
+      // ب) آپدیت توکن (با استفاده از ایمیل)
+      // ایمیل را یا از پروفایل می‌گیریم یا اگر نبود سعی می‌کنیم با user_id از auth بگیریم (که اینجا دسترسی مستقیم نداریم پس فرض بر پروفایل است)
+      const userEmail = updatedProfile?.email
+
+      if (userEmail) {
+        /* نکته مهم: جدول token_usage شما user_id ندارد و user_email کلید یکتا است.
+           پس ما باید با ایمیل upsert کنیم.
+        */
+        await supabase.from("token_usage").upsert(
+          {
+            user_email: userEmail,
+            limit_tokens: plan.tokens,
+            updated_at: new Date().toISOString()
+            // used_tokens را نمی‌فرستیم تا اگر وجود داشت، ریست نشود (یا اگر می‌خواهید ریست شود، مقدار 0 بفرستید)
+          } as any,
+          { onConflict: "user_email" } // کلید یکتا در جدول شما
+        )
+      } else {
+        console.error("Email not found for user, skipping token update")
+      }
     }
 
     return redirectToResult(
