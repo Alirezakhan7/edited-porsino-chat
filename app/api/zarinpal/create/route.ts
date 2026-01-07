@@ -83,7 +83,10 @@ export async function POST(req: Request) {
       callback_url: CALLBACK_URL,
       description: `خرید اشتراک ${selectedPlan.name}`,
       metadata: {
-        mobile: user.user_metadata?.phone || "",
+        // اصلاح مهم: تبدیل صریح به String
+        mobile: user.user_metadata?.phone
+          ? String(user.user_metadata.phone)
+          : "",
         email: user.email || ""
       }
     }
