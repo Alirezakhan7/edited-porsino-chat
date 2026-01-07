@@ -3,21 +3,15 @@
    -------------------------------------------------------------------------- */
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { CheckCircle, Check, Loader2, Percent, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 /* ------------------------------------------------------------------ */
-/* ۱. داده‌های پلن و کدهای تخفیف (برای محاسبهٔ قیمت نمایشی)            */
-/*    — با بک‌اند هماهنگ است؛ در صورت تغییر در سرور این مقادیر را نیز  */
-/*      بروز کنید تا محاسبهٔ کلاینتی قیمت درست باشد.                 */
+/* ۱. داده‌های پلن (قیمت‌ها و مشخصات)                                  */
 /* ------------------------------------------------------------------ */
-type DiscountDetail =
-  | { discountPercent: number }
-  | { discountAmountRial: number }
-
 const serverPlans = {
   bio_1m: {
     name: "پلن یک‌ماهه زیست‌شناسی",
@@ -36,11 +30,6 @@ const serverPlans = {
   }
 } as const
 
-// (اختیاری) تخفیف‌ها — در تولید غیرفعال یا سقف‌دار
-const serverDiscountCodes: Record<string, DiscountDetail> = {
-  // "BACK2SCHOOL": { discountPercent: 10 }
-}
-
 // فقط زیست
 const featuresBio = [
   "دسترسی کامل به درس زیست‌شناسی",
@@ -50,7 +39,7 @@ const featuresBio = [
 ]
 
 /* ------------------------------------------------------------------ */
-/* ۲. توابع کمکی برای قالب‌بندی عدد و تبدیل به ارقام فارسی             */
+/* ۲. توابع کمکی                                                       */
 /* ------------------------------------------------------------------ */
 const toPersianDigits = (str: string | number) =>
   str.toString().replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[parseInt(d)])
@@ -69,10 +58,19 @@ export default function PaymentPage() {
   const [user, setUser] = useState<any>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
 
+  // استیت‌های مربوط به تخفیف
   const [showDiscountCode, setShowDiscountCode] = useState(false)
   const [discountInput, setDiscountInput] = useState("")
   const [appliedCode, setAppliedCode] = useState<string | null>(null)
   const [discountError, setDiscountError] = useState<string | null>(null)
+
+  // جزئیات تخفیف دریافتی از سرور
+  const [discountDetails, setDiscountDetails] = useState<{
+    type: "percent" | "amount"
+    value: number
+  } | null>(null)
+  const [isValidatingCode, setIsValidatingCode] = useState(false)
+
   const [error, setError] = useState<string | null>(null)
 
   const supabase = createClientComponentClient()
@@ -94,53 +92,68 @@ export default function PaymentPage() {
     checkUser()
   }, [supabase, router])
 
-  /* ─────────────[ ۳‑۲. اعمال کد تخفیف در کلاینت ]───────────── */
-  const discountedPrices = useMemo(() => {
-    if (!appliedCode || !(appliedCode in serverDiscountCodes)) return null
+  /* ─────────────[ ۳‑۲. تابع محاسبه قیمت با تخفیف ]───────────── */
+  // این تابع قیمت نهایی را بر اساس تخفیف تایید شده محاسبه می‌کند
+  const getDiscountedPrice = (planId: string, basePrice: number) => {
+    if (!discountDetails || !appliedCode) return basePrice
 
-    const details = serverDiscountCodes[appliedCode]
-    const map: Record<string, number> = {}
+    let finalAmount = basePrice
+    // تبدیل number به عدد safe (اگر نیاز باشد)
+    const val = Number(discountDetails.value)
 
-    Object.entries(serverPlans).forEach(([id, plan]) => {
-      // نکته‌ی مهم: نوع رو تعمداً به number تبدیل می‌کنیم تا literal type نباشه
-      let amount: number = Number(plan.priceRialTotal)
+    if (discountDetails.type === "percent") {
+      finalAmount = Math.round(basePrice * (1 - val / 100))
+    } else {
+      finalAmount = Math.max(5000, basePrice - val)
+    }
+    return Math.round(finalAmount)
+  }
 
-      if ("discountPercent" in details) {
-        amount = amount * (1 - details.discountPercent / 100)
-      } else if ("discountAmountRial" in details) {
-        amount = Math.max(5_000, amount - details.discountAmountRial)
-      }
-
-      map[id] = Math.round(amount)
-    })
-    return map
-  }, [appliedCode])
-
-  const handleApplyCode = () => {
+  /* ─────────────[ ۳‑۳. اعتبارسنجی کد تخفیف (API) ]───────────── */
+  const handleApplyCode = async () => {
     const code = discountInput.trim().toUpperCase()
     if (!code) return
-    if (code in serverDiscountCodes) {
-      setAppliedCode(code)
-      setDiscountError(null)
-    } else {
-      setAppliedCode(null)
-      setDiscountError("کد تخفیف نامعتبر است.")
+
+    setIsValidatingCode(true)
+    setDiscountError(null)
+    setAppliedCode(null)
+    setDiscountDetails(null)
+
+    try {
+      // درخواست به API جدید برای چک کردن کد
+      const res = await fetch("/api/discount/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code })
+      })
+
+      const result = await res.json()
+
+      if (res.ok && result.valid) {
+        setAppliedCode(code)
+        setDiscountDetails({ type: result.type, value: result.value })
+      } else {
+        setDiscountError(result.message || "کد تخفیف نامعتبر است.")
+      }
+    } catch (err) {
+      setDiscountError("خطا در بررسی کد تخفیف. لطفاً دوباره تلاش کنید.")
+    } finally {
+      setIsValidatingCode(false)
     }
   }
 
-  /* ─────────────[ ۳‑۳. ارسال درخواست پرداخت ]───────────── */
+  /* ─────────────[ ۳‑۴. ارسال درخواست پرداخت ]───────────── */
   const handlePayment = async (planId: string) => {
     setLoadingPlan(planId)
     setError(null)
 
     try {
-      // تغییر آدرس از /api/paystar/create به /api/zarinpal/create
       const response = await fetch("/api/zarinpal/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId,
-          discountCode: appliedCode ?? ""
+          discountCode: appliedCode ?? "" // کد تخفیف را می‌فرستیم تا بک‌اند پرداخت هم دوباره چک کند
         })
       })
 
@@ -193,13 +206,13 @@ export default function PaymentPage() {
         {/* ---------- Plans Grid ---------- */}
         <div className="mb-20 grid gap-8 lg:grid-cols-2">
           {Object.entries(serverPlans).map(([planId, plan]) => {
-            // محاسبه قیمت‌ها
+            // محاسبه قیمت‌ها با استفاده از تابع جدید
             const base = plan.priceRialTotal
-            const finalPriceRial = discountedPrices?.[planId] ?? base
+            const finalPriceRial = getDiscountedPrice(planId, base)
             const monthlyEqRial = Math.round(finalPriceRial / plan.months)
-            const isPopular = planId === "bio_6m" // «پرطرفدار»
-            const isDiscounted =
-              appliedCode && discountedPrices?.[planId] !== base
+
+            const isPopular = planId === "bio_6m"
+            const isDiscounted = appliedCode && finalPriceRial !== base
 
             return (
               <motion.div
@@ -369,6 +382,7 @@ export default function PaymentPage() {
                         setDiscountInput("")
                         setAppliedCode(null)
                         setDiscountError(null)
+                        setDiscountDetails(null)
                       }}
                       className="rounded-full p-3 text-gray-500 transition-all duration-200 hover:scale-110 hover:bg-gray-100/50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-300"
                     >
@@ -391,9 +405,14 @@ export default function PaymentPage() {
                     />
                     <button
                       onClick={handleApplyCode}
-                      className="rounded-2xl bg-gradient-to-r from-blue-500 to-emerald-500 px-8 py-4 text-lg font-bold text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-600 hover:to-emerald-600 hover:shadow-xl disabled:opacity-50"
+                      disabled={isValidatingCode}
+                      className="flex min-w-[120px] items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-emerald-500 px-8 py-4 text-lg font-bold text-white shadow-lg transition-all duration-200 hover:scale-105 hover:from-blue-600 hover:to-emerald-600 hover:shadow-xl disabled:opacity-50"
                     >
-                      اعمال
+                      {isValidatingCode ? (
+                        <Loader2 className="size-6 animate-spin" />
+                      ) : (
+                        "اعمال"
+                      )}
                     </button>
                   </div>
 
