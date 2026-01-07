@@ -417,7 +417,7 @@ export default function PaymentPage() {
                   </div>
 
                   {/* Result Message */}
-                  <div className="text-center">
+                  <div className="text-center" dir="rtl">
                     <AnimatePresence mode="wait">
                       {appliedCode && !discountError && (
                         <motion.div
