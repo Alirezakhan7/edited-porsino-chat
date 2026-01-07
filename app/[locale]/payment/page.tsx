@@ -430,7 +430,7 @@ export default function PaymentPage() {
                           <span className="text-lg font-semibold">
                             کد&nbsp;
                             <span className="font-mono">{appliedCode}</span>
-                            &nbsp;با موفقیت اعمال شد!
+                            &nbsp;با موفقیت اعمال شد
                           </span>
                         </motion.div>
                       )}

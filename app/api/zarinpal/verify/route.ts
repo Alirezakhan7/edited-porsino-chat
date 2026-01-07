@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
     return redirectToResult("failed", "عملیات پرداخت توسط کاربر لغو شد.")
   }
 
+  // استفاده از Service Role برای دسترسی ادمین
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
   try {
@@ -107,44 +108,43 @@ export async function GET(req: NextRequest) {
     const plan = PLAN_BENEFITS[transaction.plan_id]
 
     if (plan) {
-      // الف) آپدیت پروفایل (اشتراک)
+      // الف) آپدیت پروفایل (فعال کردن اشتراک زمانی)
       const expires = new Date()
       expires.setDate(expires.getDate() + plan.durationDays)
 
-      // اول پروفایل را آپدیت می‌کنیم و همزمان ایمیل کاربر را می‌گیریم
-      const { data: updatedProfile, error: profileErr } = await supabase
+      await supabase
         .from("profiles")
         .update({
-          subscription_status: "active", // مطابق با constraint دیتابیس شما
+          subscription_status: "active",
           subscription_expires_at: expires.toISOString()
         } as any)
         .eq("user_id", transaction.user_id)
-        .select("email") // ایمیل را برمی‌گردانیم تا برای توکن استفاده کنیم
-        .single()
 
-      if (profileErr) {
-        console.error("Profile Update Error:", profileErr)
-      }
+      // ب) آپدیت توکن (بخش اصلاح شده و مطمئن)
+      // تغییر اصلی اینجاست: دریافت ایمیل مستقیم از Auth (جایی که fake email ذخیره شده)
+      const { data: userData } = await supabase.auth.admin.getUserById(
+        transaction.user_id
+      )
 
-      // ب) آپدیت توکن (با استفاده از ایمیل)
-      // ایمیل را یا از پروفایل می‌گیریم یا اگر نبود سعی می‌کنیم با user_id از auth بگیریم (که اینجا دسترسی مستقیم نداریم پس فرض بر پروفایل است)
-      const userEmail = updatedProfile?.email
+      // این همان ایمیل (مثلاً 0912...@porsino.ir) است
+      const userAuthEmail = userData.user?.email
 
-      if (userEmail) {
-        /* نکته مهم: جدول token_usage شما user_id ندارد و user_email کلید یکتا است.
-           پس ما باید با ایمیل upsert کنیم.
-        */
+      if (userAuthEmail) {
+        // آپدیت جدول token_usage با استفاده از ایمیل واقعی کاربر
         await supabase.from("token_usage").upsert(
           {
-            user_email: userEmail,
+            user_email: userAuthEmail, // کلید اصلی جدول توکن
             limit_tokens: plan.tokens,
             updated_at: new Date().toISOString()
-            // used_tokens را نمی‌فرستیم تا اگر وجود داشت، ریست نشود (یا اگر می‌خواهید ریست شود، مقدار 0 بفرستید)
+            // used_tokens را نمی‌فرستیم تا مصرف قبلی کاربر حفظ شود
           } as any,
-          { onConflict: "user_email" } // کلید یکتا در جدول شما
+          { onConflict: "user_email" }
         )
       } else {
-        console.error("Email not found for user, skipping token update")
+        console.error(
+          "Critical: User email not found in Auth for ID:",
+          transaction.user_id
+        )
       }
     }
 
