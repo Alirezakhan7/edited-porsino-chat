@@ -116,7 +116,7 @@ export default function LessonPlayer({
     {
       element: "#lesson-content-area", // اشاره به کل متن درس
       popover: {
-        title: "!هر جا نفهمیدی بپرس",
+        title: "هر جا نفهمیدی بپرس!",
         description:
           "هر قسمتی از متن درس رو که انتخاب (Select) کنی، یه منوی جادویی ظاهر میشه. می‌تونی همون لحظه اون متن رو به فلش‌کارت تبدیل کنی یا بدی هوش مصنوعی برات توضیحش بده!"
       }
@@ -673,7 +673,7 @@ export default function LessonPlayer({
                     onClick={() => setIsTipsOpen(false)}
                     className="mt-8 w-full rounded-2xl border-b-[6px] border-amber-700 bg-amber-500 py-4 text-xl font-black text-white shadow-xl shadow-amber-200 transition-all active:translate-y-[6px] active:scale-95 active:border-b-0"
                   >
-                    یاد گرفتم! 👍
+                    یاد گرفتم!
                   </button>
                 </div>
               </motion.div>

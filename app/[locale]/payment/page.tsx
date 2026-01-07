@@ -134,7 +134,8 @@ export default function PaymentPage() {
     setError(null)
 
     try {
-      const response = await fetch("/api/paystar/create", {
+      // تغییر آدرس از /api/paystar/create به /api/zarinpal/create
+      const response = await fetch("/api/zarinpal/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
