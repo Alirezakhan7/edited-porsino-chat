@@ -33,7 +33,7 @@ export default function ResetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setMessage("خطا در تغییر رمز عبور: " + error.message)
+      setMessage("خطا در تغییر رمز عبور: " + (error as any).message)
     } else {
       setMessage("رمز عبور با موفقیت تغییر یافت. اکنون وارد شوید.")
       setTimeout(

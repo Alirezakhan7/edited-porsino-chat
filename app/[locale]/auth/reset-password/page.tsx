@@ -28,7 +28,7 @@ function ResetPasswordForm() {
     const { error: updateError } = await supabase.auth.updateUser({ password })
 
     if (updateError) {
-      setError("خطا در به‌روزرسانی رمز عبور: " + updateError.message)
+      setError("خطا در به‌روزرسانی رمز عبور: " + (updateError as any).message)
     } else {
       setSubmitted(true)
       // انتقال کاربر به صفحه ورود پس از ۲ ثانیه

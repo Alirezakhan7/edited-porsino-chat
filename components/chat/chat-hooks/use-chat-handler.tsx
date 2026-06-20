@@ -94,7 +94,7 @@ export const useChatHandler = () => {
               // لیست تصاویر فعلی را با URLهای جدید آپدیت کن
               // و همچنین اگر تصویری در state وجود نداشت، آن را اضافه کن
               const updatedImages = currentChatImages.map(img => {
-                if (urlMap.has(img.path)) {
+                if (img.path && urlMap.has(img.path)) {
                   const newUrl = urlMap.get(img.path)!
                   urlMap.delete(img.path) // برای جلوگیری از افزودن تکراری
                   return { ...img, url: newUrl }
