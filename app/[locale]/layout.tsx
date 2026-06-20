@@ -3,11 +3,8 @@ import { GlobalState } from "@/components/utility/global-state"
 import { Providers } from "@/components/utility/providers"
 import TranslationsProvider from "@/components/utility/translations-provider"
 import initTranslations from "@/lib/i18n"
-import { Database } from "@/supabase/types"
-import { createServerClient } from "@supabase/ssr"
 import { Metadata, Viewport } from "next"
 // خط زیر حذف شد (import Inter)
-import { cookies } from "next/headers"
 import { ReactNode } from "react"
 import "./globals.css"
 import { Analytics } from "@vercel/analytics/next"
@@ -51,20 +48,6 @@ export default async function RootLayout({
   params
 }: RootLayoutProps) {
   const { locale } = await params
-  const cookieStore = await cookies()
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        }
-      }
-    }
-  )
-  const session = (await supabase.auth.getSession()).data.session
-
   const { t, resources } = await initTranslations(locale, i18nNamespaces)
 
   return (
@@ -83,13 +66,11 @@ export default async function RootLayout({
           >
             <Toaster richColors position="top-center" duration={3000} />
             <div className="min-h-dvh w-full pb-16 md:pb-0">
-              {session ? <GlobalState>{children}</GlobalState> : children}
+              <GlobalState>{children}</GlobalState>
             </div>
 
             <div id="portals" />
-            {session && (
-              <BottomNav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 h-16 border-t border-gray-200 backdrop-blur-sm md:hidden dark:border-slate-800" />
-            )}
+            <BottomNav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 h-16 border-t border-gray-200 backdrop-blur-sm md:hidden dark:border-slate-800" />
           </TranslationsProvider>
         </Providers>
         <Analytics />

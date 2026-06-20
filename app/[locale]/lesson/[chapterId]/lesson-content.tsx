@@ -1,10 +1,8 @@
 // app/[locale]/lesson/[chapterId]/lesson-content.tsx
 
-import { createClient } from "@/lib/supabase/server"
 import LessonMap from "@/components/lessons/LessonMap"
 import { IconChevronRight, IconMap2, IconInfoCircle } from "@tabler/icons-react"
 import { MaterialCard } from "@/components/material/MaterialUI"
-import { redirect } from "next/navigation"
 
 // 1. تعریف دقیق تایپ‌ها
 interface ChapterConfig {
@@ -26,35 +24,7 @@ export default async function LessonContent({
   locale,
   config
 }: LessonContentProps) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-    error
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
-    redirect(`/${locale}/login`)
-  }
-
-  // FIX 1: حل مشکل never با استفاده از select صریح و کست کردن (Type Casting)
-  // ما نتیجه را در یک متغیر خام می‌ریزیم و پایین‌تر تایپش را مشخص می‌کنیم
-  const { data: rawProgress, error: progressError } = await supabase
-    .from("user_progress")
-    .select("completed_steps")
-    .eq("user_id", user.id)
-    .eq("chapter_id", chapterId)
-    .maybeSingle()
-
-  if (progressError) {
-    console.error("Error fetching progress:", progressError)
-  }
-
-  // FIX 1 (ادامه): اینجا به تایپ‌اسکریپت می‌گوییم این دیتا چه شکلی است
-  const progress = rawProgress as { completed_steps: number } | null
-
-  // محاسبات
-  const completedSteps = progress?.completed_steps ?? 0
+  const completedSteps = 0
   const progressPercent = Math.round((completedSteps / config.totalSteps) * 100)
 
   // FIX 2: حل مشکل undefined با تعیین مقدار پیش‌فرض قطعی

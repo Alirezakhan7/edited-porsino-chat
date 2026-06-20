@@ -1,8 +1,7 @@
 // app/[locale]/lesson/[chapterId]/play/play-content.tsx
 
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { loadLessonData } from "@/lib/lessons/loader"
+import { MOCK_USER_ID } from "@/lib/mock/data"
 import LessonPlayer from "@/components/lessons/LessonPlayer"
 
 interface PlayContentProps {
@@ -16,20 +15,6 @@ export default async function PlayContent({
   locale,
   stepNumber
 }: PlayContentProps) {
-  // 2. ساخت کلاینت سوپابیس
-  const supabase = await createClient()
-
-  // 3. چک کردن یوزر
-  const {
-    data: { user },
-    error
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
-    redirect(`/${locale}/login`)
-  }
-
-  // 4. لود کردن کل محتوای فصل
   const allUnits = await loadLessonData(chapterId)
 
   if (!allUnits || allUnits.length === 0) {
@@ -40,7 +25,6 @@ export default async function PlayContent({
     )
   }
 
-  // 5. منطق انتخاب درس
   const unitIndex = stepNumber - 1
 
   if (unitIndex < 0 || unitIndex >= allUnits.length) {
@@ -60,13 +44,12 @@ export default async function PlayContent({
 
   const targetUnit = allUnits[unitIndex]
 
-  // 6. رندر پلیر (بدون هیچ تغییری در ظاهر)
   return (
     <LessonPlayer
       units={[targetUnit]}
       chapterId={chapterId}
       stepNumber={stepNumber}
-      userId={user.id}
+      userId={MOCK_USER_ID}
       locale={locale}
     />
   )

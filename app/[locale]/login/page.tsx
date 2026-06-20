@@ -1,10 +1,7 @@
 // app/[locale]/login/page.tsx
 import AuthForm from "@/components/auth/auth-form"
 import AnimatedMessage from "@/components/ui/animated-message"
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { Metadata } from "next"
-// 👇 ایمپورت کردن توابع از فایل جدید
 import { signIn, sendOtp, verifyAndSignUp } from "./actions"
 
 export const metadata: Metadata = {
@@ -17,14 +14,6 @@ export default async function Login({
   searchParams: Promise<{ message?: string; mode?: string }>
 }) {
   const sp = await searchParams
-  const supabase = await createClient()
-
-  // بررسی سشن
-  const session = (await supabase.auth.getSession()).data.session
-  if (session) {
-    return redirect("/chat")
-  }
-
   const mode = sp?.mode === "signup" ? "signup" : "login"
 
   return (
